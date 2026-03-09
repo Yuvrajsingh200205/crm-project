@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle, Info, AlertCircle, RefreshCw, Download, Plus } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, AlertCircle, RefreshCw, Download, Plus, X } from 'lucide-react';
 
-// Master data based on SWPL-BRGF structure
-const reconciliationData = [
+const initialReconciliationData = [
     {
         code: '10', description: 'PSC Pole 8 Mtr 200 Kg including fixing', unit: 'No',
         contractorRate: 6234, subRate: 5800, poQty: 2.0,
@@ -59,19 +58,63 @@ function getStatus(diff, poQty) {
 }
 
 export default function MaterialReconciliation() {
+    const [reconciliationData, setReconciliationData] = useState(initialReconciliationData);
     const [tab, setTab] = useState('summary');
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [formData, setFormData] = useState({});
 
     const criticalItems = reconciliationData.filter(r => r.diff < 0 || (r.poQty > 0 && Math.abs(r.diff / r.poQty) * 100 > 5));
 
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubcontractorChange = (name, value) => {
+        setFormData(prev => ({
+            ...prev,
+            subVals: { ...(prev.subVals || {}), [name]: parseFloat(value || 0) }
+        }));
+    };
+
+    const handleRecordIssuance = (e) => {
+        e.preventDefault();
+        const poQty = parseFloat(formData.poQty || 0);
+        const subVals = formData.subVals || {};
+        const contractorTotal = Object.values(subVals).reduce((a, b) => a + b, 0);
+
+        const newItem = {
+            code: formData.code || `${reconciliationData.length * 10 + 10}`,
+            description: formData.description || '',
+            unit: formData.unit || 'No',
+            contractorRate: parseFloat(formData.contractorRate || 0),
+            subRate: parseFloat(formData.subRate || 0),
+            poQty: poQty,
+            billedQty: contractorTotal,
+            subcontractors: subcontractors.reduce((acc, sub) => {
+                acc[sub] = subVals[sub] || 0;
+                return acc;
+            }, {}),
+            contractorTotal: contractorTotal,
+            diff: poQty - contractorTotal,
+        };
+        
+        setReconciliationData([newItem, ...reconciliationData]);
+        setIsModalOpen(false);
+        setFormData({});
+    };
+
     return (
-        <div className="space-y-5 animate-fade-in">
+        <div className="space-y-5 animate-fade-in relative">
             {/* Critical Alerts Banner */}
             {criticalItems.length > 0 && (
-                <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                    <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-red-400 font-semibold text-sm">{criticalItems.length} Critical Material Variance{criticalItems.length > 1 ? 's' : ''} Detected</p>
-                        <p className="text-slate-400 text-xs mt-0.5">
+                        <p className="text-red-600 font-semibold text-sm">{criticalItems.length} Critical Material Variance{criticalItems.length > 1 ? 's' : ''} Detected</p>
+                        <p className="text-red-500/80 text-xs mt-1">
                             {criticalItems.map(r => `Bill Code ${r.code}`).join(', ')} — immediate reconciliation required
                         </p>
                     </div>
@@ -79,7 +122,7 @@ export default function MaterialReconciliation() {
             )}
 
             {/* Tabs */}
-            <div className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl w-fit">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
                 {[
                     { id: 'summary', label: 'Sterling vs Contractor' },
                     { id: 'subcontractor', label: 'Subcontractor-Wise' },
@@ -88,7 +131,7 @@ export default function MaterialReconciliation() {
                     <button
                         key={t.id}
                         onClick={() => setTab(t.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? 'bg-white text-slate-900 shadow' : 'text-slate-400 hover:text-slate-900'}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                     >
                         {t.label}
                     </button>
@@ -96,25 +139,25 @@ export default function MaterialReconciliation() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 justify-end">
-                <button className="btn-secondary"><RefreshCw className="w-4 h-4" /> Sync RA Bills</button>
-                <button className="btn-secondary"><Download className="w-4 h-4" /> Export Excel</button>
-                <button className="btn-primary"><Plus className="w-4 h-4" /> Record Issuance</button>
+            <div className="flex gap-3 justify-end flex-wrap">
+                <button className="btn-secondary whitespace-nowrap"><RefreshCw className="w-4 h-4 mr-1" /> Sync RA Bills</button>
+                <button className="btn-secondary whitespace-nowrap"><Download className="w-4 h-4 mr-1" /> Export Excel</button>
+                <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5"><Plus className="w-4 h-4" /> Record Issuance</button>
             </div>
 
             {/* SUMMARY TAB */}
             {tab === 'summary' && (
                 <div className="card overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
                         <h3 className="section-title">Sterling vs Contractor Summary – SWPL-BRGF</h3>
-                        <span className="text-slate-400 text-xs">RA Bill No: RA-05 (Latest)</span>
+                        <span className="text-slate-500 text-xs font-medium">RA Bill No: RA-05 (Latest)</span>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    {['Bill Code', 'Description', 'Unit', 'Cont. Rate', 'Sub Rate', 'PO Qty (Sterling)', 'Billed Qty', 'Contractor Total', 'Diff Qty', 'Diff Value', 'Status'].map(h => (
-                                        <th key={h} className="table-header">{h}</th>
+                                    {['Bill Code', 'Description', 'Unit', 'Cont. Rate', 'Sub Rate', 'PO Qty', 'Billed Qty', 'Cont. Total', 'Diff Qty', 'Diff Value', 'Status'].map(h => (
+                                        <th key={h} className="table-header whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -122,28 +165,25 @@ export default function MaterialReconciliation() {
                                 {reconciliationData.map((row, i) => {
                                     const status = getStatus(row.diff, row.poQty);
                                     return (
-                                        <tr key={i} className={`table-row ${row.diff < 0 ? 'bg-red-500/5' : ''}`}>
-                                            <td className="table-cell font-mono font-bold text-blue-400">{row.code}</td>
-                                            <td className="table-cell max-w-xs">
-                                                <p className="text-slate-900 leading-snug">{row.description}</p>
+                                        <tr key={i} className={`table-row hover:bg-slate-50 transition-colors ${row.diff < 0 ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}>
+                                            <td className="table-cell font-mono font-bold text-blue-500">{row.code}</td>
+                                            <td className="table-cell max-w-[200px]">
+                                                <p className="text-slate-900 leading-snug truncate" title={row.description}>{row.description}</p>
                                             </td>
-                                            <td className="table-cell text-slate-400">{row.unit}</td>
-                                            <td className="table-cell text-green-400 font-semibold">₹{row.contractorRate.toLocaleString()}</td>
-                                            <td className="table-cell text-slate-400">₹{row.subRate.toLocaleString()}</td>
+                                            <td className="table-cell text-slate-500">{row.unit}</td>
+                                            <td className="table-cell text-emerald-600 font-semibold">₹{row.contractorRate.toLocaleString()}</td>
+                                            <td className="table-cell text-slate-500">₹{row.subRate.toLocaleString()}</td>
                                             <td className="table-cell text-slate-900 font-bold">{row.poQty}</td>
                                             <td className="table-cell text-slate-700">{row.billedQty}</td>
                                             <td className="table-cell text-slate-700">{row.contractorTotal}</td>
-                                            <td className={`table-cell font-bold text-sm ${row.diff < 0 ? 'text-red-400' : row.diff === 0 ? 'text-green-400' : 'text-yellow-400'}`}>
-                                                {row.diff > 0 ? '+' : ''}{row.diff}
+                                            <td className={`table-cell font-bold text-sm ${row.diff < 0 ? 'text-red-500' : row.diff === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                {row.diff > 0 ? '+' : ''}{row.diff.toFixed(2)}
                                             </td>
-                                            <td className={`table-cell font-semibold ${row.diff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                            <td className={`table-cell font-semibold ${row.diff < 0 ? 'text-red-500' : 'text-slate-500'}`}>
                                                 {row.diff !== 0 ? `₹${Math.abs(Math.round(row.diff * row.contractorRate)).toLocaleString()}` : '₹0'}
                                             </td>
                                             <td className="table-cell">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className={`w-2 h-2 rounded-full ${status.dot}`} />
-                                                    <span className={`badge ${status.badge}`}>{status.label}</span>
-                                                </div>
+                                                <span className={`badge ${status.badge}`}>{status.label}</span>
                                             </td>
                                         </tr>
                                     );
@@ -157,7 +197,7 @@ export default function MaterialReconciliation() {
             {/* SUBCONTRACTOR TAB */}
             {tab === 'subcontractor' && (
                 <div className="card overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
+                    <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
                         <h3 className="section-title">Subcontractor-Wise Material Distribution</h3>
                     </div>
                     <div className="overflow-x-auto">
@@ -178,13 +218,13 @@ export default function MaterialReconciliation() {
                                 {reconciliationData.map((row, i) => {
                                     const status = getStatus(row.diff, row.poQty);
                                     return (
-                                        <tr key={i} className="table-row">
-                                            <td className="table-cell font-mono font-bold text-blue-400">{row.code}</td>
-                                            <td className="table-cell text-slate-900 max-w-xs">{row.description.substring(0, 40)}...</td>
-                                            <td className="table-cell text-slate-400">{row.unit}</td>
+                                        <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
+                                            <td className="table-cell font-mono font-bold text-blue-500">{row.code}</td>
+                                            <td className="table-cell text-slate-900 max-w-[200px] truncate">{row.description}</td>
+                                            <td className="table-cell text-slate-500">{row.unit}</td>
                                             {subcontractors.map(s => (
-                                                <td key={s} className={`table-cell text-center font-semibold ${row.subcontractors[s] > 0 ? 'text-slate-900' : 'text-slate-600'}`}>
-                                                    {row.subcontractors[s] || '—'}
+                                                <td key={s} className={`table-cell text-center font-semibold ${row.subcontractors[s] > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                    {row.subcontractors[s] || '0'}
                                                 </td>
                                             ))}
                                             <td className="table-cell text-slate-900 font-bold">{row.contractorTotal}</td>
@@ -203,7 +243,7 @@ export default function MaterialReconciliation() {
             {/* BALANCE TAB */}
             {tab === 'balance' && (
                 <div className="card overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
+                    <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
                         <h3 className="section-title">Material Balance Statement</h3>
                     </div>
                     <div className="overflow-x-auto">
@@ -211,7 +251,7 @@ export default function MaterialReconciliation() {
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     {['Item', 'Unit', 'PO Qty', 'Issued to Site', 'Consumed (RA)', 'Balance – Store', 'Balance – Site', 'Variance', 'Status'].map(h => (
-                                        <th key={h} className="table-header">{h}</th>
+                                        <th key={h} className="table-header whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -224,16 +264,16 @@ export default function MaterialReconciliation() {
                                     const siteBalance = Math.max(0, balance * 0.6);
                                     const status = getStatus(row.diff, row.poQty);
                                     return (
-                                        <tr key={i} className="table-row">
-                                            <td className="table-cell text-slate-900">{row.description.substring(0, 35)}...</td>
-                                            <td className="table-cell text-slate-400">{row.unit}</td>
+                                        <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
+                                            <td className="table-cell text-slate-900 max-w-[200px] truncate" title={row.description}>{row.description}</td>
+                                            <td className="table-cell text-slate-500">{row.unit}</td>
                                             <td className="table-cell text-slate-900 font-bold">{row.poQty}</td>
-                                            <td className="table-cell text-blue-400">{issued}</td>
-                                            <td className="table-cell text-orange-400">{consumed}</td>
-                                            <td className="table-cell text-green-400">{storeBalance.toFixed(2)}</td>
-                                            <td className="table-cell text-cyan-400">{siteBalance.toFixed(2)}</td>
-                                            <td className={`table-cell font-bold ${row.diff < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                                {row.diff > 0 ? '+' : ''}{row.diff}
+                                            <td className="table-cell text-blue-500 font-medium">{issued}</td>
+                                            <td className="table-cell text-orange-500 font-medium">{consumed}</td>
+                                            <td className="table-cell text-emerald-500 font-medium">{storeBalance.toFixed(2)}</td>
+                                            <td className="table-cell text-cyan-500 font-medium">{siteBalance.toFixed(2)}</td>
+                                            <td className={`table-cell font-bold ${row.diff < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                {row.diff > 0 ? '+' : ''}{row.diff.toFixed(2)}
                                             </td>
                                             <td className="table-cell">
                                                 <span className={`badge ${status.badge}`}>{status.label}</span>
@@ -243,6 +283,88 @@ export default function MaterialReconciliation() {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Record Issuance Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-brand" /> Record Material Issuance
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleRecordIssuance} className="flex-1 overflow-y-auto p-6 space-y-6">
+                            
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Material Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <label className="text-sm font-medium text-slate-700">Item Description <span className="text-red-500">*</span></label>
+                                        <input required name="description" value={formData.description || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. PSC Pole 8 Mtr 200 Kg" />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Bill Code <span className="text-red-500">*</span></label>
+                                        <input required name="code" value={formData.code || ''} onChange={handleInputChange} className="input w-full font-mono" placeholder="e.g. 140" />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Unit <span className="text-red-500">*</span></label>
+                                        <input required name="unit" value={formData.unit || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. No, Set, CKM" />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Contractor Rate (₹) <span className="text-red-500">*</span></label>
+                                        <input required type="number" step="0.01" name="contractorRate" value={formData.contractorRate || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. 6200" />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Sub Rate (₹)</label>
+                                        <input type="number" step="0.01" name="subRate" value={formData.subRate || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. 5800" />
+                                    </div>
+
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <label className="text-sm font-medium text-slate-700">Total Issued / PO Qty <span className="text-red-500">*</span></label>
+                                        <input required type="number" step="0.01" name="poQty" value={formData.poQty || ''} onChange={handleInputChange} className="input w-full border-brand focus:ring-brand/20 bg-brand/5" placeholder="e.g. 10.5" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Subcontractor Allocation (Consumed Qty)</h3>
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {subcontractors.map(sub => (
+                                        <div key={sub} className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-slate-600 truncate block" title={sub}>{sub}</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                className="input w-full text-sm" 
+                                                placeholder="0.00"
+                                                value={formData.subVals?.[sub] || ''}
+                                                onChange={(e) => handleSubcontractorChange(sub, e.target.value)} 
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 shadow-sm shadow-green-500/20 transition-all flex items-center gap-2">
+                                    Calculate & Save
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

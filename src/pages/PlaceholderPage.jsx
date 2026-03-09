@@ -1,5 +1,6 @@
 import { Construction, Wrench } from 'lucide-react';
 
+// eslint-disable-next-line no-unused-vars
 export default function PlaceholderPage({ title, description, icon: Icon = Construction }) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-fade-in">

@@ -106,7 +106,7 @@ export default function FinancialAnalytics() {
                     <ResponsiveContainer width="100%" height={160}>
                         <PieChart>
                             <Pie data={expenseBreakdown} cx="50%" cy="50%" outerRadius={65} dataKey="value" labelLine={false}
-                                label={({ name, value }) => `${value}%`}>
+                                label={({ value }) => `${value}%`}>
                                 {expenseBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                             </Pie>
                             <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }} />
