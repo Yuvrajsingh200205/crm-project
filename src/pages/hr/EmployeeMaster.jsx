@@ -1,22 +1,11 @@
 import { useState } from 'react';
-import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X } from 'lucide-react';
-
-const initialEmployees = [
-    { id: 'EMP-001', name: 'Rajesh Kumar', designation: 'Project Manager', department: 'Operations', doj: '2022-04-01', basic: 35000, gross: 58000, net: 52800, pf: 'Active', esi: false, pan: 'ABCPK1234Q', uan: '100567892345', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-002', name: 'Suresh Verma', designation: 'Senior Engineer', department: 'Civil', doj: '2021-07-15', basic: 28000, gross: 46000, net: 41500, pf: 'Active', esi: false, pan: 'DERPV5678R', uan: '100567892346', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-003', name: 'Priya Devi', designation: 'Site Engineer', department: 'Electrical', doj: '2023-01-10', basic: 22000, gross: 36000, net: 32400, pf: 'Active', esi: true, pan: 'GHIPD9012S', uan: '100567892347', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-004', name: 'Mohan Lal', designation: 'Store Keeper', department: 'Stores', doj: '2023-06-01', basic: 15000, gross: 21000, net: 18200, pf: 'Active', esi: true, pan: 'JKLML3456T', uan: '100567892348', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-005', name: 'Ankit Sharma', designation: 'Project Manager', department: 'Solar', doj: '2020-09-15', basic: 40000, gross: 68000, net: 61500, pf: 'Active', esi: false, pan: 'MNOAS7890U', uan: '100567892349', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-006', name: 'Ritu Singh', designation: 'HR Manager', department: 'HR', doj: '2022-02-01', basic: 30000, gross: 50000, net: 45200, pf: 'Active', esi: false, pan: 'PQRRS2345V', uan: '100567892350', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-007', name: 'Deepak Kumar', designation: 'Accountant', department: 'Finance', doj: '2021-11-20', basic: 25000, gross: 41000, net: 37100, pf: 'Active', esi: false, pan: 'STUVK6789W', uan: '100567892351', type: 'Permanent', status: 'Active' },
-    { id: 'EMP-008', name: 'Sanya Mishra', designation: 'Site Supervisor', department: 'Interior', doj: '2024-01-15', basic: 18000, gross: 28000, net: 24800, pf: 'Active', esi: true, pan: 'WXYZM1234X', uan: '100567892352', type: 'Contract', status: 'Active' },
-];
+import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 export default function EmployeeMaster() {
-    const [employees, setEmployees] = useState(initialEmployees);
+    const { setActiveModule, setSelectedEmployee, employees, setEmployees } = useApp();
     const [search, setSearch] = useState('');
     const [dept, setDept] = useState('All');
-    const [selected, setSelected] = useState(null);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,9 +62,12 @@ export default function EmployeeMaster() {
                     <input className="input pl-9 w-full" placeholder="Search by name or employee ID..." value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 <div className="flex gap-2">
-                    <select className="select w-32 bg-white" value={dept} onChange={e => setDept(e.target.value)}>
-                        {depts.map(d => <option key={d}>{d}</option>)}
-                    </select>
+                    <div className="relative group/select">
+                        <select className="select w-32 bg-white pr-8 appearance-none" value={dept} onChange={e => setDept(e.target.value)}>
+                            {depts.map(d => <option key={d}>{d}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
+                    </div>
                     <button className="btn-secondary whitespace-nowrap"><Upload className="w-4 h-4 mr-1" /> Import</button>
                     <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
                         <Plus className="w-4 h-4" /> Add Employee
@@ -114,7 +106,10 @@ export default function EmployeeMaster() {
                             {filtered.length === 0 ? (
                                 <tr><td colSpan="9" className="p-6 text-center text-slate-500">No employees found. Add a new one.</td></tr>
                             ) : filtered.map((e, i) => (
-                                <tr key={i} className="table-row cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setSelected(e)}>
+                                <tr key={i} className="table-row cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => {
+                                    setSelectedEmployee(e);
+                                    setActiveModule('employee-details');
+                                }}>
                                     <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{e.id}</td>
                                     <td className="table-cell">
                                         <div className="flex items-center gap-3">
@@ -128,7 +123,7 @@ export default function EmployeeMaster() {
                                         </div>
                                     </td>
                                     <td className="table-cell text-slate-700">{e.designation}</td>
-                                    <td className="table-cell"><span className="badge badge-blue">{e.department}</span></td>
+                                    <td className="table-cell"><span className="badge badge-green">{e.department}</span></td>
                                     <td className="table-cell text-slate-500 text-xs whitespace-nowrap">{e.doj}</td>
                                     <td className="table-cell">
                                         <p className="text-slate-900 font-semibold">₹{e.gross.toLocaleString()}</p>
@@ -144,7 +139,15 @@ export default function EmployeeMaster() {
                                         <span className={`badge ${e.type === 'Permanent' ? 'badge-green' : 'badge-yellow'}`}>{e.type}</span>
                                     </td>
                                     <td className="table-cell" onClick={ev => ev.stopPropagation()}>
-                                        <button className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded">View Details</button>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedEmployee(e);
+                                                setActiveModule('employee-details');
+                                            }}
+                                            className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded flex items-center gap-1.5"
+                                        >
+                                            <Eye className="w-3.5 h-3.5" /> View Details
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -153,71 +156,6 @@ export default function EmployeeMaster() {
                 </div>
             </div>
 
-            {/* Employee Detail Slide-over Panel */}
-            {selected && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-end z-40 transition-opacity" onClick={() => setSelected(null)}>
-                    <div className="w-full max-w-sm h-full bg-white shadow-2xl overflow-y-auto animate-slide-in relative flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
-                            <h3 className="text-slate-900 font-bold text-lg">Employee Profile</h3>
-                            <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200/50 transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6 flex-1">
-                            <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 text-xl font-bold shadow-sm">
-                                    {selected.name.split(' ').map(n => n?.[0]).join('')}
-                                </div>
-                                <div>
-                                    <h4 className="text-slate-900 font-bold text-lg">{selected.name}</h4>
-                                    <p className="text-slate-500 text-sm font-medium">{selected.designation}</p>
-                                    <p className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-600 mt-2 border border-blue-100">
-                                        {selected.id}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                {[
-                                    { label: 'Department', value: selected.department },
-                                    { label: 'Date of Joining', value: selected.doj },
-                                    { label: 'Employee Type', value: selected.type },
-                                    { label: 'PAN Number', value: selected.pan, mono: true },
-                                    { label: 'UAN (PF)', value: selected.uan, mono: true },
-                                ].map((f, i) => (
-                                    <div key={i} className="flex justify-between items-center py-1">
-                                        <span className="text-slate-500 text-sm">{f.label}</span>
-                                        <span className={`text-slate-900 text-sm font-medium ${f.mono ? 'font-mono text-xs' : ''}`}>{f.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="border-t border-slate-100 pt-5">
-                                <p className="text-slate-800 text-sm font-bold mb-4 flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-emerald-500" /> Salary Configuration
-                                </p>
-                                <div className="bg-slate-50 rounded-lg p-4 space-y-3 border border-slate-100">
-                                    {[
-                                        { label: 'Basic Salary', value: `₹${selected.basic.toLocaleString()}` },
-                                        { label: 'Gross Salary', value: `₹${selected.gross.toLocaleString()}` },
-                                        { label: 'Employee PF (12%)', value: `₹${Math.round(selected.basic * 0.12).toLocaleString()}`, isDeduction: true },
-                                        { label: 'Net Take-Home', value: `₹${selected.net.toLocaleString()}`, isNet: true },
-                                    ].map((f, i) => (
-                                        <div key={i} className={`flex justify-between items-center ${f.isNet ? 'border-t border-slate-200 pt-3 mt-3' : ''}`}>
-                                            <span className="text-slate-600 text-sm">{f.label}</span>
-                                            <span className={`text-sm font-semibold ${f.isNet ? 'text-emerald-600 text-base' : f.isDeduction ? 'text-amber-600' : 'text-slate-900'}`}>{f.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-100 bg-white grid grid-cols-2 gap-3 sticky bottom-0">
-                            <button className="btn-secondary border border-slate-200 font-medium py-2.5 w-full justify-center">Edit Profile</button>
-                            <button className="btn-primary font-medium py-2.5 w-full justify-center bg-emerald-500 hover:bg-emerald-600 border-transparent shadow-sm shadow-emerald-500/20">Generate Payslip</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Add Employee Modal */}
             {isModalOpen && (
@@ -258,11 +196,14 @@ export default function EmployeeMaster() {
 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Employment Type <span className="text-red-500">*</span></label>
-                                        <select required name="type" value={formData.type || 'Permanent'} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all bg-white">
-                                            <option value="Permanent">Permanent</option>
-                                            <option value="Contract">Contract</option>
-                                            <option value="Trainee">Trainee</option>
-                                        </select>
+                                        <div className="relative group/select">
+                                            <select required name="type" value={formData.type || 'Permanent'} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all bg-white appearance-none pr-8">
+                                                <option value="Permanent">Permanent</option>
+                                                <option value="Contract">Contract</option>
+                                                <option value="Trainee">Trainee</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

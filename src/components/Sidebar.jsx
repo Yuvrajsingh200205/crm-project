@@ -105,10 +105,10 @@ const navItems = [
 function NavItem({ item, depth = 0 }) {
     const { activeModule, setActiveModule } = useApp();
     const [expanded, setExpanded] = useState(
-        item.children?.some(c => c.id === activeModule) || item.id === activeModule
+        item.children?.some(c => c.id === activeModule || (c.id === 'employee-master' && activeModule === 'employee-details')) || item.id === activeModule
     );
     const Icon = item.icon;
-    const isActive = activeModule === item.id;
+    const isActive = activeModule === item.id || (item.id === 'employee-master' && activeModule === 'employee-details');
     const hasChildren = item.children?.length > 0;
 
     const handleClick = () => {

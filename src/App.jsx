@@ -18,6 +18,7 @@ import LeaveManagement from './pages/hr/LeaveManagement';
 import Payroll from './pages/hr/Payroll';
 import StatutoryCompliance from './pages/hr/StatutoryCompliance';
 import Reimbursements from './pages/hr/Reimbursements';
+import EmployeeDetails from './pages/hr/EmployeeDetails';
 import FinancialAnalytics from './pages/analytics/FinancialAnalytics';
 
 import Tenders from './pages/business/Tenders';
@@ -64,6 +65,7 @@ const pageMap = {
   'payroll': <Payroll />,
   'statutory-compliance': <StatutoryCompliance />,
   'reimbursements': <Reimbursements />,
+  'employee-details': <EmployeeDetails />,
 
   // Business Dev
   'crm': <PlaceholderPage title="CRM" description="Lead management, client interactions, opportunity pipeline, and win/loss analysis." icon={Target} />,
@@ -89,12 +91,16 @@ function AppContent() {
   const { activeModule, sidebarOpen } = useApp();
 
   return (
-    <div className="min-h-screen bg-[#eef2f0] text-slate-800">
-      <Sidebar />
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0 md:ml-16'}`}>
-        <Header />
-        <main className="pt-24 pb-12 px-4 md:px-8 min-h-screen w-full box-border">
-          <div key={activeModule} className="animate-fade-in max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#eef2f0] text-slate-800 print:bg-white print:p-0">
+      <div className="print:hidden">
+        <Sidebar />
+      </div>
+      <div className={`transition-all duration-300 print:ml-0 print:pt-0 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0 md:ml-16'}`}>
+        <div className="print:hidden">
+          <Header />
+        </div>
+        <main className="pt-24 pb-12 px-4 md:px-8 min-h-screen w-full box-border print:pt-0 print:pb-0 print:px-0">
+          <div key={activeModule} className="animate-fade-in max-w-7xl mx-auto print:max-w-none">
             {pageMap[activeModule] || <Dashboard />}
           </div>
         </main>
