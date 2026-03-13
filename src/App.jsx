@@ -13,7 +13,11 @@ import GSTManagement from './pages/finance/GSTManagement';
 import MaterialReconciliation from './pages/operations/MaterialReconciliation';
 import Procurement from './pages/operations/Procurement';
 import EmployeeMaster from './pages/hr/EmployeeMaster';
+import Attendance from './pages/hr/Attendance';
+import LeaveManagement from './pages/hr/LeaveManagement';
 import Payroll from './pages/hr/Payroll';
+import StatutoryCompliance from './pages/hr/StatutoryCompliance';
+import Reimbursements from './pages/hr/Reimbursements';
 import FinancialAnalytics from './pages/analytics/FinancialAnalytics';
 
 import Tenders from './pages/business/Tenders';
@@ -55,11 +59,11 @@ const pageMap = {
 
   // HR
   'employee-master': <EmployeeMaster />,
-  'attendance': <PlaceholderPage title="Attendance Management" description="Biometric integration, GPS-based attendance, shift management, and overtime tracking." icon={UserCheck} />,
-  'leave-management': <PlaceholderPage title="Leave Management" description="Leave policies (CL, SL, EL, LWP), balance tracking, approval workflows, and encashment." icon={Calendar} />,
+  'attendance': <Attendance />,
+  'leave-management': <LeaveManagement />,
   'payroll': <Payroll />,
-  'statutory-compliance': <PlaceholderPage title="Statutory Compliance" description="PF (ECR), ESI, Professional Tax, Income Tax (Form 16), and Labour Welfare Fund automation." icon={Shield} />,
-  'reimbursements': <PlaceholderPage title="Reimbursements" description="Mobile/web expense claims with approval workflows, bill attachments, and payroll integration." icon={Receipt} />,
+  'statutory-compliance': <StatutoryCompliance />,
+  'reimbursements': <Reimbursements />,
 
   // Business Dev
   'crm': <PlaceholderPage title="CRM" description="Lead management, client interactions, opportunity pipeline, and win/loss analysis." icon={Target} />,
