@@ -1,10 +1,12 @@
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import { Toaster } from 'react-hot-toast';
 
 // Pages
 import Dashboard from './pages/Dashboard';
 import ProjectMaster from './pages/projects/ProjectMaster';
+import WorkOrders from './pages/projects/WorkOrders';
 import BOQ from './pages/projects/BOQ';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Vouchers from './pages/finance/Vouchers';
@@ -35,7 +37,7 @@ const pageMap = {
 
   // Project Management
   'project-master': <ProjectMaster />,
-  'work-orders': <PlaceholderPage title="Work Order Management" description="Create and track work orders against parent projects. Link BOQ items, assign contractors, track progress and billing milestones." icon={ClipboardList} />,
+  'work-orders': <WorkOrders />,
   'boq': <BOQ />,
   'site-management': <PlaceholderPage title="Site Management" description="Manage multiple project sites with daily reports, team attendance, material tracking, and safety compliance." icon={MapPin} />,
   'progress-tracking': <PlaceholderPage title="Progress Tracking" description="Monitor project execution with Gantt charts, S-curve analysis, and milestone tracking." icon={TrendingUp} />,
@@ -98,6 +100,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#eef2f0] text-slate-800 print:bg-white print:p-0">
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="print:hidden">
         <Sidebar role={userRole} />
       </div>
