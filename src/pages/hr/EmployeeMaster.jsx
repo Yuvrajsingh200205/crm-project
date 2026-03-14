@@ -46,6 +46,7 @@ export default function EmployeeMaster() {
             pan: formData.pan || '',
             uan: formData.uan || '',
             type: formData.type || 'Permanent',
+            duration: formData.duration || null,
             status: 'Active'
         };
         setEmployees([newEmp, ...employees]);
@@ -205,6 +206,13 @@ export default function EmployeeMaster() {
                                             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
                                         </div>
                                     </div>
+
+                                    {formData.type === 'Trainee' && (
+                                        <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                                            <label className="text-sm font-medium text-slate-700">Training Duration (Months) <span className="text-red-500">*</span></label>
+                                            <input required type="number" name="duration" value={formData.duration || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. 6" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -26,6 +26,20 @@ export function AppProvider({ children }) {
         { id: 5, type: 'error', message: 'TDS variance >5% on Bill Code 60', time: '1d ago', read: true },
     ]);
 
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userRole, setUserRole] = useState(null); // 'admin' or 'employee'
+
+    const login = (role) => {
+        setIsLoggedIn(true);
+        setUserRole(role);
+        setActiveModule('dashboard');
+    };
+
+    const logout = () => {
+        setIsLoggedIn(false);
+        setUserRole(null);
+    };
+
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [employees, setEmployees] = useState(initialEmployees);
 
@@ -46,7 +60,8 @@ export function AppProvider({ children }) {
             sidebarOpen, setSidebarOpen,
             notifications, markAllRead,
             selectedEmployee, setSelectedEmployee,
-            employees, setEmployees, updateEmployee
+            employees, setEmployees, updateEmployee,
+            isLoggedIn, userRole, login, logout
         }}>
             {children}
         </AppContext.Provider>

@@ -149,8 +149,32 @@ function NavItem({ item, depth = 0 }) {
     );
 }
 
-export default function Sidebar() {
-    const { sidebarOpen } = useApp();
+export default function Sidebar({ role }) {
+    const { sidebarOpen, logout } = useApp();
+
+    const filteredNavItems = navItems.map(item => {
+        // Create a shallow copy of the item and its children
+        const newItem = { ...item, children: item.children ? [...item.children] : undefined };
+
+        if (role === 'admin') return newItem;
+
+        // Employee logic: Only show specific modules
+        const employeeModules = ['dashboard', 'projects', 'hr', 'analytics'];
+        if (!employeeModules.includes(newItem.id)) return null;
+
+        // Further filter children for employee
+        if (newItem.id === 'hr' && newItem.children) {
+            newItem.children = newItem.children.filter(c =>
+                ['attendance', 'leave-management', 'reimbursements'].includes(c.id)
+            );
+        }
+        if (newItem.id === 'projects' && newItem.children) {
+            newItem.children = newItem.children.filter(c =>
+                ['site-management', 'progress-tracking'].includes(c.id)
+            );
+        }
+        return newItem;
+    }).filter(Boolean);
 
     return (
         <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-white border-r border-[#e9ecef] transition-all duration-300
@@ -158,14 +182,14 @@ export default function Sidebar() {
             {/* Logo */}
             <div className={`flex items-center justify-center h-20 border-b border-[#e9ecef] flex-shrink-0 bg-white ${sidebarOpen ? 'px-6 py-2' : 'px-2 py-4'}`}>
                 <div className="flex items-center justify-center w-full h-full overflow-hidden">
-                     <img src="/logo.jpg" alt="Morlatis Logo" className="h-full w-full object-contain mix-blend-multiply" />
+                    <img src="/logo.jpg" alt="Morlatis Logo" className="h-full w-full object-contain mix-blend-multiply" />
                 </div>
             </div>
 
             {/* Nav */}
             {sidebarOpen && (
                 <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
-                    {navItems.map(item => (
+                    {filteredNavItems.map(item => (
                         <NavItem key={item.id} item={item} />
                     ))}
                 </nav>
@@ -173,15 +197,22 @@ export default function Sidebar() {
 
             {/* Footer */}
             {sidebarOpen && (
-                <div className="p-4 border-t border-[#e9ecef] flex-shrink-0 bg-white">
+                <div className="p-4 border-t border-[#e9ecef] flex-shrink-0 bg-white space-y-4">
                     <div className="flex items-center gap-3 bg-[#f8f9fa] p-2.5 rounded-xl border border-slate-100">
-                        <img src={`https://ui-avatars.com/api/?name=Super+Admin&background=1e3a34&color=fff`} alt="Profile" className="w-9 h-9 rounded-lg" />
+                        <img src={`https://ui-avatars.com/api/?name=${role === 'admin' ? 'Admin' : 'Employee'}&background=${role === 'admin' ? '1e3a34' : '2f6645'}&color=fff`} alt="Profile" className="w-9 h-9 rounded-lg" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-slate-900 text-sm font-semibold truncate">Super Admin</p>
-                            <p className="text-slate-500 text-xs truncate">admin@morlatis.com</p>
+                            <p className="text-slate-900 text-sm font-semibold truncate capitalize">{role} Account</p>
+                            <p className="text-slate-500 text-xs truncate">portal@ecoconstruct.com</p>
                         </div>
-                        <Settings className="w-4 h-4 text-slate-400 hover:text-slate-900 cursor-pointer transition-colors" />
                     </div>
+
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors"
+                    >
+                        <Zap className="w-4 h-4 rotate-45" />
+                        Log Out
+                    </button>
                 </div>
             )}
         </aside>

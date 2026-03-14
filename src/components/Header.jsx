@@ -45,7 +45,7 @@ const moduleTitles = {
 };
 
 export default function Header() {
-    const { activeModule, sidebarOpen, setSidebarOpen, notifications, markAllRead } = useApp();
+    const { activeModule, sidebarOpen, setSidebarOpen, notifications, markAllRead, userRole } = useApp();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
 
@@ -57,6 +57,8 @@ export default function Header() {
         success: 'text-green-600',
         error: 'text-red-600',
     };
+
+    const profileName = userRole === 'admin' ? 'Admin' : 'Employee';
 
     return (
         <header className={`fixed top-0 right-0 h-20 z-20 flex items-center justify-between px-4 md:px-8 bg-[#f4f7f6]/80 backdrop-blur-lg border-b border-[#e9ecef] transition-all duration-300 ${sidebarOpen ? 'left-0 md:left-64' : 'left-0 md:left-16'}`}>
@@ -71,7 +73,7 @@ export default function Header() {
                 <div>
                     <h1 className="text-slate-900 font-bold text-base md:text-lg truncate max-w-[150px] md:max-w-none">{moduleTitles[activeModule] || 'Dashboard'}</h1>
                     <div className="hidden md:flex items-center gap-2 text-slate-500 text-xs mt-0.5">
-                        <span className="font-medium">Morlatis ERP</span>
+                        <span className="font-medium">EcoConstruct CRM</span>
                         <span>•</span>
                         <span className="text-[#2f6645] flex items-center gap-1 font-semibold"><Zap className="w-3 h-3 fill-current" /> Live System</span>
                     </div>
@@ -143,7 +145,7 @@ export default function Header() {
 
                 {/* Profile */}
                 <button className="flex items-center gap-2 pl-1 pr-2 py-1 bg-slate-50 border border-slate-100 rounded-full hover:bg-slate-100 transition-all shadow-sm md:ml-2">
-                    <img src={`https://ui-avatars.com/api/?name=SA&background=9ae66e&color=1e3a34`} alt="Avatar" className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
+                    <img src={`https://ui-avatars.com/api/?name=${profileName}&background=${userRole === 'admin' ? '1e3a34' : '2f6645'}&color=fff`} alt="Avatar" className="w-7 h-7 md:w-8 md:h-8 rounded-full" />
                     <ChevronDown className="w-4 h-4 text-slate-500 hidden sm:block" />
                 </button>
             </div>

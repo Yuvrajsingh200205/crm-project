@@ -87,13 +87,19 @@ const pageMap = {
   'custom-reports': <PlaceholderPage title="Custom Report Builder" description="Drag-and-drop report designer with filters, chart types, scheduled generation, and email distribution." icon={FileBarChart} />,
 };
 
+import Login from './pages/Login';
+
 function AppContent() {
-  const { activeModule, sidebarOpen } = useApp();
+  const { activeModule, sidebarOpen, isLoggedIn, userRole } = useApp();
+
+  if (!isLoggedIn) {
+    return <Login />;
+  }
 
   return (
     <div className="min-h-screen bg-[#eef2f0] text-slate-800 print:bg-white print:p-0">
       <div className="print:hidden">
-        <Sidebar />
+        <Sidebar role={userRole} />
       </div>
       <div className={`transition-all duration-300 print:ml-0 print:pt-0 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0 md:ml-16'}`}>
         <div className="print:hidden">
