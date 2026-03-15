@@ -8,11 +8,19 @@ import Dashboard from './pages/Dashboard';
 import ProjectMaster from './pages/projects/ProjectMaster';
 import WorkOrders from './pages/projects/WorkOrders';
 import BOQ from './pages/projects/BOQ';
+import ChartOfAccounts from './pages/finance/ChartOfAccounts';
+import Invoicing from './pages/finance/Invoicing';
+import AccountsPayable from './pages/finance/AccountsPayable';
+import AccountsReceivable from './pages/finance/AccountsReceivable';
+import TDSManagement from './pages/finance/TDSManagement';
+import BankReconciliation from './pages/finance/BankReconciliation';
+import JobCosting from './pages/finance/JobCosting';
 import SiteManagement from './pages/projects/SiteManagement';
 import ProgressTracking from './pages/projects/ProgressTracking';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Vouchers from './pages/finance/Vouchers';
-import JobCosting from './pages/finance/JobCosting';
+import InvoiceDetail from './pages/finance/InvoiceDetail';
+import VoucherDetail from './pages/finance/VoucherDetail';
 import GSTManagement from './pages/finance/GSTManagement';
 import MaterialReconciliation from './pages/operations/MaterialReconciliation';
 import Procurement from './pages/operations/Procurement';
@@ -45,15 +53,17 @@ const pageMap = {
   'progress-tracking': <ProgressTracking />,
 
   // Finance
-  'chart-of-accounts': <PlaceholderPage title="Chart of Accounts" description="Complete multi-level ledger structure — Assets, Liabilities, Income, Expenses with project cost centers." icon={BookOpen} />,
+  'chart-of-accounts': <ChartOfAccounts />,
   'vouchers': <Vouchers />,
-  'invoicing': <PlaceholderPage title="Invoicing & Billing" description="Generate progress invoices (RA Bills), calculate retention, GST invoices, and track payment milestones." icon={Receipt} />,
-  'accounts-payable': <PlaceholderPage title="Accounts Payable" description="Manage vendor payments, TDS deductions, cheque printing, and NEFT/RTGS integration." icon={CreditCard} />,
-  'accounts-receivable': <PlaceholderPage title="Accounts Receivable" description="Track customer outstanding, aging analysis (0-30, 30-60, 60-90, 90+ days), and collection reminders." icon={Landmark} />,
+  'invoicing': <Invoicing />,
+  'accounts-payable': <AccountsPayable />,
+  'accounts-receivable': <AccountsReceivable />,
   'gst-management': <GSTManagement />,
-  'tds-management': <PlaceholderPage title="TDS Management" description="Auto TDS calculation (194C, 194I, 194J), certificate generation (Form 16A), and quarterly returns." icon={Percent} />,
-  'bank-reconciliation': <PlaceholderPage title="Bank Reconciliation" description="Auto-import bank statements, match transactions, track uncleared cheques across multiple bank accounts." icon={Building} />,
+  'tds-management': <TDSManagement />,
+  'bank-reconciliation': <BankReconciliation />,
   'job-costing': <JobCosting />,
+  'invoice-detail': <InvoiceDetail />,
+  'voucher-detail': <VoucherDetail />,
 
   // Operations
   'procurement': <Procurement />,
