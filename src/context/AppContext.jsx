@@ -120,6 +120,22 @@ const initialBOQItems = [
     { id: '100', description: 'Stay Set Complete (Ground Anchor type)', unit: 'Set', contractRate: 1250, subRate: 1150, poQty: 10, billedQty: 5, status: 'Under Utilized' },
 ];
 
+const initialSites = [
+    { id: 'SITE-001', name: 'Muzaffarpur Block A', projectId: 'PRJ-2026-001', location: 'Muzaffarpur', supervisor: 'Amit Singh', manpower: 45, status: 'Active', health: 'Safe', alerts: 0, budget: 1500000, complexity: 'Medium' },
+    { id: 'SITE-002', name: 'Patna Metro Pier P11', projectId: 'PRJ-2026-002', location: 'Patna', supervisor: 'Priya Devi', manpower: 120, status: 'Active', health: 'Caution', alerts: 2, budget: 5500000, complexity: 'High' },
+    { id: 'SITE-003', name: 'Gaya Municipal Complex', projectId: 'PRJ-2026-004', location: 'Gaya', supervisor: 'Neha Rai', manpower: 25, status: 'On Hold', health: 'Safe', alerts: 0, budget: 850000, complexity: 'Low' },
+    { id: 'SITE-004', name: 'TechCorp HQ Interior', projectId: 'PRJ-2026-005', location: 'Patna', supervisor: 'Sanya Mishra', manpower: 15, status: 'Active', health: 'Safe', alerts: 0, budget: 1200000, complexity: 'Medium' }
+];
+
+const initialProgressTasks = [
+    { id: 'TASK-101', title: 'Foundation Leveling', projectId: 'PRJ-2026-001', category: 'Civil', progress: 100, startDate: '2025-10-01', endDate: '2025-10-15', status: 'Completed', priority: 'High', siteId: 'SITE-001' },
+    { id: 'TASK-102', title: 'Internal Wiring', projectId: 'PRJ-2026-001', category: 'Electrical', progress: 65, startDate: '2025-11-01', endDate: '2026-03-31', status: 'In Progress', priority: 'Medium', siteId: 'SITE-001' },
+    { id: 'TASK-201', title: 'Excavation & Piling', projectId: 'PRJ-2026-002', category: 'Civil', progress: 45, startDate: '2025-08-15', endDate: '2026-01-30', status: 'In Progress', priority: 'Critical', siteId: 'SITE-002' },
+    { id: 'TASK-202', title: 'Casting of Peirs', projectId: 'PRJ-2026-002', category: 'Civil', progress: 15, startDate: '2026-02-01', endDate: '2026-10-31', status: 'Active', priority: 'High', siteId: 'SITE-002' },
+    { id: 'TASK-501', title: 'Drywall Installation', projectId: 'PRJ-2026-005', category: 'Interior', progress: 85, startDate: '2026-02-01', endDate: '2026-03-15', status: 'In Progress', priority: 'Medium', siteId: 'SITE-004' },
+    { id: 'TASK-502', title: 'HVAC Ducting', projectId: 'PRJ-2026-005', category: 'HVAC', progress: 30, startDate: '2026-03-01', endDate: '2026-04-10', status: 'Active', priority: 'High', siteId: 'SITE-004' }
+];
+
 const initialEmployees = [
     { id: 'EMP-001', name: 'Rajesh Kumar', designation: 'Project Manager', department: 'Operations', doj: '2022-04-01', basic: 35000, gross: 58000, net: 52800, pf: 'Active', esi: false, pan: 'ABCPK1234Q', uan: '100567892345', type: 'Permanent', status: 'Active' },
     { id: 'EMP-002', name: 'Suresh Verma', designation: 'Senior Engineer', department: 'Civil', doj: '2021-07-15', basic: 28000, gross: 46000, net: 41500, pf: 'Active', esi: false, pan: 'DERPV5678R', uan: '100567892346', type: 'Permanent', status: 'Active' },
@@ -168,6 +184,8 @@ export function AppProvider({ children }) {
     const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
     const [boqItems, setBoqItems] = useState(initialBOQItems);
     const [selectedBOQItem, setSelectedBOQItem] = useState(null);
+    const [sites, setSites] = useState(initialSites);
+    const [progressTasks, setProgressTasks] = useState(initialProgressTasks);
 
     const updateEmployee = (updatedEmp) => {
         setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
@@ -194,6 +212,14 @@ export function AppProvider({ children }) {
         setBoqItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
     };
 
+    const updateSite = (updatedSite) => {
+        setSites(prev => prev.map(s => s.id === updatedSite.id ? updatedSite : s));
+    };
+
+    const updateProgressTask = (updatedTask) => {
+        setProgressTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    };
+
     const markAllRead = () => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     };
@@ -208,6 +234,8 @@ export function AppProvider({ children }) {
             projects, setProjects, selectedProject, setSelectedProject, updateProject,
             workOrders, setWorkOrders, selectedWorkOrder, setSelectedWorkOrder, updateWorkOrder,
             boqItems, setBoqItems, updateBOQItem,
+            sites, setSites, updateSite,
+            progressTasks, setProgressTasks, updateProgressTask,
             isLoggedIn, userRole, login, logout
         }}>
             {children}

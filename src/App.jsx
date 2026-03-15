@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard';
 import ProjectMaster from './pages/projects/ProjectMaster';
 import WorkOrders from './pages/projects/WorkOrders';
 import BOQ from './pages/projects/BOQ';
+import SiteManagement from './pages/projects/SiteManagement';
+import ProgressTracking from './pages/projects/ProgressTracking';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Vouchers from './pages/finance/Vouchers';
 import JobCosting from './pages/finance/JobCosting';
@@ -39,8 +41,8 @@ const pageMap = {
   'project-master': <ProjectMaster />,
   'work-orders': <WorkOrders />,
   'boq': <BOQ />,
-  'site-management': <PlaceholderPage title="Site Management" description="Manage multiple project sites with daily reports, team attendance, material tracking, and safety compliance." icon={MapPin} />,
-  'progress-tracking': <PlaceholderPage title="Progress Tracking" description="Monitor project execution with Gantt charts, S-curve analysis, and milestone tracking." icon={TrendingUp} />,
+  'site-management': <SiteManagement />,
+  'progress-tracking': <ProgressTracking />,
 
   // Finance
   'chart-of-accounts': <PlaceholderPage title="Chart of Accounts" description="Complete multi-level ledger structure — Assets, Liabilities, Income, Expenses with project cost centers." icon={BookOpen} />,
