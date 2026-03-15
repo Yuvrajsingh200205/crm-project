@@ -163,24 +163,24 @@ export default function SiteManagement() {
                             <div className="flex items-center gap-3">
                                 <div className={`w-3 h-3 rounded-full ${
                                     site.health === 'Safe' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 
-                                    (site.health === 'Caution' ? 'bg-amber-500' : 'bg-rose-500 animate-pulse')
-                                }`} />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Health: {site.health}</span>
+                                    (site.health === 'Caution' ? 'bg-amber-500' : 'bg-slate-700 shadow-[0_0_12px_rgba(51,65,85,0.3)]')
+                                 }`} />
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Index: {site.health}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <button onClick={() => handleEditSite(site)} className="p-2.5 bg-slate-50 text-slate-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm">
                                     <Settings2 className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => handleDeleteSite(site.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-sm">
+                                <button onClick={() => handleDeleteSite(site.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition-all shadow-sm">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
                         </div>
 
                         {site.alerts > 0 && (
-                            <div className="absolute top-8 right-8 flex items-center gap-1 bg-rose-500 text-white px-2 py-1 rounded-lg animate-bounce shadow-lg shadow-rose-900/20">
+                            <div className="absolute top-8 right-8 flex items-center gap-1 bg-emerald-950 text-emerald-400 px-3 py-1.5 rounded-xl shadow-lg shadow-emerald-950/20 border border-white/5">
                                 <ShieldAlert className="w-3.5 h-3.5" />
-                                <span className="text-[9px] font-black">{site.alerts} Alerts</span>
+                                <span className="text-[9px] font-black uppercase tracking-wider">{site.alerts} Alerts</span>
                             </div>
                         )}
                     </div>
