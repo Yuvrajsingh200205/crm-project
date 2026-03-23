@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-
+import { employeeAPI } from '../../api/employee';
+import toast from 'react-hot-toast';
 export default function EmployeeMaster() {
     const { setActiveModule, setSelectedEmployee, employees, setEmployees } = useApp();
     const [search, setSearch] = useState('');
@@ -10,6 +11,7 @@ export default function EmployeeMaster() {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const depts = ['All', ...new Set(employees.map(e => e.department))];
     const filtered = employees.filter(e => {
@@ -26,32 +28,63 @@ export default function EmployeeMaster() {
         }));
     };
 
-    const handleAddEmployee = (e) => {
+    const handleAddEmployee = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         const basic = parseFloat(formData.basic || 0);
         const gross = parseFloat(formData.gross || (basic * 1.5));
         const net = gross - (basic * 0.12); // simple mock calculation
         
-        const newEmp = {
-            id: `EMP-00${employees.length + 1}`,
-            name: formData.name || '',
-            designation: formData.designation || '',
-            department: formData.department || 'Operations',
-            doj: formData.doj || new Date().toISOString().split('T')[0],
-            basic,
-            gross,
-            net,
-            pf: formData.pf ? 'Active' : 'Inactive',
-            esi: formData.esi || false,
-            pan: formData.pan || '',
-            uan: formData.uan || '',
-            type: formData.type || 'Permanent',
-            duration: formData.duration || null,
-            status: 'Active'
-        };
-        setEmployees([newEmp, ...employees]);
-        setIsModalOpen(false);
-        setFormData({});
+        try {
+            // Build payload exactly as requested
+            const payload = {
+                name: formData.name || '',
+                email: formData.email || '',
+                department: formData.department || 'Operations',
+                designation: formData.designation || '',
+                dateOfJoining: formData.doj || new Date().toISOString().split('T')[0],
+                sallery: gross,
+                type: formData.type || 'employee',
+                pancardNo: formData.pan || '',
+                aadharNo: formData.aadhar || '',
+                pancardUrl: "https://example.com/pancard/admin",
+                aadharUrl: "https://example.com/aadhar/admin",
+                pfDeduction: !!formData.pf,
+                esiDeduction: !!formData.esi,
+                isAdmin: !!formData.isAdmin,
+                adminId: 1,
+                uanNumber: formData.uan || '',
+                age: parseInt(formData.age || 25, 10)
+            };
+
+            const response = await employeeAPI.createEmployee(payload);
+            toast.success('Employee created successfully via API!');
+
+            const newEmp = {
+                id: response?.data?.id || `EMP-00${employees.length + 1}`,
+                name: payload.name,
+                designation: payload.designation,
+                department: payload.department,
+                doj: payload.dateOfJoining,
+                basic,
+                gross,
+                net,
+                pf: payload.pfDeduction ? 'Active' : 'Inactive',
+                esi: payload.esiDeduction || false,
+                pan: payload.pancardNo || '',
+                uan: payload.uanNumber || '',
+                type: payload.type || 'Permanent',
+                status: 'Active'
+            };
+            setEmployees([newEmp, ...employees]);
+            setIsModalOpen(false);
+            setFormData({});
+        } catch (error) {
+            console.error('API Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to create employee via API.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -175,9 +208,17 @@ export default function EmployeeMaster() {
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="space-y-1.5 md:col-span-2">
+                                    <div className="space-y-1.5 md:col-span-1">
                                         <label className="text-sm font-medium text-slate-700">Full Name <span className="text-red-500">*</span></label>
                                         <input required name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. Rahul Sharma" />
+                                    </div>
+                                    <div className="space-y-1.5 md:col-span-1">
+                                        <label className="text-sm font-medium text-slate-700">Email Address <span className="text-red-500">*</span></label>
+                                        <input required type="email" name="email" value={formData.email || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. rahul@crm.com" />
+                                    </div>
+                                    <div className="space-y-1.5 md:col-span-1">
+                                        <label className="text-sm font-medium text-slate-700">Age <span className="text-red-500">*</span></label>
+                                        <input required type="number" name="age" value={formData.age || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. 35" />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -234,6 +275,10 @@ export default function EmployeeMaster() {
                                         <label className="text-sm font-medium text-slate-700">PAN Number <span className="text-red-500">*</span></label>
                                         <input required name="pan" value={formData.pan || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all font-mono uppercase" placeholder="e.g. ABCDE1234F" maxLength={10} />
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Aadhar Number <span className="text-red-500">*</span></label>
+                                        <input required name="aadhar" value={formData.aadhar || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all font-mono" placeholder="e.g. 867658495800" maxLength={12} />
+                                    </div>
 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">UAN Number</label>
@@ -249,6 +294,10 @@ export default function EmployeeMaster() {
                                             <input type="checkbox" name="esi" checked={formData.esi || false} onChange={handleInputChange} className="w-4 h-4 text-[#22c55e] rounded border-slate-300 focus:ring-[#22c55e] transition-all" />
                                             <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">ESI Applicable</span>
                                         </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" name="isAdmin" checked={formData.isAdmin || false} onChange={handleInputChange} className="w-4 h-4 text-[#22c55e] rounded border-slate-300 focus:ring-[#22c55e] transition-all" />
+                                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">Is Admin</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -257,8 +306,8 @@ export default function EmployeeMaster() {
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" className="px-5 py-2.5 rounded-lg bg-[#22c55e] text-white font-medium hover:bg-[#16a34a] shadow-sm shadow-[#22c55e]/20 transition-all">
-                                    Enroll Employee
+                                <button type="submit" disabled={isLoading} className={`px-5 py-2.5 rounded-lg bg-[#22c55e] text-white font-medium hover:bg-[#16a34a] shadow-sm shadow-[#22c55e]/20 transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                                    {isLoading ? 'Enrolling...' : 'Enroll Employee'}
                                 </button>
                             </div>
                         </form>

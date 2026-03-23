@@ -112,7 +112,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#eef2f0] text-slate-800 print:bg-white print:p-0">
-      <Toaster position="top-right" reverseOrder={false} />
       <div className="print:hidden">
         <Sidebar role={userRole} />
       </div>
@@ -133,6 +132,7 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
+      <Toaster position="top-right" reverseOrder={false} />
       <AppContent />
     </AppProvider>
   );

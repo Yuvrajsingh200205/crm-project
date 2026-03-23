@@ -1,22 +1,54 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ShieldCheck, User, ArrowRight, Lock, Mail, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { authAPI } from '../api/auth';
 
 const Login = () => {
   const { login } = useApp();
-  const [role, setRole] = useState('admin'); // 'admin' or 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      login(role);
+    
+    try {
+      // 1. Call real login API
+      const response = await authAPI.login(email, password);
+      
+      // 2. Extract tokens from API response
+      // Structure varies based on backend, using fallback optional chaining
+      const accessToken = response?.accessToken || response?.data?.accessToken;
+      const refreshToken = response?.refreshToken || response?.data?.refreshToken;
+
+      // 3. Save explicitly to localStorage so interceptors will pick them up
+      if (accessToken) localStorage.setItem('accessToken', accessToken);
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+      // 4. Derive correct role from the API response or fallback to email test
+      const responseRole = response?.role || response?.user?.role || response?.data?.role;
+      const userRole = responseRole || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
+
+      toast.success('Login Successful!');
+      login(userRole); // Call context login
+
+    } catch (error) {
+      console.error("Login Error:", error);
+      toast.error(error.response?.data?.message || 'Invalid credentials or API unreachable.');
+      
+      // Optional: For testing purposes if backend is down, we automatically let the user in if they typed admin 
+      // (REMOVE this block in production)
+      if (!error.response) {
+        toast('Simulation fallback -> letting you in since API is down.');
+        const userRole = email.toLowerCase().includes('admin') ? 'admin' : 'employee';
+        localStorage.setItem('accessToken', 'mock_token');
+        login(userRole);
+      }
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -79,31 +111,6 @@ const Login = () => {
             <p className="text-slate-500">Please enter your details to sign in</p>
           </div>
 
-          {/* Role Selector */}
-          <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
-            <button
-              onClick={() => setRole('admin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all duration-300 font-semibold text-sm ${
-                role === 'admin' 
-                ? 'bg-white text-[#1e3a34] shadow-md' 
-                : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ShieldCheck size={18} />
-              Admin Portal
-            </button>
-            <button
-              onClick={() => setRole('employee')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all duration-300 font-semibold text-sm ${
-                role === 'employee' 
-                ? 'bg-white text-[#1e3a34] shadow-md' 
-                : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <User size={18} />
-              Employee Portal
-            </button>
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
@@ -153,7 +160,7 @@ const Login = () => {
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  Sign In to {role === 'admin' ? 'Dashboard' : 'Portal'}
+                  Sign In to Portal
                   <ArrowRight size={20} />
                 </>
               )}
