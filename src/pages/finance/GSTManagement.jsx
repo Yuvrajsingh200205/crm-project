@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, RefreshCw, ArrowRight, CheckCircle2, Clock, FileText, AlertCircle } from 'lucide-react';
+import { Search, Download, RefreshCw, ArrowRight, CheckCircle2, Clock, FileText, AlertCircle, Plus, X } from 'lucide-react';
 
 const MOCK_GST_RETURNS = [
     { period: 'Feb 2025', gstr1: 'Filed', gstr3b: 'Pending', liability: 284500, itc: 198400, net: 86100, dueDate: '2025-03-20' },
@@ -9,20 +9,21 @@ const MOCK_GST_RETURNS = [
 
 export default function GSTManagement() {
     const [tab, setTab] = useState('returns');
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
         <div className="space-y-5 animate-fade-in relative">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">GST Management</h1>
+                    <h1 className="text-2xl font-bold text-slate-800">GST Management</h1>
                     <p className="text-slate-500 text-sm mt-1">Indirect tax & GST return compliance</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <button className="btn-secondary hidden sm:flex items-center gap-2">
                         <Download className="w-4 h-4" /> Export Returns
                     </button>
-                    <button className="btn-primary flex items-center gap-1.5">
+                    <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
                         <RefreshCw className="w-4 h-4" /> Sync GSTN Portal
                     </button>
                 </div>
@@ -98,29 +99,59 @@ export default function GSTManagement() {
                                         <td className="table-cell text-red-600 font-medium">₹{(row.liability / 1000).toFixed(1)}K</td>
                                         <td className="table-cell text-emerald-600 font-medium">₹{(row.itc / 1000).toFixed(1)}K</td>
                                         <td className="table-cell text-slate-900 font-semibold">₹{(row.net / 1000).toFixed(1)}K</td>
-                                        <td className="table-cell" onClick={e => e.stopPropagation()}>
-                                            {row.gstr3b !== 'Filed' ? (
-                                                <button className="btn-primary text-xs py-1 px-3">File 3B</button>
-                                            ) : (
-                                                <button className="btn-secondary text-xs py-1 px-3 border border-slate-200 rounded">
-                                                    <Download className="w-3 h-3" />
-                                                </button>
-                                            )}
+                                        <td className="table-cell">
+                                            <button className="text-blue-600 hover:text-blue-800 font-medium text-xs">Download</button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     ) : (
-                        <div className="p-16 text-center">
-                            <FileText className="w-10 h-10 text-slate-200 mx-auto mb-4" />
-                            <p className="text-slate-500 font-medium">Syncing with GSTN Portal...</p>
-                            <p className="text-xs text-slate-400 mt-1">Connecting via GSP for real-time invoice & ITC data.</p>
-                            <button className="btn-secondary mt-6 mx-auto">Refresh Connection</button>
-                        </div>
+                        <div className="p-8 text-center text-slate-500">Select another tab to view details.</div>
                     )}
                 </div>
             </div>
+
+            {/* Sync Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+                            <div>
+                                <h2 className="text-base font-semibold">Sync GSTN Portal</h2>
+                                <p className="text-xs text-white/60 mt-0.5">Automated synchronization</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <form className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <div className="space-y-1.5 flex flex-col items-center">
+                                <RefreshCw className="w-12 h-12 text-slate-300 animate-spin mb-2" />
+                                <p className="text-sm text-slate-600 text-center font-medium">Establishing secure connection to GSTN servers...</p>
+                                <p className="text-xs text-slate-400 text-center">This may take a few moments to fetch all B2B and B2C invoices.</p>
+                            </div>
+                            
+                            <div className="pt-4 flex flex-col gap-2 mt-4">
+                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span className="text-xs text-slate-500">API Status</span>
+                                    <span className="badge badge-green">Connected</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span className="text-xs text-slate-500">Last Synced</span>
+                                    <span className="text-xs font-semibold text-slate-700">Today, 10:24 AM</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">Cancel</button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-primary flex-1">Force Manual Sync</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

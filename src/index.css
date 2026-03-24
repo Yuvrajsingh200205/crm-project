@@ -7,6 +7,7 @@
 @layer base {
   * {
     box-sizing: border-box;
+    font-family: 'Inter', sans-serif !important; /* Enforce single font family globally */
   }
   
   html {
@@ -14,7 +15,7 @@
   }
 
   body {
-    @apply bg-surface text-slate-800 font-sans antialiased;
+    @apply bg-surface text-slate-800 antialiased;
     font-feature-settings: 'cv11', 'ss01';
   }
 
@@ -147,5 +148,28 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Global fixes for overly stylized typography components throughout the app */
+  .font-black, .font-extrabold {
+    font-weight: 700 !important; /* Cap font weight to standard bold (700) for a cleaner UI */
+  }
+
+  /* Reset crazy tracking combinations */
+  .tracking-widest, .tracking-\[0\.2em\], .tracking-\[0\.1em\] {
+    letter-spacing: 0.05em !important;
+  }
+
+  .tracking-tighter {
+    letter-spacing: normal !important;
+  }
+
+  /* Soften full uppercase displays on normal text */
+  p.uppercase, span.uppercase {
+    text-transform: none !important;
+  }
+  
+  h1.uppercase, h2.uppercase, h3.uppercase, p.uppercase.text-xs, span.uppercase.text-xs, th.uppercase {
+    text-transform: uppercase !important; 
   }
 }

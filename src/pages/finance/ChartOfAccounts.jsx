@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
     BookOpen, Search, Plus, ChevronRight, ChevronDown, 
-    Landmark, Wallet, ArrowRightLeft, Download, Edit2, Trash2, MoreVertical, ShieldCheck
+    Landmark, Wallet, ArrowRightLeft, Download, Edit2, Trash2, ShieldCheck, X
 } from 'lucide-react';
 
-const MOCK_ACCOUNTS = [
+const INITIAL_ACCOUNTS = [
     { id: '1000', name: 'Assets', type: 'Asset', balance: 45000000, category: 'Root', subAccounts: [
         { id: '1100', name: 'Fixed Assets', type: 'Asset', balance: 25000000, category: 'Non-Current', subAccounts: [
             { id: '1110', name: 'Machinery & Equipment', type: 'Asset', balance: 15000000, category: 'Fixed' },
@@ -40,17 +40,42 @@ const MOCK_ACCOUNTS = [
     ]},
 ];
 
-const AccountRow = ({ account, depth = 0 }) => {
+// Helper to flatten and search accounts
+const getAllAccountsFlat = (acctList) => {
+    let result = [];
+    acctList.forEach(a => {
+        result.push(a);
+        if (a.subAccounts) {
+            result = result.concat(getAllAccountsFlat(a.subAccounts));
+        }
+    });
+    return result;
+};
+
+// Helper to update deeply nested item
+const updateNestedAccount = (accounts, id, newData) => {
+    return accounts.map(acc => {
+        if (acc.id === id) {
+            return { ...acc, ...newData };
+        }
+        if (acc.subAccounts) {
+            return { ...acc, subAccounts: updateNestedAccount(acc.subAccounts, id, newData) };
+        }
+        return acc;
+    });
+};
+
+const typeBadge = {
+    'Asset': 'badge-blue',
+    'Liability': 'badge-red',
+    'Income': 'badge-green',
+    'Expense': 'badge-yellow',
+    'Equity': 'badge-purple',
+};
+
+const AccountRow = ({ account, depth = 0, onEdit }) => {
     const [isExpanded, setIsExpanded] = useState(depth === 0);
     const hasSubs = account.subAccounts && account.subAccounts.length > 0;
-
-    const typeBadge = {
-        'Asset': 'badge-blue',
-        'Liability': 'badge-red',
-        'Income': 'badge-green',
-        'Expense': 'badge-yellow',
-        'Equity': 'badge-purple',
-    };
 
     return (
         <>
@@ -74,14 +99,15 @@ const AccountRow = ({ account, depth = 0 }) => {
                 </td>
                 <td className="table-cell text-emerald-600 font-semibold">₹{(account.balance / 100000).toFixed(2)}L</td>
                 <td className="table-cell" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-600 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center gap-1 opacity-100 transition-all">
+                        <button onClick={() => onEdit(account)} className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-500 hover:text-emerald-600 transition-all cursor-pointer">
+                            <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </td>
             </tr>
             {isExpanded && hasSubs && account.subAccounts.map(sub => (
-                <AccountRow key={sub.id} account={sub} depth={depth + 1} />
+                <AccountRow key={sub.id} account={sub} depth={depth + 1} onEdit={onEdit} />
             ))}
         </>
     );
@@ -89,21 +115,90 @@ const AccountRow = ({ account, depth = 0 }) => {
 
 export default function ChartOfAccounts() {
     const [search, setSearch] = useState('');
+    const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+
+    const flatAccounts = getAllAccountsFlat(accounts);
+
+    const [formData, setFormData] = useState({
+        id: '',
+        name: '',
+        type: 'Asset',
+        category: 'Operating',
+        parentId: 'root'
+    });
+
+    const handleOpenAdd = () => {
+        setEditingId(null);
+        setFormData({ id: '', name: '', type: 'Asset', category: 'Operating', parentId: 'root' });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (acc) => {
+        setEditingId(acc.id);
+        const p = flatAccounts.find(x => x.subAccounts && x.subAccounts.some(s => s.id === acc.id));
+        setFormData({
+            id: acc.id,
+            name: acc.name,
+            type: acc.type,
+            category: acc.category || '',
+            parentId: p ? p.id : 'root'
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        
+        if (editingId) {
+            setAccounts(updateNestedAccount(accounts, editingId, {
+                id: formData.id,
+                name: formData.name,
+                type: formData.type,
+                category: formData.category
+            }));
+        } else {
+            const newAcc = {
+                id: formData.id,
+                name: formData.name,
+                type: formData.type,
+                category: formData.category,
+                balance: 0,
+                subAccounts: []
+            };
+
+            if (formData.parentId === 'root') {
+                setAccounts([...accounts, newAcc]);
+            } else {
+                setAccounts(accounts.map(acc => {
+                    if (acc.id === formData.parentId) {
+                        return { ...acc, subAccounts: [...(acc.subAccounts || []), newAcc] };
+                    }
+                    if (acc.subAccounts) {
+                        return { ...acc, subAccounts: updateNestedAccount(acc.subAccounts, formData.parentId, { subAccounts: [...(acc.subAccounts.find(x => x.id === formData.parentId)?.subAccounts || []), newAcc] }) };
+                    }
+                    return acc;
+                }));
+            }
+        }
+        setIsModalOpen(false);
+    };
 
     return (
         <div className="space-y-5 animate-fade-in relative">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Chart of Accounts</h1>
+                    <h1 className="text-2xl font-bold text-slate-800">Chart of Accounts</h1>
                     <p className="text-slate-500 text-sm mt-1">Financial ledger hierarchy & account structure</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <button className="btn-secondary hidden sm:flex items-center gap-2">
                         <Download className="w-4 h-4" /> Export Ledger
                     </button>
-                    <button className="btn-primary flex items-center gap-1.5">
-                        <Plus className="w-4 h-4" /> New Account
+                    <button onClick={handleOpenAdd} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
+                        <Plus className="w-5 h-5" /> New Account
                     </button>
                 </div>
             </div>
@@ -142,13 +237,76 @@ export default function ChartOfAccounts() {
                             </tr>
                         </thead>
                         <tbody>
-                            {MOCK_ACCOUNTS.map(acc => (
-                                <AccountRow key={acc.id} account={acc} />
+                            {accounts.map(acc => (
+                                <AccountRow key={acc.id} account={acc} onEdit={handleOpenEdit} />
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Account Generation Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+                            <div>
+                                <h2 className="text-base font-semibold">{editingId ? 'Edit Account' : 'New Chart of Account'}</h2>
+                                <p className="text-xs text-white/60 mt-0.5">Ledger Creation</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Account Code</label>
+                                    <input required value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} className="input" placeholder="e.g. 5130" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Account Type</label>
+                                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input">
+                                        <option value="Asset">Asset</option>
+                                        <option value="Liability">Liability</option>
+                                        <option value="Equity">Equity</option>
+                                        <option value="Income">Income</option>
+                                        <option value="Expense">Expense</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Account Name</label>
+                                    <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input" placeholder="e.g. Travel Expenses" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Sub-Category</label>
+                                    <input value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="input" placeholder="e.g. Operational" />
+                                </div>
+                            </div>
+
+                            {!editingId && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Parent Account</label>
+                                    <select value={formData.parentId} onChange={e => setFormData({...formData, parentId: e.target.value})} className="input">
+                                        <option value="root">None (Root Level)</option>
+                                        {flatAccounts.map(a => (
+                                            <option key={a.id} value={a.id}>{a.id} - {a.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">Cancel</button>
+                                <button type="submit" className="btn-primary flex-1">{editingId ? 'Save Changes' : 'Create Account'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
