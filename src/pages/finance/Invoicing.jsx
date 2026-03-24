@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Plus, Download, CheckCircle2, Clock, FileText, TrendingUp, X, Edit2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_INVOICES = [
     { id: 'INV-2025-001', client: 'Larsen & Toubro', project: 'Patna Metro B', amount: 4500000, date: '2025-03-10', status: 'Pending', type: 'RA Bill #04', tax: 810000, retention: 225000 },
@@ -69,6 +71,7 @@ export default function Invoicing() {
             setInvoices(invoices.map(i => i.id === editingId ? { 
                 ...i, ...formData, amount: baseAmount, tax: taxVal, retention: retVal 
             } : i));
+            toast.success('Invoice revised successfully');
         } else {
             const newInv = {
                 id: `INV-2025-00${invoices.length + 1}`,
@@ -78,6 +81,7 @@ export default function Invoicing() {
                 retention: retVal
             };
             setInvoices([newInv, ...invoices]);
+            toast.success('New invoice / RA Bill generated');
         }
         setIsModalOpen(false);
     };

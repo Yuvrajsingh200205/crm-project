@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, ClipboardList, AlertCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 // Sub-components
 import WorkOrderStats from '../../components/workorders/WorkOrderStats';
@@ -66,10 +67,10 @@ export default function WorkOrders() {
 
     const handleDelete = (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Delete this work order permanently?')) {
+        confirmToast('Delete this work order permanently?', () => {
             setWorkOrders(prev => prev.filter(wo => wo.id !== id));
             toast.success("Work Order discarded");
-        }
+        });
     };
 
     const handleSave = (e) => {

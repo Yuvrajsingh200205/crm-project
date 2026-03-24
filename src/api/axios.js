@@ -30,8 +30,8 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if error is 401 Unauthorized and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Check if error is 401 Unauthorized or 403 Forbidden and we haven't retried yet
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
@@ -40,20 +40,29 @@ axiosInstance.interceptors.response.use(
           throw new Error('No refresh token present.');
         }
 
+        console.log("Interceptor: Triggering refresh token API call...");
+        const currentAccessToken = localStorage.getItem('accessToken');
+        
         // Call refresh token API without an interceptor to avoid infinite loop
         const result = await axios.post(`${BASE_URL}/auth/refresh-token`, {
-          refreshToken,
+          refreshToken: refreshToken,
+          token: refreshToken // Many backend schemas expect simply 'token'
+        }, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentAccessToken}` 
+          }
         });
 
-        // The structure depends on the backend. e.g. result.data.accessToken
-        const newAccessToken = result.data?.accessToken || result.data?.data?.accessToken;
-        const newRefreshToken = result.data?.refreshToken || result.data?.data?.refreshToken;
+        // Map the tokens checking multiple standard schemas (camelCase vs snake_case)
+        const newAccessToken = result.data?.accessToken || result.data?.data?.accessToken || result.data?.access_token || result.data?.token || result.data?.data?.token;
+        const newRefreshToken = result.data?.refreshToken || result.data?.data?.refreshToken || result.data?.refresh_token;
 
         if (newAccessToken) localStorage.setItem('accessToken', newAccessToken);
         if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
 
         // Update the failed request with the new token
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken || localStorage.getItem('accessToken')}`;
 
         // Retry the original request
         return axiosInstance(originalRequest);

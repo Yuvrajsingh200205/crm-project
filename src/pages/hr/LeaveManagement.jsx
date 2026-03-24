@@ -1,12 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Calendar, Briefcase, Clock, CheckCircle2, XCircle, Plus, Search, TrendingUp, X, Info, ChevronDown } from 'lucide-react';
+import { leaveAPI } from '../../api/leave';
+import { Calendar, Briefcase, Clock, CheckCircle2, XCircle, Plus, Search, TrendingUp, X, Info, ChevronDown, Loader2 } from 'lucide-react';
 
-const initialRequests = [
-  { id: '1', empId: 'EMP-001', name: 'Rajesh Kumar', type: 'Annual Leave', start: '2024-03-20', end: '2024-03-22', days: 3, reason: 'Family wedding', status: 'Pending', appliedOn: '2024-03-10' },
-  { id: '2', empId: 'EMP-003', name: 'Priya Devi', type: 'Sick Leave', start: '2024-03-12', end: '2024-03-12', days: 1, reason: 'Medical appointment', status: 'Approved', appliedOn: '2024-03-11' },
-  { id: '3', empId: 'EMP-002', name: 'Suresh Verma', type: 'Comp Off', start: '2024-03-18', end: '2024-03-18', days: 1, reason: 'Overtime compensation', status: 'Rejected', appliedOn: '2024-03-13' },
-];
+const initialRequests = [];
 
 const statusBadge = {
   'Approved': 'badge-green',
@@ -21,25 +18,72 @@ export default function LeaveManagement() {
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({ name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: '' });
 
-  const handleApplyLeave = (e) => {
+  // State for leave policies from API
+  const [leavePolicies, setLeavePolicies] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchLeavePolicies();
+  }, []);
+
+  const fetchLeavePolicies = async () => {
+    setIsLoading(true);
+    try {
+      const res = await leaveAPI.getAllLeaves();
+      // data expected to be: array of { type, total }
+      const policies = Array.isArray(res) ? res : (res?.leaves || res?.data || []);
+      setLeavePolicies(policies);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load leave configurations");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApplyLeave = async (e) => {
     e.preventDefault();
-    const newReq = {
-      id: Date.now().toString(),
-      empId: `EMP-0${Math.floor(Math.random() * 100)}`,
-      status: 'Pending',
-      appliedOn: new Date().toISOString().split('T')[0],
-      ...formData
-    };
-    setRequests([newReq, ...requests]);
-    setShowApplyModal(false);
-    setFormData({ name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: '' });
-    toast.success('Leave request submitted!');
+    setIsSaving(true);
+    try {
+      // payload: { type: string, total: number }
+      const payload = {
+        type: formData.type.toLowerCase().replace(' leave', ''),
+        total: Number(formData.days)
+      };
+
+      await leaveAPI.createLeave(payload);
+      toast.success(`Leave type "${payload.type}" configured successfully!`);
+
+      const newReq = {
+        id: Date.now().toString(),
+        empId: `EMP-0${Math.floor(Math.random() * 100)}`,
+        status: 'Pending',
+        appliedOn: new Date().toISOString().split('T')[0],
+        ...formData
+      };
+      setRequests([newReq, ...requests]);
+      fetchLeavePolicies(); // Refresh policies
+      setShowApplyModal(false);
+      setFormData({ name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: '' });
+    } catch (error) {
+      toast.error("Failed to save leave configuration");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const filtered = requests.filter(r =>
     (activeTab === 'All' || r.status === activeTab) &&
     (r.name.toLowerCase().includes(search.toLowerCase()) || r.type.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const stats = [
+    { label: 'Annual Total', value: leavePolicies.find(p => p.type === 'annual')?.total || 0, color: 'text-green-500' },
+    { label: 'Sick Total', value: leavePolicies.find(p => p.type === 'sick')?.total || 0, color: 'text-blue-500' },
+    { label: 'Casual Total', value: leavePolicies.find(p => p.type === 'casual')?.total || 0, color: 'text-amber-500' },
+    { label: 'Pending Requests', value: requests.filter(r => r.status === 'Pending').length, color: 'text-purple-500' },
+  ];
 
   return (
     <div className="space-y-5 animate-fade-in relative">
@@ -50,20 +94,15 @@ export default function LeaveManagement() {
           <p className="text-slate-500 text-sm mt-1">Review, approve and track employee time-off requests</p>
         </div>
         <button onClick={() => setShowApplyModal(true)} className="btn-primary flex items-center gap-1.5">
-          <Plus className="w-4 h-4" /> Apply for Leave
+          <Plus className="w-4 h-4" /> Configure Leave Policy
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Annual Available', value: 14, color: 'text-green-500' },
-          { label: 'Sick Available', value: 10, color: 'text-blue-500' },
-          { label: 'Casual Available', value: 5, color: 'text-amber-500' },
-          { label: 'Pending Requests', value: requests.filter(r => r.status === 'Pending').length, color: 'text-purple-500' },
-        ].map((s, i) => (
+        {stats.map((s, i) => (
           <div key={i} className="card p-4">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-300" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
             <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
           </div>
         ))}
@@ -77,9 +116,8 @@ export default function LeaveManagement() {
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  activeTab === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${activeTab === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'
+                  }`}
               >
                 {t}
               </button>
@@ -129,14 +167,14 @@ export default function LeaveManagement() {
                   <td className="table-cell">
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Approved'} : r)); toast.success('Leave Approved!'); }}
+                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Approved' } : r)); toast.success('Leave Approved!'); }}
                         className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-[#2f6645] hover:text-white transition-all"
                         title="Approve"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Rejected'} : r)); toast.error('Leave Rejected'); }}
+                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Rejected' } : r)); toast.error('Leave Rejected'); }}
                         className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-all"
                         title="Reject"
                       >
@@ -157,8 +195,8 @@ export default function LeaveManagement() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
               <div>
-                <h2 className="text-base font-semibold">Apply for Leave</h2>
-                <p className="text-xs text-white/60 mt-0.5">Submit a new leave request</p>
+                <h2 className="text-base font-semibold">Configure Leave Policy</h2>
+                <p className="text-xs text-white/60 mt-0.5">Define new leave type and its total allowance</p>
               </div>
               <button onClick={() => setShowApplyModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
@@ -167,12 +205,12 @@ export default function LeaveManagement() {
             <form onSubmit={handleApplyLeave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600">Employee Name</label>
-                  <input required placeholder="Enter your name" className="input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <label className="text-xs font-semibold text-slate-600">Reference Name</label>
+                  <input required placeholder="e.g. System Admin" className="input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-600">Leave Category</label>
-                  <select className="input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                  <select className="input" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
                     <option>Annual Leave</option>
                     <option>Sick Leave</option>
                     <option>Casual Leave</option>
@@ -180,27 +218,19 @@ export default function LeaveManagement() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600">Start Date</label>
-                  <input required type="date" className="input" value={formData.start} onChange={e => setFormData({...formData, start: e.target.value})} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600">End Date</label>
-                  <input required type="date" className="input" value={formData.end} onChange={e => setFormData({...formData, end: e.target.value})} />
-                </div>
-              </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">Number of Days</label>
-                <input required type="number" className="input" value={formData.days} onChange={e => setFormData({...formData, days: e.target.value})} />
+                <label className="text-xs font-semibold text-slate-600">Total Days Allowance</label>
+                <input required type="number" className="input" value={formData.days} onChange={e => setFormData({ ...formData, days: e.target.value })} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">Reason</label>
-                <textarea rows="3" required placeholder="Brief reason for time-off..." className="input resize-none" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} />
+              <div className="space-y-1.5 opacity-50">
+                <label className="text-xs font-semibold text-slate-600 italic">Note: Dates and reason are only for simulation during this policy configuration.</label>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowApplyModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" className="btn-primary flex-1">Submit Request</button>
+                <button type="submit" disabled={isSaving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSaving ? 'Configuring...' : 'Save Configuration'}
+                </button>
               </div>
             </form>
           </div>

@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { FileText, Download, Filter } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Download, Filter } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { boqAPI } from '../../api/boq';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 // Components
 import BOQStats from '../../components/boq/BOQStats';
@@ -10,41 +12,77 @@ import BOQTable from '../../components/boq/BOQTable';
 import BOQItemModal from '../../components/boq/BOQItemModal';
 
 export default function BOQ() {
-    const { projects, boqItems, setBoqItems, updateBOQItem } = useApp();
+    const { projects } = useApp();
 
-    // UI State
+    // UI/State Managers
     const [search, setSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState('SWPL-BRGF');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
+    
+    // API Data Tracking
+    const [bills, setBills] = useState([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
-    // 1. Filtered Data
+    // Initial Fetch when component mounts
+    useEffect(() => {
+        fetchBills();
+    }, []);
+
+    const fetchBills = async () => {
+        setIsLoadingData(true);
+        try {
+            const res = await boqAPI.getAllBills();
+            console.log("Fetched Bills:", res.data); // Inspect the response body structure here to see what backend returns
+            // The backend returns an object with a "bills" key
+            setBills(Array.isArray(res.data) ? res.data : (res.data?.bills || res.data?.data || []));
+        } catch (error) {
+            console.error("Failed to fetch BOQ", error);
+            toast.error("Could not fetch Bills from backend");
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
+
+    // 1. Filtered Data Computation
     const filteredItems = useMemo(() => {
-        return boqItems.filter(item => 
-            item.id.toLowerCase().includes(search.toLowerCase()) ||
-            item.description.toLowerCase().includes(search.toLowerCase())
-        );
-    }, [boqItems, search]);
+        return (bills || []).filter(item => {
+            if (!item) return false;
+            const matchCode = item.code ? String(item.code).toLowerCase() : '';
+            const matchDesc = item.description ? String(item.description).toLowerCase() : '';
+            const query = search ? String(search).toLowerCase() : '';
+            return matchCode.includes(query) || matchDesc.includes(query);
+        });
+    }, [bills, search]);
 
-    // 2. Stats Calculation
+    // 2. Dynamic Dashboard Stats
     const stats = useMemo(() => {
-        const totalItems = boqItems.length;
-        const reconciled = boqItems.filter(i => i.status === 'Reconciled').length;
-        const overIssued = boqItems.filter(i => i.status === 'Over Issued').length;
-        const totalValue = boqItems.reduce((sum, i) => sum + (i.billedQty * i.contractRate), 0);
+        const totalItems = bills.length;
+        const reconciled = bills.filter(i => i.status === 'Reconciled').length;
+        const overIssued = bills.filter(i => i.status === 'Over Issued').length;
+        
+        // Summing up (ContractAmount) values assuming they represent the gross impact
+        const totalValue = bills.reduce((sum, i) => sum + (Number(i.contractAmount) || 0), 0);
         return { 
             totalItems, 
             reconciled, 
             overIssued, 
             totalValue: (totalValue / 100000).toFixed(1) // In Lakhs
         };
-    }, [boqItems]);
+    }, [bills]);
 
-    // 3. Handlers
+    // 3. Form Input Tracker
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    // 4. Modal Triggers
     const handleAddItem = () => {
         setIsEditing(false);
-        setFormData({ status: 'Reconciled', billedQty: 0, poQty: 0 });
+        setFormData({ status: 'pending', unit: 0, contractAmount: 0, subrate: 0, poQuantity: 0, billedQuantity: 0, noOfContract: 0, diffValue: 0 });
         setIsModalOpen(true);
     };
 
@@ -54,50 +92,62 @@ export default function BOQ() {
         setIsModalOpen(true);
     };
 
-    const handleDeleteItem = (id) => {
-        if (window.confirm('Remove this line item from BOQ?')) {
-            setBoqItems(prev => prev.filter(i => i.id !== id));
-            toast.success("BOQ item removed");
-        }
+    // 5. Delete Logic (API)
+    const handleDeleteItem = async (id) => {
+        confirmToast('Remove this line item from BOQ?', async () => {
+            try {
+                await boqAPI.deleteBill(id);
+                setBills(prev => prev.filter(i => i.id !== id));
+                toast.success("BOQ item removed");
+            } catch (error) {
+                toast.error("Failed to delete bill");
+            }
+        });
     };
 
-    const handleSave = (e) => {
+    // 6. Primary Save API Form Handler
+    const handleSave = async (e) => {
         e.preventDefault();
-        const promise = new Promise(r => setTimeout(r, 600));
+        setIsSaving(true);
         
-        const data = {
-            ...formData,
-            contractRate: Number(formData.contractRate),
-            subRate: Number(formData.subRate),
-            poQty: Number(formData.poQty),
-            billedQty: Number(formData.billedQty || 0),
-        };
+        try {
+            // Reformat payload accurately string/number casts matching the backend expectations you provided
+            const payload = {
+                code: formData.code,
+                description: formData.description,
+                unit: Number(formData.unit),
+                contractAmount: Number(formData.contractAmount),
+                subrate: Number(formData.subrate),
+                poQuantity: Number(formData.poQuantity),
+                billedQuantity: Number(formData.billedQuantity),
+                noOfContract: Number(formData.noOfContract),
+                diffValue: Number(formData.diffValue),
+                status: formData.status || 'pending'
+            };
 
-        if (isEditing) {
-            updateBOQItem(data);
-            toast.promise(promise, {
-                loading: 'Updating BOQ line...',
-                success: 'Item Reconciled!',
-                error: 'Update failed',
-            });
-        } else {
-            setBoqItems([data, ...boqItems]);
-            toast.promise(promise, {
-                loading: 'Adding new entry...',
-                success: 'Item Enrolled in BOQ!',
-                error: 'Addition failed',
-            });
+            if (isEditing && formData.id) {
+                // Update specific resource
+                const res = await boqAPI.updateBill(formData.id, payload);
+                const updated = res.data?.data || res.data;
+                // Merge state natively 
+                setBills(bills.map(i => i.id === formData.id ? { ...i, ...updated } : i));
+                toast.success('BOQ item updated mapped!');
+            } else {
+                // Post to /bills payload
+                const res = await boqAPI.createBill(payload);
+                const added = res.data?.data || res.data || payload; 
+                setBills([added, ...bills]); // Append at array start natively
+                toast.success('Item Enrolled in BOQ Backend API!');
+            }
+            
+            // Clean up UI context globally
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Action failed!');
+        } finally {
+            setIsSaving(false);
         }
-        setIsModalOpen(false);
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleExport = () => {
-        toast.success("BOQ Excel exported successfully!");
     };
 
     return (
@@ -105,11 +155,11 @@ export default function BOQ() {
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Bill of Quantities</h1>
-                    <p className="text-sm text-slate-500 mt-1">Material reconciliation & contract rate tracker</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Bill of Quantities / BOQ</h1>
+                    <p className="text-sm text-slate-500 mt-1">Material reconciliation & contract rate live tracker linked to API</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={handleExport} className="btn-secondary flex items-center gap-1.5">
+                    <button className="btn-secondary flex items-center gap-1.5">
                         <Download className="w-4 h-4" /> Export Excel
                     </button>
                     <button className="btn-secondary flex items-center gap-1.5">
@@ -118,7 +168,7 @@ export default function BOQ() {
                 </div>
             </div>
 
-            {/* Content Sections */}
+            {/* Filter Controls Row */}
             <BOQFilters 
                 projects={projects}
                 selectedProject={selectedProject}
@@ -128,6 +178,7 @@ export default function BOQ() {
                 onAddItem={handleAddItem}
             />
 
+            {/* Overview Highlights Base Component */}
             <BOQStats 
                 totalItems={stats.totalItems}
                 reconciled={stats.reconciled}
@@ -137,33 +188,38 @@ export default function BOQ() {
 
             <div className="flex items-center gap-5 px-1">
                 <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                    <span className="text-xs font-semibold text-slate-500">Pending</span>
+                </div>
+                <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-xs text-slate-500">Reconciled (≤2% variance)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className="text-xs text-slate-500">Minor Variance (2-5%)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    <span className="text-xs text-slate-500">Under Utilized (&gt;5%)</span>
+                    <span className="text-xs font-semibold text-slate-500">Reconciled (≤2% variance)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="text-xs text-slate-500">Over Issued</span>
+                    <span className="text-xs font-semibold text-slate-500">Over Issued</span>
                 </div>
             </div>
 
-            <BOQTable 
-                items={filteredItems}
-                onEdit={handleEditItem}
-                onDelete={handleDeleteItem}
-            />
+            {/* Table Dynamic Loader Mapping */}
+            {isLoadingData ? (
+                <div className="p-12 flex justify-center text-slate-400 rounded-lg animate-pulse w-full bg-white card">
+                    Loading items from API framework securely...
+                </div>
+            ) : (
+                <BOQTable 
+                    items={filteredItems}
+                    onEdit={handleEditItem}
+                    onDelete={handleDeleteItem}
+                />
+            )}
 
+            {/* Editing / Push UI Rendered Layer Modal Box */}
             <BOQItemModal 
                 isOpen={isModalOpen}
                 isEditing={isEditing}
                 formData={formData}
+                isLoading={isSaving}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 onInputChange={handleInputChange}

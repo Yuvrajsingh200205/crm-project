@@ -1,8 +1,8 @@
 import { X } from 'lucide-react';
 
-const statuses = ['Reconciled', 'Minor Variance', 'Under Utilized', 'Over Issued'];
+const statuses = ['Pending', 'Reconciled', 'Minor Variance', 'Under Utilized', 'Over Issued'];
 
-export default function BOQItemModal({ isOpen, isEditing, formData, onClose, onSave, onInputChange }) {
+export default function BOQItemModal({ isOpen, isEditing, formData, onClose, onSave, onInputChange, isLoading }) {
     if (!isOpen) return null;
 
     return (
@@ -22,42 +22,60 @@ export default function BOQItemModal({ isOpen, isEditing, formData, onClose, onS
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Bill Code</label>
-                            <input required name="id" disabled={isEditing} value={formData.id || ''} onChange={onInputChange} className="input disabled:opacity-50" placeholder="e.g. 110" />
+                            <input required name="code" disabled={isEditing} value={formData.code || ''} onChange={onInputChange} className="input disabled:opacity-50 border-slate-200" placeholder="e.g. BILL-01" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Unit of Measurement</label>
-                            <input required name="unit" value={formData.unit || ''} onChange={onInputChange} className="input" placeholder="No, CKM, Set..." />
+                            <label className="text-xs font-semibold text-slate-600">Unit</label>
+                            <input required type="number" name="unit" value={formData.unit || ''} onChange={onInputChange} className="input border-slate-200" placeholder="e.g. 2" />
                         </div>
                         <div className="md:col-span-2 space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Description of Works</label>
-                            <textarea required name="description" value={formData.description || ''} onChange={onInputChange} className="input" rows="3" placeholder="Item details..." />
+                            <textarea required name="description" value={formData.description || ''} onChange={onInputChange} className="input border-slate-200" rows="3" placeholder="Item description..." />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Contract Rate (₹)</label>
-                            <input required type="number" name="contractRate" value={formData.contractRate || ''} onChange={onInputChange} className="input" placeholder="0.00" />
+                            <label className="text-xs font-semibold text-slate-600">Contract Amount (₹)</label>
+                            <input required type="number" step="any" name="contractAmount" value={formData.contractAmount || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Subcontract Rate (₹)</label>
-                            <input required type="number" name="subRate" value={formData.subRate || ''} onChange={onInputChange} className="input" placeholder="0.00" />
+                            <label className="text-xs font-semibold text-slate-600">Sub Rate (₹)</label>
+                            <input required type="number" step="any" name="subrate" value={formData.subrate || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">PO Quantity</label>
-                            <input required type="number" step="any" name="poQty" value={formData.poQty || ''} onChange={onInputChange} className="input" placeholder="0.00" />
+                            <input required type="number" step="any" name="poQuantity" value={formData.poQuantity || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-slate-600">Billed Quantity</label>
+                            <input required type="number" step="any" name="billedQuantity" value={formData.billedQuantity || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Current Status</label>
-                            <select name="status" value={formData.status || 'Reconciled'} onChange={onInputChange} className="input">
-                                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                            <label className="text-xs font-semibold text-slate-600">No of Contract</label>
+                            <input required type="number" step="any" name="noOfContract" value={formData.noOfContract || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-slate-600">Diff Value</label>
+                            <input required type="number" step="any" name="diffValue" value={formData.diffValue || ''} onChange={onInputChange} className="input border-slate-200" placeholder="0.00" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-600">Status</label>
+                        <select name="status" value={formData.status || 'pending'} onChange={onInputChange} className="input border-slate-200">
+                            <option value="pending">Pending</option>
+                            <option value="Reconciled">Reconciled</option>
+                            <option value="Over Issued">Over Issued</option>
+                        </select>
                     </div>
 
                     <div className="flex gap-3 pt-4 border-t border-slate-100 mt-2">
                         <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-                        <button type="submit" className="btn-primary flex-1">{isEditing ? 'Update Item' : 'Add Item'}</button>
+                        <button type="submit" disabled={isLoading} className="btn-primary flex-1 disabled:opacity-50">
+                            {isLoading ? 'Saving...' : (isEditing ? 'Update Item' : 'Add Item')}
+                        </button>
                     </div>
                 </form>
             </div>

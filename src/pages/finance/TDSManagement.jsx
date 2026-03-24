@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Download, CheckCircle2, AlertCircle, Clock, FileText, Briefcase, X, Edit2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_TDS = [
     { id: 'TDS-2025-001', vendor: 'UltraTech Cement', section: '194C', amount: 8500, date: '2025-03-12', status: 'Deposited', ref: 'CHQ-98212', period: 'Q4 2024-25' },
@@ -65,6 +67,7 @@ export default function TDSManagement() {
         
         if (editingId) {
             setTdsList(tdsList.map(t => t.id === editingId ? { ...t, ...formData, amount: numAmount } : t));
+            toast.success('TDS record updated successfully');
         } else {
             const newTds = {
                 id: `TDS-2025-00${tdsList.length + 1}`,
@@ -72,6 +75,7 @@ export default function TDSManagement() {
                 amount: numAmount
             };
             setTdsList([newTds, ...tdsList]);
+            toast.success('New TDS record recorded');
         }
         setIsModalOpen(false);
     };

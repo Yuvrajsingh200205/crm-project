@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, ClipboardCheck, Truck, CheckCircle, Clock, AlertTriangle, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const initialPurchaseOrders = [
     { id: 'PO-2026-047', vendor: 'Bihar Cable Industries', items: 'ABC Cable 3X185 – 1 CKM', amount: 385000, raised: '2026-03-01', expectedDelivery: '2026-03-15', status: 'Pending Approval', approver: 'GM – Ops', stage: 1 },
@@ -53,6 +55,7 @@ export default function Procurement() {
         setPurchaseOrders([newPO, ...purchaseOrders]);
         setIsModalOpen(false);
         setFormData({});
+        toast.success('Purchase Order raised successfully');
     };
 
     return (

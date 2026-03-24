@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { employeeAPI } from '../../api/employee';
@@ -12,6 +12,42 @@ export default function EmployeeMaster() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(false);
+
+    useEffect(() => {
+        loadEmployees();
+    }, []);
+
+    const loadEmployees = async () => {
+        setIsFetching(true);
+        try {
+            const res = await employeeAPI.getAllEmployees();
+            // Map backend fields to frontend fields if needed
+            const backendEmployees = res?.employees || (Array.isArray(res) ? res : (res?.data || []));
+            const mapped = backendEmployees.map(emp => ({
+                id: emp.id?.toString() || `EMP-${emp.empId || '00'}`,
+                name: emp.name || 'Unknown',
+                designation: emp.designation || 'N/A',
+                department: emp.department || 'Operations',
+                doj: emp.dateOfJoining ? new Date(emp.dateOfJoining).toISOString().split('T')[0] : '2024-01-01',
+                basic: Number(emp.sallery || 0) * 0.6, // assumption for breakdown
+                gross: Number(emp.sallery || 0),
+                net: Number(emp.sallery || 0) * 0.9, // assumption
+                pf: emp.pfDeduction ? 'Active' : 'Inactive',
+                esi: emp.esiDeduction || false,
+                pan: emp.pancardNo || '',
+                uan: emp.uanNumber || '',
+                type: emp.type === 'employee' ? 'Permanent' : 'Contract',
+                status: 'Active'
+            }));
+            setEmployees(mapped);
+        } catch (error) {
+            console.error("Failed to fetch employees:", error);
+            // Don't show toast error on every fetch if it's just a 404/Empty
+        } finally {
+            setIsFetching(false);
+        }
+    };
 
     const depts = ['All', ...new Set(employees.map(e => e.department))];
     const filtered = employees.filter(e => {
@@ -137,9 +173,12 @@ export default function EmployeeMaster() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
-                                <tr><td colSpan="9" className="p-6 text-center text-slate-500">No employees found. Add a new one.</td></tr>
-                            ) : filtered.map((e, i) => (
+                                {isFetching && (
+                                    <tr><td colSpan="9" className="p-12 text-center text-slate-400">Loading employees from server...</td></tr>
+                                )}
+                                {!isFetching && filtered.length === 0 ? (
+                                    <tr><td colSpan="9" className="p-6 text-center text-slate-500">No employees found. Add a new one.</td></tr>
+                                ) : filtered.map((e, i) => (
                                 <tr key={i} className="table-row cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => {
                                     setSelectedEmployee(e);
                                     setActiveModule('employee-details');

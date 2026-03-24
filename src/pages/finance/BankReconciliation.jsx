@@ -3,6 +3,8 @@ import {
     Building, Search, Plus, Download, 
     ArrowRightLeft, CheckCircle2, AlertCircle, Clock, X, Upload, Edit2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_TRANSACTIONS = [
     { id: 'TXN-001', bank: 'HDFC Bank - 8821', amount: 450000, date: '2025-03-12', status: 'Matched', type: 'Credit', ref: 'RTGS-P772', bookEntry: 'L&T RA Bill #04' },
@@ -68,6 +70,7 @@ export default function BankReconciliation() {
         
         if (editingId) {
             setTransactions(transactions.map(t => t.id === editingId ? { ...t, ...formData, amount: baseAmount } : t));
+            toast.success('Transaction record updated');
         } else {
             const newTxn = {
                 id: `TXN-00${transactions.length + 1}`,
@@ -75,6 +78,7 @@ export default function BankReconciliation() {
                 amount: baseAmount
             };
             setTransactions([newTxn, ...transactions]);
+            toast.success('New transaction recorded');
         }
         setIsModalOpen(false);
     };

@@ -7,9 +7,14 @@ const categoryColors = {
     'Solar': 'badge-orange',
     'Interior': 'badge-green',
     'Security': 'badge-red',
+    'CAT-01': 'badge-blue',
 };
 
 const statusBadge = {
+    'pending': 'badge-yellow',
+    'approved': 'badge-green',
+    'closed': 'badge-blue',
+    // Fallback old states:
     'Active': 'badge-green',
     'Completed': 'badge-blue',
     'On Hold': 'badge-yellow',
@@ -23,27 +28,29 @@ export default function ProjectTable({ projects, onEdit, onDelete, onViewDetails
                 <table className="w-full text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="table-header">ID</th>
+                            <th className="table-header">Code</th>
                             <th className="table-header">Project Details</th>
                             <th className="table-header">Client</th>
                             <th className="table-header">Contract Value</th>
-                            <th className="table-header">Progress</th>
-                            <th className="table-header">Status</th>
+                            <th className="table-header">Advancement</th>
+                            <th className="table-header">Status & Process</th>
                             <th className="table-header text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {projects.length > 0 ? projects.map((p) => (
-                            <tr key={p.id} onClick={() => onViewDetails(p)} className="table-row hover:bg-slate-50 transition-colors cursor-pointer">
+                            <tr key={p.id || p._id || p.code} onClick={() => onViewDetails(p)} className="table-row hover:bg-slate-50 transition-colors cursor-pointer">
                                 <td className="table-cell">
-                                    <span className="font-mono text-xs font-semibold text-blue-600 px-2 py-1 bg-blue-50 rounded-lg whitespace-nowrap">{p.id}</span>
+                                    <span className="font-mono text-xs font-semibold text-blue-600 px-2 py-1 bg-blue-50 rounded-lg whitespace-nowrap">
+                                        {p.code}
+                                    </span>
                                 </td>
                                 <td className="table-cell max-w-[260px]">
-                                    <p className="text-slate-900 font-semibold text-sm line-clamp-1">{p.name}</p>
+                                    <p className="text-slate-900 font-semibold text-sm line-clamp-1">{p.name || 'Unnamed Project'}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className={`badge ${categoryColors[p.category] || 'badge-gray'}`}>{p.category}</span>
                                         <span className="text-slate-400 text-xs flex items-center gap-1">
-                                            <MapPin className="w-3 h-3" /> {p.site}
+                                            <MapPin className="w-3 h-3" /> {p.location || 'Unknown Location'}
                                         </span>
                                     </div>
                                 </td>
@@ -52,32 +59,35 @@ export default function ProjectTable({ projects, onEdit, onDelete, onViewDetails
                                     <p className="text-slate-400 text-xs">Public / Private</p>
                                 </td>
                                 <td className="table-cell">
-                                    <p className="text-emerald-600 font-semibold">₹{(p.contractValue/100000).toFixed(1)}L</p>
-                                    <p className="text-slate-400 text-xs">Contract Val</p>
+                                    <p className="text-emerald-600 font-semibold">₹{Number(p.value || 0).toLocaleString()}</p>
+                                    <p className="text-slate-400 text-xs">Value Allocated</p>
                                 </td>
                                 <td className="table-cell w-44">
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between text-xs text-slate-500">
                                             <span>Progress</span>
-                                            <span className="font-semibold text-slate-700">{p.progress}%</span>
+                                            <span className="font-semibold text-slate-700">{p.advancement || 0}%</span>
                                         </div>
                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-700 ${p.progress === 100 ? 'bg-blue-500' : 'bg-green-500'}`}
-                                                style={{ width: `${p.progress}%` }}
+                                                className={`h-full rounded-full transition-all duration-700 ${p.advancement >= 100 ? 'bg-blue-500' : 'bg-green-500'}`}
+                                                style={{ width: `${Math.min(p.advancement || 0, 100)}%` }}
                                             />
                                         </div>
                                     </div>
                                 </td>
                                 <td className="table-cell">
-                                    <span className={`badge ${statusBadge[p.status] || 'badge-gray'}`}>{p.status}</span>
+                                    <div className="flex flex-col gap-1.5 items-start">
+                                        <span className={`badge ${statusBadge[p.status] || 'badge-gray'}`}>{p.status || 'Pending'}</span>
+                                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 rounded">{p.process}</span>
+                                    </div>
                                 </td>
                                 <td className="table-cell text-right">
                                     <div className="flex items-center justify-end gap-1.5">
                                         <button onClick={(e) => onEdit(e, p)} className="p-1.5 text-slate-400 hover:text-[#2f6645] hover:bg-emerald-50 rounded-lg transition-all">
                                             <Edit2 className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={(e) => onDelete(e, p.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                        <button onClick={(e) => onDelete(e, p.id || p.code)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                         <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all">

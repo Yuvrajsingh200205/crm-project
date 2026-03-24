@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Download, RefreshCw, ArrowRight, CheckCircle2, Clock, FileText, AlertCircle, Plus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const MOCK_GST_RETURNS = [
     { period: 'Feb 2025', gstr1: 'Filed', gstr3b: 'Pending', liability: 284500, itc: 198400, net: 86100, dueDate: '2025-03-20' },
@@ -146,7 +147,10 @@ export default function GSTManagement() {
 
                             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">Cancel</button>
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-primary flex-1">Force Manual Sync</button>
+                                <button type="button" onClick={() => {
+                                    setIsModalOpen(false);
+                                    toast.success('GSTN Portal synchronized successfully');
+                                }} className="btn-primary flex-1">Force Manual Sync</button>
                             </div>
                         </form>
                     </div>

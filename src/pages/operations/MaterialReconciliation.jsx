@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle, Info, AlertCircle, RefreshCw, Download, Plus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const initialReconciliationData = [
     {
@@ -104,6 +105,7 @@ export default function MaterialReconciliation() {
         setReconciliationData([newItem, ...reconciliationData]);
         setIsModalOpen(false);
         setFormData({});
+        toast.success('Material issuance recorded and reconciled');
     };
 
     return (

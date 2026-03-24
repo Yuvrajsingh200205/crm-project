@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Target, Search, Plus, Flag, Calendar, CheckCircle2, Edit2, Trash2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 import ProgressStats from '../../components/progress/ProgressStats';
 import ProgressUpdateModal from '../../components/progress/ProgressUpdateModal';
@@ -38,7 +39,10 @@ export default function ProgressTracking() {
     const handleAddTask = () => { setIsEditing(false); setFormData({ status: 'Active', priority: 'Medium', progress: 0, category: 'Civil', startDate: new Date().toISOString().split('T')[0] }); setIsModalOpen(true); };
     const handleEditTask = (task) => { setIsEditing(true); setFormData({ ...task }); setIsModalOpen(true); };
     const handleDeleteTask = (id) => {
-        if (window.confirm('Remove this milestone?')) { setProgressTasks(prev => prev.filter(t => t.id !== id)); toast.success('Milestone removed'); }
+        confirmToast('Remove this milestone?', () => {
+            setProgressTasks(prev => prev.filter(t => t.id !== id));
+            toast.success('Milestone removed');
+        });
     };
     const handleSave = (e) => {
         e.preventDefault();

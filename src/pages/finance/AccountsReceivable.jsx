@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Download, Building2, Calendar, CheckCircle2, Clock, AlertCircle, X, Edit2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_RECEIVABLES = [
     { id: 'AR-001', client: 'Larsen & Toubro', project: 'Patna Metro B', amount: 4500000, invoiceDate: '2025-03-10', dueDate: '2025-04-10', status: 'Pending', type: 'RA Bill #04' },
@@ -67,6 +69,7 @@ export default function AccountsReceivable() {
         
         if (editingId) {
             setReceivables(receivables.map(r => r.id === editingId ? { ...r, ...formData, amount: numAmount } : r));
+            toast.success('Receivable record updated');
         } else {
             const newRec = {
                 id: `AR-00${receivables.length + 1}`,
@@ -74,6 +77,7 @@ export default function AccountsReceivable() {
                 amount: numAmount
             };
             setReceivables([newRec, ...receivables]);
+            toast.success('New invoice record created');
         }
         setIsModalOpen(false);
     };

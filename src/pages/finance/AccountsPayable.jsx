@@ -3,6 +3,8 @@ import {
     CreditCard, Search, Plus, Download, 
     Truck, Calendar, AlertCircle, CheckCircle2, Clock, X, Edit2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_BILLS = [
     { id: 'BILL-001', vendor: 'UltraTech Cement', project: 'Patna Metro B', amount: 850000, date: '2025-03-12', dueDate: '2025-03-25', status: 'Pending', tds: 8500, type: 'Purchase' },
@@ -71,6 +73,7 @@ export default function AccountsPayable() {
 
         if (editingId) {
             setBills(bills.map(b => b.id === editingId ? { ...b, ...formData, amount: baseAmount, tds: tdsAmount } : b));
+            toast.success('Vendor bill updated successfully');
         } else {
             const newBill = {
                 id: `BILL-00${bills.length + 1}`,
@@ -79,6 +82,7 @@ export default function AccountsPayable() {
                 tds: tdsAmount
             };
             setBills([newBill, ...bills]);
+            toast.success('New vendor bill recorded');
         }
         setIsModalOpen(false);
     };

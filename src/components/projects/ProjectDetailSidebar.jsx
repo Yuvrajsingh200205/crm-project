@@ -12,7 +12,7 @@ export default function ProjectDetailSidebar({ isOpen, project, onClose, onEdit,
             <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl z-[120] animate-slide-in-right flex flex-col border-l border-slate-100">
                 <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                     <div>
-                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest">{project.id}</span>
+                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest">{project.code || project.id || 'N/A'}</span>
                         <h2 className="text-xl font-black text-slate-900 mt-2 tracking-tight leading-tight">{project.name}</h2>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
@@ -25,9 +25,9 @@ export default function ProjectDetailSidebar({ isOpen, project, onClose, onEdit,
                     <div className="grid grid-cols-2 gap-4">
                         <div className="card p-5 bg-gradient-to-br from-green-600 to-[#2f6645] text-white border-0">
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Progress Status</p>
-                            <h3 className="text-3xl font-black mt-1 tracking-tighter">{project.progress}%</h3>
+                            <h3 className="text-3xl font-black mt-1 tracking-tighter">{project.advancement || 0}%</h3>
                             <div className="mt-4 h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                                <div className="h-full bg-white rounded-full" style={{ width: `${project.progress}%` }} />
+                                <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${project.advancement || 0}%` }} />
                             </div>
                         </div>
                         <div 
@@ -47,7 +47,7 @@ export default function ProjectDetailSidebar({ isOpen, project, onClose, onEdit,
                             <div className="flex items-start gap-4">
                                 <div className="p-2.5 rounded-xl bg-slate-50 text-slate-500"><MapPin className="w-5 h-5" /></div>
                                 <div>
-                                    <p className="text-slate-900 font-bold text-sm">{project.site}</p>
+                                    <p className="text-slate-900 font-bold text-sm">{project.location || project.site}</p>
                                     <p className="text-slate-400 text-xs font-medium">Secondary Operational Base</p>
                                 </div>
                             </div>
@@ -79,15 +79,15 @@ export default function ProjectDetailSidebar({ isOpen, project, onClose, onEdit,
                             <div className="space-y-4">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400 font-medium">Total Project Value</span>
-                                    <span className="text-slate-900 font-black">₹{(project.contractValue).toLocaleString()}</span>
+                                    <span className="text-slate-900 font-black">₹{Number(project.value || project.contractValue || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400 font-medium">Advance Received</span>
-                                    <span className="text-green-600 font-black">₹{(project.advance).toLocaleString()}</span>
+                                    <span className="text-slate-400 font-medium">Billed Unlocked Amt</span>
+                                    <span className="text-green-600 font-black">₹{Number((project.value || 0) * ((project.advancement || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                 </div>
                                 <div className="flex justify-between text-sm pt-4 border-t border-dashed border-slate-200">
                                     <span className="text-slate-500 font-black uppercase text-xs">Unbilled Amount</span>
-                                    <span className="text-slate-900 font-black">₹{(project.contractValue - project.advance).toLocaleString()}</span>
+                                    <span className="text-slate-900 font-black">₹{Number((project.value || 0) - ((project.value || 0) * (project.advancement || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                 </div>
                             </div>
                         </div>

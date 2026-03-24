@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
 import { 
     BookOpen, Search, Plus, ChevronRight, ChevronDown, 
     Landmark, Wallet, ArrowRightLeft, Download, Edit2, Trash2, ShieldCheck, X
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 const INITIAL_ACCOUNTS = [
     { id: '1000', name: 'Assets', type: 'Asset', balance: 45000000, category: 'Root', subAccounts: [
@@ -103,6 +104,13 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
                         <button onClick={() => onEdit(account)} className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-500 hover:text-emerald-600 transition-all cursor-pointer">
                             <Edit2 className="w-3.5 h-3.5" />
                         </button>
+                        <button onClick={() => {
+                            confirmToast(`Delete account ${account.name} permanently?`, () => {
+                                toast.error('Account deletion is locked during trial');
+                            });
+                        }} className="p-1.5 bg-slate-100 hover:bg-red-50 rounded text-slate-500 hover:text-red-600 transition-all cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -158,6 +166,7 @@ export default function ChartOfAccounts() {
                 type: formData.type,
                 category: formData.category
             }));
+            toast.success('Chart of Accounts updated');
         } else {
             const newAcc = {
                 id: formData.id,
@@ -181,6 +190,7 @@ export default function ChartOfAccounts() {
                     return acc;
                 }));
             }
+            toast.success('New ledger account created');
         }
         setIsModalOpen(false);
     };

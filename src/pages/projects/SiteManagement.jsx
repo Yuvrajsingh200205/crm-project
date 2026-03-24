@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Building2, Search, Plus, MapPin, Settings2, Trash2, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 import SiteStats from '../../components/sites/SiteStats';
 import SiteModal from '../../components/sites/SiteModal';
@@ -38,10 +39,10 @@ export default function SiteManagement() {
 
     const handleEditSite = (site) => { setIsEditing(true); setFormData({ ...site }); setIsModalOpen(true); };
     const handleDeleteSite = (id) => {
-        if (window.confirm('Are you sure you want to remove this site?')) {
+        confirmToast('Are you sure you want to remove this site?', () => {
             setSites(prev => prev.filter(s => s.id !== id));
             toast.success('Site removed');
-        }
+        });
     };
     const handleSave = (e) => {
         e.preventDefault();

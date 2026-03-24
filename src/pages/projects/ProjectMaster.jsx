@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
-import { Plus, MapPin, Building2, TrendingUp, BarChart3, DollarSign } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, MapPin, Building2, TrendingUp, BarChart3, DollarSign, Loader2 } from 'lucide-react';
+import { projectAPI } from '../../api/project';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/toastUtils';
 
 // Sub-components
 import ProjectStats from '../../components/projects/ProjectStats';
@@ -11,7 +12,10 @@ import ProjectModal from '../../components/projects/ProjectModal';
 import ProjectDetailSidebar from '../../components/projects/ProjectDetailSidebar';
 
 export default function ProjectMaster() {
-    const { projects, setProjects, updateProject } = useApp();
+    // API State Managers
+    const [projectsList, setProjectsList] = useState([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     
     // Search & Filter State
     const [search, setSearch] = useState('');
@@ -24,32 +28,64 @@ export default function ProjectMaster() {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
 
+    // API Initialization hook
+    useEffect(() => {
+        fetchProjects();
+    }, []);
+
+    const fetchProjects = async () => {
+        setIsLoadingData(true);
+        try {
+            const res = await projectAPI.getAllProjects();
+            // Map according to common backend frameworks responding array, or { data }, or { projects }
+            const payloadArray = Array.isArray(res.data) ? res.data : (res.data?.projects || res.data?.data || []);
+            setProjectsList(payloadArray);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load backend projects API");
+        } finally {
+            setIsLoadingData(false);
+        }
+    }
+
     // 1. Filtered Projects List
     const filteredProjects = useMemo(() => {
-        return projects.filter(p => {
-            const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                                p.id.toLowerCase().includes(search.toLowerCase()) ||
-                                p.client.toLowerCase().includes(search.toLowerCase());
-            const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-            return matchesSearch && matchesStatus;
+        return (projectsList || []).filter(p => {
+            if (!p) return false;
+            const matchName = p.name ? String(p.name).toLowerCase() : '';
+            const matchCode = p.code ? String(p.code).toLowerCase() : '';
+            const matchClient = p.client ? String(p.client).toLowerCase() : '';
+            const query = search ? String(search).toLowerCase() : '';
+
+            const passesSearch = matchName.includes(query) || matchCode.includes(query) || matchClient.includes(query);
+            // Ignore status filter if 'All', otherwise match pending/approved etc
+            const passesStatus = statusFilter === 'All' || p.status === statusFilter;
+            return passesSearch && passesStatus;
         });
-    }, [projects, search, statusFilter]);
+    }, [projectsList, search, statusFilter]);
 
     // 2. Statistics Calculation
     const stats = useMemo(() => {
-        const totalValue = projects.reduce((sum, p) => sum + (p.contractValue || 0), 0);
+        const _values = projectsList.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+        const _progressSum = projectsList.reduce((s, p) => s + (Number(p.advancement) || 0), 0);
+        const avgProg = projectsList.length ? Math.round(_progressSum / projectsList.length) : 0;
+        const totalValueFormatted = (`₹${(_values / 100000).toFixed(2)}L`);
+
         return [
-            { label: 'Total Projects', value: projects.length, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Active Sites', value: projects.filter(p => p.status === 'Active').length, icon: MapPin, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: 'Contract Value', value: `₹${(totalValue / 10000000).toFixed(2)}Cr`, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
-            { label: 'Avg. Progress', value: `${projects.length ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length) : 0}%`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Total Projects', value: projectsList.length, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Pending Projects', value: projectsList.filter(p => p.status === 'pending').length, icon: MapPin, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+            { label: 'Contract Value', value: totalValueFormatted, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: 'Avg. Advancement', value: `${avgProg}%`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
         ];
-    }, [projects]);
+    }, [projectsList]);
 
     // 3. Handlers
     const handleOpenAdd = () => {
         setIsEditing(false);
-        setFormData({ status: 'Active', category: 'Civil', progress: 0 });
+        setFormData({ 
+            process: 'RUNNING', status: 'pending', category: 'Civil', 
+            advancement: 0, value: 0 
+        });
         setIsModalOpen(true);
     };
 
@@ -65,46 +101,58 @@ export default function ProjectMaster() {
         setIsDetailOpen(true);
     };
 
-    const handleDelete = (e, id) => {
+    const handleDelete = async (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this project?')) {
-            setProjects(prev => prev.filter(p => p.id !== id));
-            toast.success("Project deleted successfully");
-        }
+        confirmToast('Delete this project entry permanently?', async () => {
+            try {
+                await projectAPI.deleteProject(id);
+                setProjectsList(prev => prev.filter(p => p.id !== id && p.code !== id));
+                toast.success("Project deleted successfully");
+            } catch(err) {
+                toast.error("Failed to delete project");
+            }
+        });
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        const promise = new Promise((resolve) => setTimeout(resolve, 800));
+        setIsSaving(true);
 
-        const processedData = {
-            ...formData,
-            contractValue: Number(formData.contractValue || 0),
-            advance: Number(formData.advance || 0),
-            progress: Number(formData.progress || 0)
-        };
-
-        if (isEditing) {
-            updateProject(processedData);
-            toast.promise(promise, {
-                loading: 'Updating project...',
-                success: 'Project synchronized successfully!',
-                error: 'Could not update project.',
-            });
-        } else {
-            const newProj = {
-                ...processedData,
-                id: `PRJ-${new Date().getFullYear()}-${String(projects.length + 1).padStart(3, '0')}`,
-                tags: ['New']
+        try {
+            // Process payload exact keys required by project schema
+            const processedData = {
+                code: formData.code,
+                name: formData.name,
+                client: formData.client,
+                category: formData.category,
+                value: Number(formData.value || 0),
+                process: formData.process || 'RUNNING',
+                status: formData.status || 'pending',
+                location: formData.location,
+                advancement: Number(formData.advancement || 0),
+                startDate: formData.startDate,
+                endDate: formData.endDate
             };
-            setProjects([newProj, ...projects]);
-            toast.promise(promise, {
-                loading: 'Creating project...',
-                success: 'New project enrolled successfully!',
-                error: 'Could not create project.',
-            });
+
+            if (isEditing && (formData.id || formData._id)) {
+                const targetId = formData.id || formData._id;
+                const res = await projectAPI.updateProject(targetId, processedData);
+                const updated = res.data?.data || res.data?.project || res.data;
+                setProjectsList(projectsList.map(p => (p.id === targetId || p._id === targetId) ? { ...p, ...updated } : p));
+                toast.success('Project details updated successfully!');
+            } else {
+                const res = await projectAPI.createProject(processedData);
+                const created = res.data?.data || res.data?.project || res.data || processedData;
+                setProjectsList([created, ...projectsList]);
+                toast.success('Project enrolled successfully!');
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Could not save Project');
+        } finally {
+            setIsSaving(false);
         }
-        setIsModalOpen(false);
     };
 
     const handleInputChange = (e) => {
@@ -117,18 +165,13 @@ export default function ProjectMaster() {
         setTimeout(() => toast.success("Reports downloaded successfully"), 2000);
     };
 
-    const handleOpenGantt = () => {
-        toast.loading("Initializing Gantt Scheduler...", { duration: 1500 });
-        setTimeout(() => toast.success("Gantt view ready"), 1500);
-    };
-
     return (
         <div className="space-y-6 animate-fade-in pb-12">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Project Master</h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage and track all infrastructure projects</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Project Master DB</h1>
+                    <p className="text-sm text-slate-500 mt-1">Manage infrastructure projects across all API endpoints</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button onClick={handleDownloadReports} className="btn-secondary hidden sm:flex items-center gap-2">
@@ -150,18 +193,25 @@ export default function ProjectMaster() {
                 setStatusFilter={setStatusFilter} 
             />
 
-            <ProjectTable 
-                projects={filteredProjects}
-                onEdit={handleOpenEdit}
-                onDelete={handleDelete}
-                onViewDetails={handleViewDetails}
-                onClearFilters={() => { setSearch(''); setStatusFilter('All'); }}
-            />
+            {isLoadingData ? (
+                <div className="card w-full p-12 flex justify-center items-center text-slate-400 gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" /> Fetching projects remotely...
+                </div>
+            ) : (
+                <ProjectTable 
+                    projects={filteredProjects}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleDelete}
+                    onViewDetails={handleViewDetails}
+                    onClearFilters={() => { setSearch(''); setStatusFilter('All'); }}
+                />
+            )}
 
             <ProjectModal 
                 isOpen={isModalOpen}
                 isEditing={isEditing}
                 formData={formData}
+                isLoading={isSaving}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 onInputChange={handleInputChange}
@@ -172,7 +222,7 @@ export default function ProjectMaster() {
                 project={selectedProj}
                 onClose={() => setIsDetailOpen(false)}
                 onEdit={(e, p) => { handleOpenEdit(e, p); setIsDetailOpen(false); }}
-                onOpenGantt={handleOpenGantt}
+                onOpenGantt={() => toast.success("Gantt view ready")}
             />
         </div>
     );
