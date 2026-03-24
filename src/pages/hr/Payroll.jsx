@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { 
   Download, CheckCircle, Clock, Users, IndianRupee, FileText, 
   ChevronDown, Plus, X, ArrowLeft, Building2, Wallet, TrendingUp, 
@@ -20,10 +21,9 @@ const salaryHistory = [
 
 export default function Payroll() {
   const [salaries, setSalaries] = useState(initialSalaryData);
-  const [view, setView] = useState('dashboard'); // dashboard, detail, payslip
+  const [view, setView] = useState('dashboard');
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [toast, setToast] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState('February 2026');
   const [activeTab, setActiveTab] = useState('All');
   
@@ -31,14 +31,9 @@ export default function Payroll() {
     empId: '', name: '', designation: '', basic: 0, hra: 0, conv: 0, special: 0, epf: 0, esi: 0, tds: 0
   });
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const calculateSalary = (data) => {
     const gross = (Number(data.basic) || 0) + (Number(data.hra) || 0) + (Number(data.conv) || 0) + (Number(data.special) || 0);
-    const deductions = (Number(data.epf) || 0) + (Number(data.esi) || 0) + (Number(data.tds) || 0) + 200; // PT fixed
+    const deductions = (Number(data.epf) || 0) + (Number(data.esi) || 0) + (Number(data.tds) || 0) + 200;
     return { gross, net: gross - deductions };
   };
 
@@ -48,7 +43,7 @@ export default function Payroll() {
     const newEntry = { ...formData, gross, net, status: 'Processed', month: selectedMonth, id: Date.now().toString() };
     setSalaries([newEntry, ...salaries]);
     setShowAddModal(false);
-    showToast('Salary processed for ' + formData.name);
+    toast.success('Salary processed for ' + formData.name);
   };
 
   const totalGross = salaries.reduce((a, e) => a + (e.gross || 0), 0);
@@ -329,161 +324,149 @@ export default function Payroll() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-           <div className="relative group/select">
-              <select className="select w-44 bg-white pr-8 appearance-none py-3 font-bold text-xs" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
-                 <option>February 2026</option>
-                 <option>January 2026</option>
-                 <option>March 2026</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645]" />
-           </div>
-           <button onClick={() => setShowAddModal(true)} className="btn-primary bg-[#2f6645] shadow-xl shadow-green-900/10 h-14 px-8">
-             <Plus className="w-5 h-5" /> Add Salary
-           </button>
+          <div className="relative group/select">
+            <select className="select w-44 bg-white pr-8 appearance-none py-3 font-bold text-xs" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+              <option>February 2026</option>
+              <option>January 2026</option>
+              <option>March 2026</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645]" />
+          </div>
+          <button onClick={() => setShowAddModal(true)} className="btn-primary bg-[#2f6645] shadow-xl shadow-green-900/10 h-14 px-8">
+            <Plus className="w-5 h-5" /> Add Salary
+          </button>
         </div>
       </div>
 
-      {/* Main Stats with Image Style */}
+      {/* Main Stats Bento */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 card p-8 bg-white border-none shadow-2xl shadow-slate-100/50 flex flex-col md:flex-row items-center gap-12 overflow-hidden relative group">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-16 -mt-16 opacity-50 transition-all duration-700 group-hover:scale-150" />
-           <div className="relative w-44 h-44 flex items-center justify-center flex-shrink-0 animate-in fade-in duration-1000">
-              <svg className="w-full h-full -rotate-90">
-                <circle cx="88" cy="88" r="75" fill="transparent" stroke="#f1f5f9" strokeWidth="18" />
-                <circle cx="88" cy="88" r="75" fill="transparent" stroke="#10b981" strokeWidth="18" strokeDasharray="471" strokeDashoffset="118" />
-                <circle cx="88" cy="88" r="75" fill="transparent" stroke="#3b82f6" strokeWidth="18" strokeDasharray="471" strokeDashoffset="350" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-3xl font-black text-slate-900 leading-none tracking-tighter">₹2.4M</p>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Processed</p>
-              </div>
-           </div>
-           
-           <div className="flex-1 space-y-6 w-full">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black text-slate-800 tracking-tight underline decoration-[#9ae66e] decoration-4 underline-offset-8">Financial Summary</h3>
-                <span className="text-[10px] font-black text-white uppercase tracking-widest bg-slate-800 px-3 py-1.5 rounded-xl">Month End</span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-                {[
-                  { label: 'Total Payable', val: `₹${(totalNet/100000).toFixed(1)}L`, sub: 'After Deductions', color: 'emerald' },
-                  { label: 'Gross Amount', val: `₹${(totalGross/100000).toFixed(1)}L`, sub: 'Before Taxes', color: 'blue' },
-                  { label: 'PF Liability', val: '₹18.4K', sub: 'Retirement Acc.', color: 'purple' },
-                  { label: 'TDS/Tax', val: '₹6.2K', sub: 'Upcoming Challan', color: 'red' },
-                ].map((s, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
-                    <div className="flex items-baseline gap-2">
-                      <p className={`text-2xl font-black text-slate-800 leading-none`}>{s.val}</p>
-                      <div className={`w-1.5 h-1.5 rounded-full bg-${s.color}-500`} />
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-400 italic">{s.sub}</p>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-16 -mt-16 opacity-50 transition-all duration-700 group-hover:scale-150" />
+          <div className="relative w-44 h-44 flex items-center justify-center flex-shrink-0">
+            <svg className="w-full h-full -rotate-90">
+              <circle cx="88" cy="88" r="75" fill="transparent" stroke="#f1f5f9" strokeWidth="18" />
+              <circle cx="88" cy="88" r="75" fill="transparent" stroke="#10b981" strokeWidth="18" strokeDasharray="471" strokeDashoffset="118" />
+              <circle cx="88" cy="88" r="75" fill="transparent" stroke="#3b82f6" strokeWidth="18" strokeDasharray="471" strokeDashoffset="350" />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <p className="text-3xl font-black text-slate-900 leading-none tracking-tighter">₹2.4M</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Processed</p>
+            </div>
+          </div>
+          <div className="flex-1 space-y-6 w-full">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-slate-800 tracking-tight underline decoration-[#9ae66e] decoration-4 underline-offset-8">Financial Summary</h3>
+              <span className="text-[10px] font-black text-white uppercase tracking-widest bg-slate-800 px-3 py-1.5 rounded-xl">Month End</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-12 gap-y-6">
+              {[
+                { label: 'Total Payable', val: `₹${(totalNet/100000).toFixed(1)}L`, sub: 'After Deductions', color: 'emerald' },
+                { label: 'Gross Amount', val: `₹${(totalGross/100000).toFixed(1)}L`, sub: 'Before Taxes', color: 'blue' },
+                { label: 'PF Liability', val: '₹18.4K', sub: 'Retirement Acc.', color: 'purple' },
+                { label: 'TDS/Tax', val: '₹6.2K', sub: 'Upcoming Challan', color: 'red' },
+              ].map((s, i) => (
+                <div key={i} className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-black text-slate-800 leading-none">{s.val}</p>
+                    <div className={`w-1.5 h-1.5 rounded-full bg-${s.color}-500`} />
                   </div>
-                ))}
-              </div>
-           </div>
+                  <p className="text-[9px] font-bold text-slate-400 italic">{s.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="lg:col-span-4 card p-8 bg-[#1e3a34] text-white border-none shadow-2xl shadow-green-900/10 relative overflow-hidden flex flex-col justify-between">
-           <div className="absolute right-0 top-0 opacity-10">
-             <Fingerprint className="w-40 h-40 rotate-12" />
-           </div>
-           <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-[#9ae66e]" />
-                 </div>
-                 <h3 className="text-sm font-black uppercase tracking-widest text-[#9ae66e]">Security Status</h3>
+          <div className="absolute right-0 top-0 opacity-10">
+            <Fingerprint className="w-40 h-40 rotate-12" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-[#9ae66e]" />
               </div>
-              <p className="text-xl font-black leading-tight mb-4">Banking & Compliance connection active.</p>
-              <div className="space-y-3">
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-white/60">
-                    <CheckCircle className="w-3 h-3 text-[#9ae66e]" /> Provident Fund Sync Active
-                 </div>
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-white/60">
-                    <CheckCircle className="w-3 h-3 text-[#9ae66e]" /> Form 16 Generation Enabled
-                 </div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-[#9ae66e]">Security Status</h3>
+            </div>
+            <p className="text-xl font-black leading-tight mb-4">Banking & Compliance connection active.</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-white/60">
+                <CheckCircle className="w-3 h-3 text-[#9ae66e]" /> Provident Fund Sync Active
               </div>
-           </div>
-           <button className="relative z-10 mt-8 py-3.5 bg-white/10 border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2">
-             <Download className="w-4 h-4" /> Download Bank Advice
-           </button>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-white/60">
+                <CheckCircle className="w-3 h-3 text-[#9ae66e]" /> Form 16 Generation Enabled
+              </div>
+            </div>
+          </div>
+          <button className="relative z-10 mt-8 py-3.5 bg-white/10 border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+            <Download className="w-4 h-4" /> Download Bank Advice
+          </button>
         </div>
       </div>
 
-      {/* Main Salary Table */}
-      <div className="card border-none shadow-2xl shadow-slate-100/50 bg-white overflow-hidden">
-         <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50">
-          <div className="flex items-center gap-6">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 md:mb-0">Active Salary Sheet</h3>
-             <div className="flex gap-1">
-                {['All', 'Processed', 'Pending'].map(t => (
-                  <button 
-                    key={t} 
-                    onClick={() => setActiveTab(t)}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === t ? 'bg-[#2f6645] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-             </div>
+      {/* Salary Table */}
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Active Salary Sheet</h3>
+            <div className="flex gap-1">
+              {['All', 'Processed', 'Pending'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button className="btn-secondary h-10 text-[10px] font-black uppercase tracking-widest">Preview All</button>
-            <button className="btn-secondary h-10 text-[10px] font-black uppercase tracking-widest"><Download className="w-3.5 h-3.5" /> Export PDF</button>
+          <div className="flex gap-2">
+            <button className="btn-secondary text-xs py-1.5 px-3">Preview All</button>
+            <button className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export</button>
           </div>
         </div>
-
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-100">
-                {['Employee', 'Base Pay', 'Gross Earned', 'Deductions', 'Net Credited', 'Status', 'Record'].map(h => (
-                  <th key={h} className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                {['Employee', 'Base Pay', 'Gross', 'Deductions', 'Net Credited', 'Month', 'Status', 'Record'].map(h => (
+                  <th key={h} className="table-header whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody>
               {salaries.filter(s => activeTab === 'All' || s.status === activeTab).map((e, i) => (
-                <tr key={i} className="group hover:bg-slate-50/50 transition-all">
-                  <td className="px-6 py-6 border-transparent border-l-4 group-hover:border-[#2f6645]">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#2f6645] flex items-center justify-center font-black text-xs group-hover:bg-[#2f6645] group-hover:text-white transition-all shadow-sm">
-                         {e.name.split(' ').map(n=>n[0]).join('')}
-                       </div>
-                       <div>
-                         <p className="text-sm font-black text-slate-900 group-hover:text-[#2f6645] transition-colors">{e.name}</p>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{e.designation}</p>
-                       </div>
+                <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
+                  <td className="table-cell">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {e.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="text-slate-900 font-medium">{e.name}</p>
+                        <p className="text-slate-400 text-xs">{e.designation}</p>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-6">
-                    <p className="text-sm font-black text-slate-700">₹{e.basic.toLocaleString()}</p>
+                  <td className="table-cell text-slate-700 font-medium">₹{e.basic.toLocaleString()}</td>
+                  <td className="table-cell text-slate-900 font-semibold">₹{e.gross.toLocaleString()}</td>
+                  <td className="table-cell text-red-500 font-medium">₹{(e.gross - e.net).toLocaleString()}</td>
+                  <td className="table-cell text-emerald-600 font-bold">₹{e.net.toLocaleString()}</td>
+                  <td className="table-cell text-slate-500 text-xs">{e.month}</td>
+                  <td className="table-cell">
+                    <span className={`badge ${e.status === 'Processed' ? 'badge-green' : 'badge-yellow'}`}>{e.status}</span>
                   </td>
-                  <td className="px-6 py-6">
-                    <p className="text-sm font-black text-slate-900">₹{e.gross.toLocaleString()}</p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <p className="text-xs font-black text-red-500">₹{(e.gross - e.net).toLocaleString()}</p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <p className="text-lg font-black text-slate-900 tracking-tighter">₹{e.net.toLocaleString()}</p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                      e.status === 'Processed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-6 text-right">
-                     <button 
-                       onClick={() => { setSelectedEmp(e); setView('detail'); }}
-                       className="p-3 bg-slate-50 text-slate-400 group-hover:bg-[#2f6645] group-hover:text-white rounded-xl transition-all shadow-sm active:scale-95"
-                       title="View Detailed Payroll"
-                     >
-                       <Eye className="w-5 h-5" />
-                     </button>
+                  <td className="table-cell">
+                    <button
+                      onClick={() => { setSelectedEmp(e); setView('detail'); }}
+                      className="p-1.5 bg-slate-100 text-slate-500 hover:bg-[#2f6645] hover:text-white rounded-lg transition-all"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -494,77 +477,59 @@ export default function Payroll() {
 
       {/* Add Salary Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-in text-slate-800" onClick={e => e.stopPropagation()}>
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-[#1e3a34] text-white">
-              <div className="space-y-1">
-                 <h2 className="text-xl font-black uppercase tracking-[0.2em] leading-none text-[#9ae66e]">Create Salary Log</h2>
-                 <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Process payment for {selectedMonth}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+              <div>
+                <h2 className="text-base font-semibold">Create Salary Log</h2>
+                <p className="text-xs text-white/60 mt-0.5">Process payment for {selectedMonth}</p>
               </div>
-              <button onClick={() => setShowAddModal(false)}><X className="w-7 h-7 opacity-60 hover:opacity-100" /></button>
+              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            
-            <form onSubmit={handeAddSalary} className="p-10 space-y-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-              <div className="grid grid-cols-2 gap-6 pb-6 border-b border-slate-50">
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Employee Name</label>
-                   <input required placeholder="Enter full name" className="input bg-slate-50 border-slate-200 h-12" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                 </div>
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Designation</label>
-                   <input required placeholder="e.g. Senior Architect" className="input bg-slate-50 border-slate-200 h-12" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
-                 </div>
-              </div>
-
-              <div className="space-y-6">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase underline underline-offset-8 decoration-emerald-200 decoration-2">Earnings (Monthly)</h4>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                   {[
-                     { l: 'Basic Pay', key: 'basic' }, { l: 'HRA', key: 'hra' }, { l: 'Conveyance', key: 'conv' }, { l: 'Special/Bonus', key: 'special' }
-                   ].map((item, i) => (
-                     <div key={i} className="space-y-1.5">
-                       <label className="text-[9px] font-black text-slate-500 uppercase">{item.l}</label>
-                       <input type="number" required placeholder="0" className="input bg-white h-11 text-sm font-black" value={formData[item.key]} onChange={e => setFormData({...formData, [item.key]: e.target.value})} />
-                     </div>
-                   ))}
+            <form onSubmit={handeAddSalary} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Employee Name</label>
+                  <input required placeholder="Full name" className="input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Designation</label>
+                  <input required placeholder="e.g. Senior Architect" className="input" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
                 </div>
               </div>
-
-              <div className="space-y-6">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase underline underline-offset-8 decoration-red-200 decoration-2">Deductions (EPF/Tax)</h4>
-                <div className="grid grid-cols-3 gap-4">
-                   {[
-                     { l: 'PF contribution', key: 'epf' }, { l: 'ESI', key: 'esi' }, { l: 'TDS/Tax', key: 'tds' }
-                   ].map((item, i) => (
-                     <div key={i} className="space-y-1.5">
-                       <label className="text-[9px] font-black text-slate-500 uppercase">{item.l}</label>
-                       <input type="number" required placeholder="0" className="input bg-white h-11 text-sm font-black text-red-500" value={formData[item.key]} onChange={e => setFormData({...formData, [item.key]: e.target.value})} />
-                     </div>
-                   ))}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-3">Earnings (Monthly)</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[{ l: 'Basic Pay', key: 'basic' }, { l: 'HRA', key: 'hra' }, { l: 'Conveyance', key: 'conv' }, { l: 'Special/Bonus', key: 'special' }].map((item, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <label className="text-xs text-slate-500">{item.l}</label>
+                      <input type="number" required placeholder="0" className="input" value={formData[item.key]} onChange={e => setFormData({...formData, [item.key]: e.target.value})} />
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="pt-8 flex gap-4">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 btn-secondary h-14 font-black uppercase tracking-widest text-[10px] rounded-2xl">Discard</button>
-                <div className="flex-[2] flex gap-4 items-center bg-slate-900 rounded-3xl px-8 py-3 group">
-                   <div className="flex-1">
-                      <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">Estimated Net</p>
-                      <p className="text-xl font-black text-[#9ae66e]">₹{calculateSalary(formData).net.toLocaleString()}</p>
-                   </div>
-                   <button type="submit" className="h-12 px-8 bg-[#9ae66e] text-[#1e3a34] rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-black/20 group-hover:scale-[1.05] transition-all">Submit & Process</button>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-3">Deductions (EPF/Tax)</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {[{ l: 'PF Contribution', key: 'epf' }, { l: 'ESI', key: 'esi' }, { l: 'TDS / Tax', key: 'tds' }].map((item, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <label className="text-xs text-slate-500">{item.l}</label>
+                      <input type="number" required placeholder="0" className="input" value={formData[item.key]} onChange={e => setFormData({...formData, [item.key]: e.target.value})} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div>
+                  <p className="text-xs text-slate-500">Estimated Net Salary</p>
+                  <p className="text-xl font-bold text-emerald-600">₹{calculateSalary(formData).net.toLocaleString()}</p>
+                </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button>
+                  <button type="submit" className="btn-primary">Submit & Process</button>
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="px-8 py-4 bg-slate-900 text-white rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10">
-            <CheckCircle2 className="w-5 h-5 text-[#9ae66e]" />
-            <p className="text-xs font-black uppercase tracking-[0.2em]">{toast.message}</p>
           </div>
         </div>
       )}

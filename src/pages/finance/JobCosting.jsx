@@ -40,88 +40,44 @@ export default function JobCosting() {
     ];
 
     return (
-        <div className="space-y-8 animate-fade-in pb-20 relative">
-            <div className="absolute inset-x-0 top-0 -z-20 h-full w-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
-
-            {/* Header with Project Selector */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 bg-emerald-950 rounded-[2rem] shadow-xl shadow-emerald-900/20 flex items-center justify-center border border-white/5 group hover:scale-105 transition-all">
-                        <Activity className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            {PROJECTS.map(p => (
-                                <button 
-                                    key={p.id}
-                                    onClick={() => setSelectedId(p.id)}
-                                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        selectedId === p.id ? 'bg-emerald-950 text-white shadow-lg' : 'bg-white text-slate-400 hover:text-slate-800 border border-slate-100'
-                                    }`}
-                                >
-                                    {p.id}
-                                </button>
-                            ))}
-                        </div>
-                        <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-none">{selected.name}</h1>
-                    </div>
+        <div className="space-y-5 animate-fade-in pb-12 relative">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">{selected.name}</h1>
+                    <p className="text-slate-500 text-sm mt-1">Job costing & project P&L analysis</p>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <button className="px-6 py-3.5 bg-emerald-950 text-white font-black rounded-2xl shadow-xl shadow-emerald-950/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 text-xs">
-                        <Download className="w-5 h-5" /> Export P&L Statement
+                <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                        {PROJECTS.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => setSelectedId(p.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                    selectedId === p.id ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100 border border-slate-200'
+                                }`}
+                            >
+                                {p.id}
+                            </button>
+                        ))}
+                    </div>
+                    <button className="btn-primary flex items-center gap-1.5">
+                        <Download className="w-4 h-4" /> Export P&L
                     </button>
                 </div>
             </div>
 
-            {/* Financial Status Bento */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="md:col-span-2 bg-emerald-950 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400/10 rounded-full blur-[100px] -mr-32 -mt-32" />
-                    <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="p-3 bg-white/10 rounded-2xl border border-white/5">
-                                <TrendingUp className="w-6 h-6 text-emerald-400" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/60">Profitability Index</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-8">
-                            <div>
-                                <h4 className="text-5xl font-black tracking-tighter tabular-nums mb-1">₹{(metrics.netProfit / 100000).toFixed(2)}L</h4>
-                                <p className="text-[10px] font-black text-emerald-400/60 uppercase tracking-widest">Net Project Margin ({metrics.netMargin}%)</p>
-                            </div>
-                            <div className="pt-2">
-                                <div className="space-y-4">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
-                                        <span>Budget Utilization</span>
-                                        <span>{selected.progress}%</span>
-                                    </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
-                                        <div className="h-full bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all duration-1000" style={{ width: `${selected.progress}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                    { label: 'Revenue Earned', value: `₹${(selected.revenue / 100000).toFixed(1)} L`, icon: Target, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+5.2%' },
-                    { label: 'Total Direct Cost', value: `₹${(metrics.directCost / 100000).toFixed(1)} L`, icon: DollarSign, color: 'text-rose-600', bg: 'bg-rose-50', trend: 'Within Budget' },
-                ].map((stat, i) => (
-                    <div key={i} className="bg-white p-7 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-50 group hover:-translate-y-1 transition-all">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
-                                <stat.icon className="w-6 h-6" />
-                            </div>
-                            <span className="text-[10px] font-black text-slate-300">Live</span>
-                        </div>
-                        <h4 className="text-3xl font-black text-slate-800 tracking-tighter tabular-nums mb-1">{stat.value}</h4>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                        <div className="mt-4 flex items-center gap-1.5">
-                            <ArrowUpRight className="w-3.4 h-3.4 text-emerald-500" />
-                            <span className="text-[9px] font-black text-emerald-600 tracking-tight">{stat.trend}</span>
-                        </div>
+                    { label: 'Revenue Earned', value: `₹${(selected.revenue/100000).toFixed(1)}L`, color: 'text-blue-500' },
+                    { label: 'Net Profit', value: `₹${(metrics.netProfit/100000).toFixed(2)}L`, color: 'text-green-500' },
+                    { label: 'Gross Margin', value: `${metrics.grossMargin}%`, color: 'text-purple-500' },
+                    { label: 'Budget Progress', value: `${selected.progress}%`, color: 'text-amber-500' },
+                ].map((s, i) => (
+                    <div key={i} className="card p-4">
+                        <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
                     </div>
                 ))}
             </div>

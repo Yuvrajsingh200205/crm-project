@@ -101,30 +101,19 @@ export default function BOQ() {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in pb-12">
+        <div className="space-y-5 animate-fade-in pb-12">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-50">
-                        <FileText className="w-8 h-8 text-green-600" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Bill of Quantities</h1>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-none">EcoConstruct CRM</span>
-                            <div className="w-1 h-1 rounded-full bg-slate-300" />
-                            <span className="text-green-600 text-xs font-black flex items-center gap-1 leading-none">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Live System
-                            </span>
-                        </div>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Bill of Quantities</h1>
+                    <p className="text-sm text-slate-500 mt-1">Material reconciliation & contract rate tracker</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={handleExport} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-green-600 hover:border-green-200 transition-all shadow-sm">
-                        <Download className="w-5 h-5" />
+                <div className="flex items-center gap-2">
+                    <button onClick={handleExport} className="btn-secondary flex items-center gap-1.5">
+                        <Download className="w-4 h-4" /> Export Excel
                     </button>
-                    <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-all shadow-sm">
-                        <Filter className="w-5 h-5" />
+                    <button className="btn-secondary flex items-center gap-1.5">
+                        <Filter className="w-4 h-4" /> Filter
                     </button>
                 </div>
             </div>
@@ -146,22 +135,22 @@ export default function BOQ() {
                 totalValue={stats.totalValue}
             />
 
-            <div className="flex items-center gap-6 px-1">
-                <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reconciled (≤2% variance)</span>
+            <div className="flex items-center gap-5 px-1">
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-xs text-slate-500">Reconciled (≤2% variance)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Minor Variance (2-5%)</span>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-xs text-slate-500">Minor Variance (2-5%)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Under Utilized (&gt;5%)</span>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="text-xs text-slate-500">Under Utilized (&gt;5%)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Over Issued</span>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-xs text-slate-500">Over Issued</span>
                 </div>
             </div>
 

@@ -118,15 +118,15 @@ export default function WorkOrders() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white rounded-2xl shadow-sm">
-                        <ClipboardList className="w-8 h-8 text-[#1e3a34]" />
+                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+                        <ClipboardList className="w-6 h-6 text-slate-700" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Work Order Management</h1>
-                        <p className="text-slate-500 text-sm font-medium italic">Allocation of scope & subcontracting control</p>
+                        <h1 className="text-2xl font-bold text-slate-800">Work Order Management</h1>
+                        <p className="text-sm text-slate-500 mt-1">Allocation of scope & subcontracting control</p>
                     </div>
                 </div>
-                <button onClick={handleOpenAdd} className="btn-primary flex items-center gap-2 px-6 py-3 shadow-xl shadow-green-900/10 active:scale-95 transition-all">
+                <button onClick={handleOpenAdd} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
                     <Plus className="w-5 h-5" /> Issue New Order
                 </button>
             </div>

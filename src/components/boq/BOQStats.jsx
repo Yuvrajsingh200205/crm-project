@@ -3,46 +3,49 @@ import { Layers, ShieldCheck, AlertTriangle, IndianRupee } from 'lucide-react';
 
 export default function BOQStats({ totalItems, reconciled, overIssued, totalValue }) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card p-6 border-0 bg-white shadow-xl shadow-blue-900/5 group hover:scale-[1.02] transition-all">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="card p-4 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner">
-                        <Layers className="w-6 h-6" />
+                    <p className="text-slate-500 text-sm font-medium">Total Items</p>
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Layers className="w-4 h-4" />
                     </div>
                 </div>
-                <h3 className="text-4xl font-black text-slate-800 mt-4 tracking-tighter">{totalItems}</h3>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Total BOQ Items</p>
+                <h3 className="text-2xl font-bold text-slate-800 mt-2">{totalItems}</h3>
+                <p className="text-xs text-slate-400 mt-1">Total BOQ Entries</p>
             </div>
 
-            <div className="card p-6 border-0 bg-white shadow-xl shadow-emerald-900/5 group hover:scale-[1.02] transition-all border-b-4 border-emerald-500">
+            <div className="card p-4 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-inner">
-                        <ShieldCheck className="w-6 h-6" />
+                    <p className="text-slate-500 text-sm font-medium">Reconciled</p>
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <ShieldCheck className="w-4 h-4" />
                     </div>
                 </div>
-                <h3 className="text-4xl font-black text-emerald-600 mt-4 tracking-tighter">{reconciled}</h3>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Reconciled Items</p>
+                <h3 className="text-2xl font-bold text-emerald-600 mt-2">{reconciled}</h3>
+                <p className="text-xs text-slate-400 mt-1">Within Variance Limit</p>
             </div>
 
-            <div className="card p-6 border-0 bg-white shadow-xl shadow-rose-900/5 group hover:scale-[1.02] transition-all border-b-4 border-rose-500">
+            <div className="card p-4 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors shadow-inner">
-                        <AlertTriangle className="w-6 h-6" />
+                    <p className="text-slate-500 text-sm font-medium">Over Issued</p>
+                    <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4" />
                     </div>
                 </div>
-                <h3 className="text-4xl font-black text-rose-600 mt-4 tracking-tighter">{overIssued}</h3>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Over Issued High</p>
+                <h3 className="text-2xl font-bold text-red-600 mt-2">{overIssued}</h3>
+                <p className="text-xs text-slate-400 mt-1">High Variance Items</p>
             </div>
 
-            <div className="card p-6 border-0 bg-gradient-to-br from-slate-900 to-slate-800 shadow-2xl shadow-slate-900/20 group hover:scale-[1.02] transition-all text-white">
+            <div className="card p-4 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-2xl bg-white/10 text-amber-400 group-hover:bg-amber-400 group-hover:text-slate-900 transition-colors">
-                        <IndianRupee className="w-6 h-6" />
+                    <p className="text-slate-500 text-sm font-medium">Certified Value</p>
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <IndianRupee className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-black text-amber-400/50 uppercase tracking-widest border border-amber-400/20 px-2 py-0.5 rounded">Financial</span>
                 </div>
-                <h3 className="text-3xl font-black text-white mt-4 tracking-tighter">₹{totalValue}L</h3>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Certified PO Value</p>
+                <h3 className="text-2xl font-bold text-slate-800 mt-2">₹{totalValue}L</h3>
+                <p className="text-xs text-slate-400 mt-1">Total PO Value</p>
             </div>
         </div>
     );

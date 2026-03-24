@@ -31,9 +31,9 @@ export default function BOQFilters({ projects, selectedProject, onProjectChange,
 
             <button 
                 onClick={onAddItem}
-                className="w-full lg:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-900/20 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                className="btn-primary whitespace-nowrap flex items-center gap-1.5 w-full lg:w-auto px-6 py-3.5 sm:py-2.5 sm:px-5"
             >
-                <Plus className="w-6 h-6" /> Add BOQ Item
+                <Plus className="w-5 h-5" /> Add BOQ Item
             </button>
         </div>
     );

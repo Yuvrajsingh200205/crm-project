@@ -187,7 +187,7 @@ export default function Procurement() {
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 shadow-sm shadow-green-500/20 transition-all">
+                                <button type="submit" className="btn-primary">
                                     Generate PO
                                 </button>
                             </div>

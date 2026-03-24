@@ -483,69 +483,66 @@ export default function Attendance() {
 
       {/* Manual Entry Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-in" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-[#1e3a34] text-white">
-              <h2 className="text-xl font-black">Manual Attendance Log</h2>
-              <button onClick={() => setShowAddModal(false)}><X className="w-6 h-6 opacity-60 hover:opacity-100" /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+              <div>
+                <h2 className="text-base font-semibold">Manual Attendance Log</h2>
+                <p className="text-xs text-white/60 mt-0.5">Record Daily Shift</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
             </div>
             
-            <form onSubmit={handleAddLog} className="p-8 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 overflow-hidden">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Employee Name</label>
-                  <input required placeholder="e.g. Rajesh Kumar" className="input bg-slate-50 border-slate-200" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <form onSubmit={handleAddLog} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Employee Name</label>
+                  <input required placeholder="e.g. Rajesh Kumar" className="input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Employee ID</label>
-                  <input required placeholder="e.g. EMP-001" className="input bg-slate-50 border-slate-200" value={formData.empId} onChange={e => setFormData({...formData, empId: e.target.value})} />
+                  <label className="text-xs font-semibold text-slate-600">Employee ID</label>
+                  <input required placeholder="e.g. EMP-001" className="input" value={formData.empId} onChange={e => setFormData({...formData, empId: e.target.value})} />
                 </div>
               </div>
 
-              <div className="space-y-1.5 flex flex-col">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Attendance Date</label>
-                <input required type="date" className="input bg-slate-50 border-slate-200" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">In-Time</label>
-                  <input required type="time" className="input bg-slate-50 border-slate-200" value={formData.checkIn} onChange={e => setFormData({...formData, checkIn: e.target.value})} />
-                </div>
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Out-Time</label>
-                  <input required type="time" className="input bg-slate-50 border-slate-200" value={formData.checkOut} onChange={e => setFormData({...formData, checkOut: e.target.value})} />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600">Attendance Date</label>
+                <input required type="date" className="input" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Work Location</label>
-                  <div className="relative group/select">
-                    <select className="select bg-slate-50 border-slate-200 w-full pr-8 appearance-none" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
-                      <option>Head Office</option>
-                      <option>Site-A</option>
-                      <option>Site-B</option>
-                      <option>Remote</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645] transition-colors" />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">In-Time</label>
+                  <input required type="time" className="input" value={formData.checkIn} onChange={e => setFormData({...formData, checkIn: e.target.value})} />
                 </div>
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Present Status</label>
-                  <div className="relative group/select">
-                    <select className="select bg-slate-50 border-slate-200 w-full pr-8 appearance-none" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                      <option value="Present">Present</option>
-                      <option value="Late">Late Arrival</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645] transition-colors" />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Out-Time</label>
+                  <input required type="time" className="input" value={formData.checkOut} onChange={e => setFormData({...formData, checkOut: e.target.value})} />
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 btn-secondary py-3">Cancel</button>
-                <button type="submit" className="flex-1 btn-primary py-3 bg-[#2f6645]">Save Entry</button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Work Location</label>
+                  <select className="input" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
+                    <option>Head Office</option>
+                    <option>Site-A</option>
+                    <option>Site-B</option>
+                    <option>Remote</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Present Status</label>
+                  <select className="input" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                    <option value="Present">Present</option>
+                    <option value="Late">Late Arrival</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Save Entry</button>
               </div>
             </form>
           </div>

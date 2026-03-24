@@ -1,29 +1,25 @@
 import { useState } from 'react';
-import { 
-  Calendar, Briefcase, Clock, CheckCircle2, XCircle, 
-  Plus, Search, Filter, Mail, MoreVertical,
-  ChevronRight, ArrowUpRight, TrendingUp, X, Info, ChevronDown, 
-  AlertCircle
-} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Calendar, Briefcase, Clock, CheckCircle2, XCircle, Plus, Search, TrendingUp, X, Info, ChevronDown } from 'lucide-react';
 
 const initialRequests = [
   { id: '1', empId: 'EMP-001', name: 'Rajesh Kumar', type: 'Annual Leave', start: '2024-03-20', end: '2024-03-22', days: 3, reason: 'Family wedding', status: 'Pending', appliedOn: '2024-03-10' },
   { id: '2', empId: 'EMP-003', name: 'Priya Devi', type: 'Sick Leave', start: '2024-03-12', end: '2024-03-12', days: 1, reason: 'Medical appointment', status: 'Approved', appliedOn: '2024-03-11' },
+  { id: '3', empId: 'EMP-002', name: 'Suresh Verma', type: 'Comp Off', start: '2024-03-18', end: '2024-03-18', days: 1, reason: 'Overtime compensation', status: 'Rejected', appliedOn: '2024-03-13' },
 ];
+
+const statusBadge = {
+  'Approved': 'badge-green',
+  'Pending': 'badge-yellow',
+  'Rejected': 'badge-red',
+};
 
 export default function LeaveManagement() {
   const [requests, setRequests] = useState(initialRequests);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
-  const [formData, setFormData] = useState({
-    name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: ''
-  });
-  const [toast, setToast] = useState(null);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const [search, setSearch] = useState('');
+  const [formData, setFormData] = useState({ name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: '' });
 
   const handleApplyLeave = (e) => {
     e.preventDefault();
@@ -37,125 +33,114 @@ export default function LeaveManagement() {
     setRequests([newReq, ...requests]);
     setShowApplyModal(false);
     setFormData({ name: '', type: 'Annual Leave', start: '', end: '', days: '1', reason: '' });
-    showToast('Leave request submitted successfully!');
+    toast.success('Leave request submitted!');
   };
 
-  const filtered = requests.filter(r => activeTab === 'All' || r.status === activeTab);
+  const filtered = requests.filter(r =>
+    (activeTab === 'All' || r.status === activeTab) &&
+    (r.name.toLowerCase().includes(search.toLowerCase()) || r.type.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-800 pb-10">
+    <div className="space-y-5 animate-fade-in relative">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 leading-none mb-1">Leave Management</h1>
-          <p className="text-sm text-slate-500 font-medium italic">"Review, approve and track employee time-off requests."</p>
+          <h1 className="text-2xl font-bold text-slate-900">Leave Management</h1>
+          <p className="text-slate-500 text-sm mt-1">Review, approve and track employee time-off requests</p>
         </div>
-        <button onClick={() => setShowApplyModal(true)} className="btn-primary bg-[#2f6645] shadow-xl shadow-green-900/10 h-14 px-8">
-          <Plus className="w-5 h-5" /> Apply for Leave
+        <button onClick={() => setShowApplyModal(true)} className="btn-primary flex items-center gap-1.5">
+          <Plus className="w-4 h-4" /> Apply for Leave
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Annual Available', val: 14, color: 'emerald', icon: Calendar },
-          { label: 'Sick Available', val: 10, color: 'blue', icon: Briefcase },
-          { label: 'Casual Available', val: 5, color: 'amber', icon: Clock },
-          { label: 'Pending Apps', val: requests.filter(r => r.status === 'Pending').length, color: 'purple', icon: TrendingUp }
-        ].map((b, i) => (
-          <div key={i} className={`card p-6 border-b-4 hover:translate-y-[-4px] transition-all duration-300`} style={{ borderBottomColor: b.color === 'emerald' ? '#10b981' : b.color === 'blue' ? '#3b82f6' : b.color === 'amber' ? '#f59e0b' : '#a855f7' }}>
-            <div className={`p-3 rounded-2xl bg-${b.color}-50 text-${b.color}-600 w-fit mb-4`}>
-              <b.icon className="w-5 h-5" />
-            </div>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{b.label}</p>
-            <p className="text-3xl font-black text-slate-800">{b.val}</p>
+          { label: 'Annual Available', value: 14, color: 'text-green-500' },
+          { label: 'Sick Available', value: 10, color: 'text-blue-500' },
+          { label: 'Casual Available', value: 5, color: 'text-amber-500' },
+          { label: 'Pending Requests', value: requests.filter(r => r.status === 'Pending').length, color: 'text-purple-500' },
+        ].map((s, i) => (
+          <div key={i} className="card p-4">
+            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
+      {/* Table */}
       <div className="card overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
             {['All', 'Pending', 'Approved', 'Rejected'].map(t => (
-              <button 
+              <button
                 key={t}
                 onClick={() => setActiveTab(t)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
-                  activeTab === t ? 'bg-[#2f6645] text-white shadow-lg' : 'text-slate-500 hover:bg-white hover:shadow-sm'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'
                 }`}
               >
                 {t}
               </button>
             ))}
           </div>
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input placeholder="Search records by name..." className="input pl-10 bg-white" />
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input placeholder="Search by name or type..." className="input pl-9" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type / Reason</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                {['Employee', 'Leave Type', 'Duration', 'Reason', 'Applied On', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="table-header whitespace-nowrap">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map(req => (
-                <tr key={req.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-xs">
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan="7" className="p-8 text-center text-slate-400">No leave records found.</td></tr>
+              ) : filtered.map(req => (
+                <tr key={req.id} className="table-row hover:bg-slate-50 transition-colors">
+                  <td className="table-cell">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                         {req.name.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900 leading-none">{req.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1.5 tracking-tighter">Applied: {req.appliedOn}</p>
+                        <p className="text-slate-900 font-medium text-sm">{req.name}</p>
+                        <p className="text-slate-400 text-xs">{req.empId}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <p className="text-xs font-black text-slate-700">{req.type}</p>
-                    <p className="text-[10px] text-slate-400 italic truncate max-w-[200px] mt-1">"{req.reason}"</p>
+                  <td className="table-cell"><span className="badge badge-blue">{req.type}</span></td>
+                  <td className="table-cell">
+                    <p className="text-slate-900 font-semibold">{req.days} {req.days === 1 ? 'Day' : 'Days'}</p>
+                    <p className="text-slate-400 text-xs">{req.start} → {req.end}</p>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-black text-slate-900">{req.days} Days</span>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{req.start} → {req.end}</span>
-                    </div>
+                  <td className="table-cell text-slate-500 text-xs max-w-[180px] truncate">{req.reason}</td>
+                  <td className="table-cell text-slate-500 text-xs">{req.appliedOn}</td>
+                  <td className="table-cell">
+                    <span className={`badge ${statusBadge[req.status] || 'badge-yellow'}`}>{req.status}</span>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                      req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 
-                      req.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {req.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => {
-                          setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Approved'} : r));
-                          showToast('Leave Approved Successfully!');
-                        }} 
-                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-[#2f6645] hover:text-white transition-all shadow-sm active:scale-95"
+                  <td className="table-cell">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Approved'} : r)); toast.success('Leave Approved!'); }}
+                        className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-[#2f6645] hover:text-white transition-all"
                         title="Approve"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                       </button>
-                      <button 
-                        onClick={() => {
-                          setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Rejected'} : r));
-                          showToast('Leave Request Rejected', 'error');
-                        }} 
-                        className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95"
+                      <button
+                        onClick={() => { setRequests(requests.map(r => r.id === req.id ? {...r, status: 'Rejected'} : r)); toast.error('Leave Rejected'); }}
+                        className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-all"
                         title="Reject"
                       >
-                        <XCircle className="w-4 h-4" />
+                        <XCircle className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -166,76 +151,56 @@ export default function LeaveManagement() {
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border ${
-            toast.type === 'error' ? 'bg-red-900 text-red-100 border-red-700' : 'bg-[#1e3a34] text-white border-[#2f6645]'
-          }`}>
-            {toast.type === 'error' ? <AlertCircle className="w-5 h-5 text-red-400" /> : <CheckCircle2 className="w-5 h-5 text-[#9ae66e]" />}
-            <p className="text-sm font-bold uppercase tracking-widest">{toast.message}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Leave Application Modal */}
+      {/* Modal */}
       {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowApplyModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-in text-slate-800" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-[#1e3a34] text-white">
-              <h2 className="text-lg font-black uppercase tracking-widest">Apply For Leave</h2>
-              <button onClick={() => setShowApplyModal(false)}><X className="w-6 h-6 opacity-60 hover:opacity-100" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowApplyModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+              <div>
+                <h2 className="text-base font-semibold">Apply for Leave</h2>
+                <p className="text-xs text-white/60 mt-0.5">Submit a new leave request</p>
+              </div>
+              <button onClick={() => setShowApplyModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            
-            <form onSubmit={handleApplyLeave} className="p-8 space-y-5">
+            <form onSubmit={handleApplyLeave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Employee Name</label>
-                  <input required placeholder="Enter your name" className="input bg-slate-50 border-slate-200" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Employee Name</label>
+                  <input required placeholder="Enter your name" className="input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Leave Category</label>
-                  <div className="relative group/select">
-                    <select className="select bg-slate-50 border-slate-200 w-full pr-8 appearance-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                      <option>Annual Leave</option>
-                      <option>Sick Leave</option>
-                      <option>Casual Leave</option>
-                      <option>Comp Off</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645] transition-colors" />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Leave Category</label>
+                  <select className="input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                    <option>Annual Leave</option>
+                    <option>Sick Leave</option>
+                    <option>Casual Leave</option>
+                    <option>Comp Off</option>
+                  </select>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Start Date</label>
-                  <input required type="date" className="input bg-slate-50 border-slate-200" value={formData.start} onChange={e => setFormData({...formData, start: e.target.value})} />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Start Date</label>
+                  <input required type="date" className="input" value={formData.start} onChange={e => setFormData({...formData, start: e.target.value})} />
                 </div>
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">End Date</label>
-                  <input required type="date" className="input bg-slate-50 border-slate-200" value={formData.end} onChange={e => setFormData({...formData, end: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 items-end">
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Number of Days</label>
-                  <input required type="number" className="input bg-slate-50 border-slate-200" value={formData.days} onChange={e => setFormData({...formData, days: e.target.value})} />
-                </div>
-                <div className="bg-emerald-50 p-2 rounded-xl text-emerald-700 text-[10px] font-bold border border-emerald-100 flex items-center gap-2">
-                   <Info className="w-3 h-3" /> Balance will be checked!
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600">End Date</label>
+                  <input required type="date" className="input" value={formData.end} onChange={e => setFormData({...formData, end: e.target.value})} />
                 </div>
               </div>
-
-              <div className="space-y-1.5 flex flex-col">
-                <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Reason / Description</label>
-                <textarea rows="3" required placeholder="Brief reason for time-off..." className="input bg-slate-50 border-slate-200 resize-none py-3" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})}></textarea>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600">Number of Days</label>
+                <input required type="number" className="input" value={formData.days} onChange={e => setFormData({...formData, days: e.target.value})} />
               </div>
-
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowApplyModal(false)} className="flex-1 btn-secondary py-3">Discard</button>
-                <button type="submit" className="flex-1 btn-primary py-3 bg-[#2f6645]">Submit Request</button>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600">Reason</label>
+                <textarea rows="3" required placeholder="Brief reason for time-off..." className="input resize-none" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowApplyModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Submit Request</button>
               </div>
             </form>
           </div>
