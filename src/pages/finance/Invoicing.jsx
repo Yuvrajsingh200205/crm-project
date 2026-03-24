@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Download, CheckCircle2, Clock, FileText, TrendingUp, X, Edit2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
+import Skeleton from '../../components/common/Skeleton';
 
-const INITIAL_INVOICES = [
-    { id: 'INV-2025-001', client: 'Larsen & Toubro', project: 'Patna Metro B', amount: 4500000, date: '2025-03-10', status: 'Pending', type: 'RA Bill #04', tax: 810000, retention: 225000 },
-    { id: 'INV-2025-002', client: 'Tata Projects', project: 'Smart City Muzaffarpur', amount: 1250000, date: '2025-03-08', status: 'Paid', type: 'Tax Invoice', tax: 225000, retention: 0 },
-    { id: 'INV-2025-003', client: 'NHAI', project: 'NH-22 Widening', amount: 8500000, date: '2025-03-05', status: 'Overdue', type: 'RA Bill #12', tax: 1530000, retention: 425000 },
-    { id: 'INV-2025-004', client: 'Reliance Infra', project: 'Solar Farm Gaya', amount: 2800000, date: '2025-03-01', status: 'Paid', type: 'Tax Invoice', tax: 504000, retention: 0 },
-    { id: 'INV-2025-005', client: 'Bihar Urban Dev', project: 'Drainage Phase 2', amount: 1800000, date: '2025-02-25', status: 'Approved', type: 'RA Bill #01', tax: 324000, retention: 90000 },
-];
+const INITIAL_INVOICES = [];
 
 const statusBadge = {
     'Paid': 'badge-green',
@@ -26,6 +21,13 @@ export default function Invoicing() {
     const [invoices, setInvoices] = useState(INITIAL_INVOICES);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => setIsLoading(false), 1100);
+        return () => clearTimeout(timer);
+    }, []);
 
     const [formData, setFormData] = useState({
         client: '',
@@ -113,7 +115,7 @@ export default function Invoicing() {
                     { label: 'GST Liability', value: '₹7.8 L', color: 'text-purple-500', icon: TrendingUp },
                 ].map((s, i) => (
                     <div key={i} className="card p-4">
-                        <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        {isLoading ? <Skeleton variant="badge" className="h-8 w-20 mb-1" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
                         <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
                     </div>
                 ))}
@@ -150,7 +152,21 @@ export default function Invoicing() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredInvoices.length === 0 ? (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="table-row">
+                                        <td className="table-cell"><Skeleton variant="text" className="w-20" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" className="w-32" /><Skeleton variant="text" className="w-24 mt-1" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell text-right"><Skeleton variant="button" className="w-20 h-8" /></td>
+                                    </tr>
+                                ))
+                            ) : filteredInvoices.length === 0 ? (
                                 <tr><td colSpan="9" className="p-6 text-center text-slate-500">No invoices found.</td></tr>
                             ) : filteredInvoices.map((inv, i) => (
                                 <tr key={inv.id} className="table-row hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setActiveModule('invoice-detail')}>

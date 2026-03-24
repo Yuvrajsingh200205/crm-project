@@ -1,15 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Download, Building2, Calendar, CheckCircle2, Clock, AlertCircle, X, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
+import Skeleton from '../../components/common/Skeleton';
 
-const INITIAL_RECEIVABLES = [
-    { id: 'AR-001', client: 'Larsen & Toubro', project: 'Patna Metro B', amount: 4500000, invoiceDate: '2025-03-10', dueDate: '2025-04-10', status: 'Pending', type: 'RA Bill #04' },
-    { id: 'AR-002', client: 'Tata Projects', project: 'Smart City Muz.', amount: 1250000, invoiceDate: '2025-03-08', dueDate: '2025-04-08', status: 'Received', type: 'Tax Invoice' },
-    { id: 'AR-003', client: 'NHAI', project: 'NH-22 Widening', amount: 8500000, invoiceDate: '2025-03-05', dueDate: '2025-03-20', status: 'Overdue', type: 'RA Bill #12' },
-    { id: 'AR-004', client: 'Reliance Infra', project: 'Solar Farm Gaya', amount: 2800000, invoiceDate: '2025-03-01', dueDate: '2025-04-01', status: 'Received', type: 'Tax Invoice' },
-    { id: 'AR-005', client: 'Bihar Urban Dev', project: 'Drainage Phase 2', amount: 1800000, invoiceDate: '2025-02-25', dueDate: '2025-03-25', status: 'Pending', type: 'RA Bill #01' },
-];
+const INITIAL_RECEIVABLES = [];
 
 const statusBadge = {
     'Received': 'badge-green',
@@ -22,6 +17,13 @@ export default function AccountsReceivable() {
     const [receivables, setReceivables] = useState(INITIAL_RECEIVABLES);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => setIsLoading(false), 1200);
+        return () => clearTimeout(timer);
+    }, []);
 
     const [formData, setFormData] = useState({
         client: '',
@@ -109,7 +111,7 @@ export default function AccountsReceivable() {
                     { label: 'Total Invoices', value: receivables.length, color: 'text-purple-500' },
                 ].map((s, i) => (
                     <div key={i} className="card p-4">
-                        <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        {isLoading ? <Skeleton variant="badge" className="h-8 w-20 mb-1" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
                         <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
                     </div>
                 ))}
@@ -134,7 +136,21 @@ export default function AccountsReceivable() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="table-row">
+                                        <td className="table-cell"><Skeleton variant="text" className="w-16" /></td>
+                                        <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-7 h-7" /><Skeleton variant="text" className="w-32" /></div></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="button" className="w-10 h-8" /></td>
+                                    </tr>
+                                ))
+                            ) : filtered.length === 0 ? (
                                 <tr><td colSpan="9" className="p-6 text-center text-slate-500">No receivables found.</td></tr>
                             ) : filtered.map((r, i) => (
                                 <tr key={i} className="table-row hover:bg-slate-50 transition-colors">

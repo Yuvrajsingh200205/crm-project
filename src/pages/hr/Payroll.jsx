@@ -1,17 +1,11 @@
-import { useState } from 'react';
-import toast from 'react-hot-toast';
 import { 
   Download, CheckCircle, Clock, Users, IndianRupee, FileText, 
   ChevronDown, Plus, X, ArrowLeft, Building2, Wallet, TrendingUp, 
   ShieldCheck, Eye, Fingerprint, Calendar, CheckCircle2 
 } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 
-const initialSalaryData = [
-  { id: 'EMP-001', name: 'Rajesh Kumar', designation: 'Project Manager', basic: 35000, hra: 17500, conv: 1600, special: 3900, gross: 58000, epf: 4200, esi: 0, pt: 200, tds: 1800, net: 51800, status: 'Processed', month: 'February 2026' },
-  { id: 'EMP-002', name: 'Suresh Verma', designation: 'Senior Engineer', basic: 28000, hra: 14000, conv: 1600, special: 2400, gross: 46000, epf: 3360, esi: 0, pt: 200, tds: 680, net: 41760, status: 'Processed', month: 'February 2026' },
-  { id: 'EMP-003', name: 'Priya Devi', designation: 'Site Engineer', basic: 22000, hra: 11000, conv: 1600, special: 1400, gross: 36000, epf: 2640, esi: 270, pt: 200, tds: 0, net: 32890, status: 'Processed', month: 'February 2026' },
-  { id: 'EMP-004', name: 'Mohan Lal', designation: 'Store Keeper', basic: 15000, hra: 6000, conv: 1600, special: -1600, gross: 21000, epf: 1800, esi: 158, pt: 150, tds: 0, net: 18892, status: 'Pending', month: 'February 2026' },
-];
+const initialSalaryData = [];
 
 const salaryHistory = [
   { month: 'January 2026', gross: 58000, net: 51800, status: 'Paid', date: '2026-01-31' },
@@ -26,6 +20,13 @@ export default function Payroll() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('February 2026');
   const [activeTab, setActiveTab] = useState('All');
+  const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
   
   const [formData, setFormData] = useState({
     empId: '', name: '', designation: '', basic: 0, hra: 0, conv: 0, special: 0, epf: 0, esi: 0, tds: 0
@@ -368,7 +369,11 @@ export default function Payroll() {
                 <div key={i} className="space-y-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-black text-slate-800 leading-none">{s.val}</p>
+                    {isLoading ? (
+                      <Skeleton variant="badge" className="h-6 w-16 mb-1" />
+                    ) : (
+                      <p className="text-2xl font-black text-slate-800 leading-none">{s.val}</p>
+                    )}
                     <div className={`w-1.5 h-1.5 rounded-full bg-${s.color}-500`} />
                   </div>
                   <p className="text-[9px] font-bold text-slate-400 italic">{s.sub}</p>
@@ -439,7 +444,22 @@ export default function Payroll() {
               </tr>
             </thead>
             <tbody>
-              {salaries.filter(s => activeTab === 'All' || s.status === activeTab).map((e, i) => (
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="table-row">
+                    <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-8 h-8" /><Skeleton variant="text" className="w-24" /></div></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell text-right"><Skeleton variant="button" className="w-20" /></td>
+                  </tr>
+                ))
+              ) : salaries.length === 0 ? (
+                <tr><td colSpan="8" className="p-8 text-center text-slate-400 uppercase text-[10px] font-bold tracking-widest opacity-50">No processed records found</td></tr>
+              ) : salaries.filter(s => activeTab === 'All' || s.status === activeTab).map((e, i) => (
                 <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
                   <td className="table-cell">
                     <div className="flex items-center gap-2">

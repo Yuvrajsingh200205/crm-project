@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     FileText, Search, Plus, Filter, Download, MoreVertical, 
     ArrowRightLeft, CheckCircle2, AlertCircle, Clock, 
@@ -7,15 +7,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../../context/AppContext';
+import Skeleton from '../../components/common/Skeleton';
 
-const MOCK_VOUCHERS = [
-    { id: 'PV-1001', type: 'Payment', date: '2025-03-15', party: 'Janki Enterprises', amount: 184500, narration: 'RA-05 Payment for PSC Pole works', status: 'Posted', bank: 'SBI Main A/C', createdBy: 'Admin' },
-    { id: 'RV-2042', type: 'Receipt', date: '2025-03-14', party: 'Bihar Rural Dev. Authority', amount: 850000, narration: 'Advance received for SWPL-BRGF Phase 1', status: 'Posted', bank: 'HDFC Bank', createdBy: 'Admin' },
-    { id: 'JV-3018', type: 'Journal', date: '2025-03-14', party: 'N/A', amount: 45000, narration: 'Depreciation provision for March 2025', status: 'Posted', bank: 'Journal', createdBy: 'System' },
-    { id: 'SV-4011', type: 'Sales', date: '2025-03-12', party: 'PMRCL – Patna Metro', amount: 2340000, narration: 'RA-03 Invoice for Civil Works Section B', status: 'Pending', bank: 'Invoice', createdBy: 'Admin' },
-    { id: 'PV-1002', type: 'Payment', date: '2025-03-10', party: 'GSAR Contractors', amount: 92000, narration: 'Payment for ABC Cable installation', status: 'Pending', bank: 'HDFC Bank', createdBy: 'Admin' },
-    { id: 'CV-5003', type: 'Contra', date: '2025-03-08', party: 'Cash Transfer', amount: 50000, narration: 'Cash withdrawn from SBI Main', status: 'Posted', bank: 'SBI Main A/C', createdBy: 'Admin' },
-];
+const MOCK_VOUCHERS = [];
 
 const VOUCHER_TYPES = [
     { key: 'Payment', shortcut: 'F5', label: 'Payment', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
@@ -32,6 +26,13 @@ export default function Vouchers() {
     const [filter, setFilter] = useState('All');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => setIsLoading(false), 950);
+        return () => clearTimeout(timer);
+    }, []);
 
     const filteredVouchers = MOCK_VOUCHERS.filter(v => 
         (v.party.toLowerCase().includes(search.toLowerCase()) || v.id.toLowerCase().includes(search.toLowerCase())) &&
@@ -118,7 +119,16 @@ export default function Vouchers() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredVouchers.map(v => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="table-row">
+                                        <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-9 h-9" /><Skeleton variant="text" className="w-24" /></div></td>
+                                        <td className="table-cell"><Skeleton variant="text" className="w-40" /><Skeleton variant="text" className="w-32 mt-1" /></td>
+                                        <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-7 h-7" /><Skeleton variant="text" className="w-20" /></div></td>
+                                        <td className="table-cell text-right"><Skeleton variant="text" className="ml-auto w-20" /><Skeleton variant="badge" className="ml-auto mt-1" /></td>
+                                    </tr>
+                                ))
+                            ) : filteredVouchers.map(v => (
                                 <tr
                                     key={v.id}
                                     onClick={() => setActiveModule('voucher-detail')}

@@ -102,7 +102,7 @@ export default function LeaveManagement() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((s, i) => (
           <div key={i} className="card p-4">
-            {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-300" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
+            {isLoading ? <Skeleton variant="badge" className="h-8 w-16 mb-0" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
             <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
           </div>
         ))}
@@ -139,7 +139,19 @@ export default function LeaveManagement() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={i} className="table-row">
+                    <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" /><Skeleton variant="text" className="w-24" /></div></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="button" className="w-12 h-8" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan="7" className="p-8 text-center text-slate-400">No leave records found.</td></tr>
               ) : filtered.map(req => (
                 <tr key={req.id} className="table-row hover:bg-slate-50 transition-colors">

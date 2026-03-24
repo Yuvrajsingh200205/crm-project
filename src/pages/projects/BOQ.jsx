@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Download, Filter } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 import { useApp } from '../../context/AppContext';
 import { boqAPI } from '../../api/boq';
 import toast from 'react-hot-toast';
@@ -203,8 +204,26 @@ export default function BOQ() {
 
             {/* Table Dynamic Loader Mapping */}
             {isLoadingData ? (
-                <div className="p-12 flex justify-center text-slate-400 rounded-lg animate-pulse w-full bg-white card">
-                    Loading items from API framework securely...
+                <div className="card overflow-hidden">
+                    <div className="p-6 space-y-4">
+                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                           <Skeleton variant="text" className="w-1/3" />
+                           <Skeleton variant="badge" />
+                        </div>
+                        <div className="space-y-3 px-2">
+                           {Array.from({ length: 4 }).map((_, i) => (
+                               <div key={i} className="flex gap-6 py-2 border-b border-slate-50 last:border-0 items-center">
+                                   <Skeleton variant="text" className="w-12" />
+                                   <div className="flex-1 space-y-1">
+                                       <Skeleton variant="text" className="w-3/4" />
+                                       <Skeleton variant="text" className="w-1/2" />
+                                   </div>
+                                   <Skeleton variant="text" className="w-20" />
+                                   <Skeleton variant="button" className="w-24" />
+                               </div>
+                           ))}
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <BOQTable 

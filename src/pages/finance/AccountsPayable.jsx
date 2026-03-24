@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
 import { 
     CreditCard, Search, Plus, Download, 
     Truck, Calendar, AlertCircle, CheckCircle2, Clock, X, Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
+import Skeleton from '../../components/common/Skeleton';
 
-const INITIAL_BILLS = [
-    { id: 'BILL-001', vendor: 'UltraTech Cement', project: 'Patna Metro B', amount: 850000, date: '2025-03-12', dueDate: '2025-03-25', status: 'Pending', tds: 8500, type: 'Purchase' },
-    { id: 'BILL-002', vendor: 'JSW Steel', project: 'Smart City Muz.', amount: 1560000, date: '2025-03-10', dueDate: '2025-03-20', status: 'Approved', tds: 15600, type: 'Purchase' },
-    { id: 'BILL-003', vendor: 'Local Sand Supplier', project: 'Drainage P2', amount: 45000, date: '2025-02-28', dueDate: '2025-03-05', status: 'Overdue', tds: 450, type: 'Direct' },
-    { id: 'BILL-004', vendor: 'Security Agency XYZ', project: 'Solar Farm', amount: 220000, date: '2025-03-01', dueDate: '2025-03-15', status: 'Paid', tds: 2200, type: 'Service' },
-    { id: 'BILL-005', vendor: 'Machine Rental Corp', project: 'NH-22 Widening', amount: 380000, date: '2025-03-05', dueDate: '2025-03-18', status: 'Pending', tds: 3800, type: 'Service' },
-];
+const INITIAL_BILLS = [];
 
 const statusBadge = {
     'Paid': 'badge-green',
@@ -26,6 +20,15 @@ export default function AccountsPayable() {
     const [bills, setBills] = useState(INITIAL_BILLS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 1200);
+        return () => clearTimeout(timer);
+    }, []);
 
     const [formData, setFormData] = useState({
         vendor: '',
@@ -114,7 +117,11 @@ export default function AccountsPayable() {
                     { label: 'Scheduled Payment', value: '₹12.0 L', color: 'text-blue-500', icon: Calendar },
                 ].map((s, i) => (
                     <div key={i} className="card p-4">
-                        <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        {isLoading ? (
+                            <Skeleton variant="badge" className="h-8 w-20 mb-1" />
+                        ) : (
+                            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        )}
                         <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
                     </div>
                 ))}
@@ -139,7 +146,27 @@ export default function AccountsPayable() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="table-row">
+                                        <td className="table-cell"><Skeleton variant="text" className="w-16" /></td>
+                                        <td className="table-cell">
+                                            <div className="flex items-center gap-2">
+                                                <Skeleton variant="circle" className="w-7 h-7" />
+                                                <Skeleton variant="text" className="w-32" />
+                                            </div>
+                                        </td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="button" className="w-8 h-8" /></td>
+                                    </tr>
+                                ))
+                            ) : filtered.length === 0 ? (
                                 <tr><td colSpan="10" className="p-6 text-center text-slate-500">No bills found.</td></tr>
                             ) : filtered.map((bill, i) => (
                                 <tr key={i} className="table-row hover:bg-slate-50 transition-colors">

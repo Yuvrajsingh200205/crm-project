@@ -1,17 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldCheck, FileText, Landmark, AlertCircle, ArrowLeft, Download, CheckCircle2, Plus, Eye, ChevronDown, X } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 
-const initialSummary = [
-  { id: '1', title: 'EPF Contribution', month: 'February 2026', amount: '158400', status: 'Filed', filedOn: '2026-03-10', type: 'Monthly', bank: 'HDFC Bank', challanNo: 'CH-8829-X', items: [
-    { label: 'Employer Share', val: '₹84,200' }, { label: 'Employee Share', val: '₹74,200' }
-  ]},
-  { id: '2', title: 'ESIC Contribution', month: 'February 2026', amount: '42150', status: 'Filed', filedOn: '2026-03-12', type: 'Monthly', bank: 'ICICI Bank', challanNo: 'ES-9901-P', items: [
-    { label: 'ESI Employer', val: '₹32,150' }, { label: 'ESI Employee', val: '₹10,000' }
-  ]},
-  { id: '3', title: 'Professional Tax', month: 'February 2026', amount: '12400', status: 'Due Soon', filedOn: '-', type: 'Monthly', bank: '-', challanNo: '-', items: [] },
-  { id: '4', title: 'TDS Payment', month: 'Q4 2025-26', amount: '284200', status: 'Pending', filedOn: '-', type: 'Quarterly', bank: '-', challanNo: '-', items: [] },
-];
+const initialSummary = [];
 
 const statusBadge = {
   'Filed': 'badge-green',
@@ -25,6 +17,13 @@ export default function StatutoryCompliance() {
   const [selectedFiling, setSelectedFiling] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', month: 'February 2026', amount: '', status: 'Filed', type: 'Monthly', bank: 'HDFC Bank', challanNo: '' });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleAddField = (e) => {
     e.preventDefault();
@@ -139,7 +138,7 @@ export default function StatutoryCompliance() {
           { label: 'Portal Sync', value: 'Active', color: 'text-purple-500' },
         ].map((s, i) => (
           <div key={i} className="card p-4">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            {isLoading ? <Skeleton variant="badge" className="h-8 w-16 mb-1" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
             <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
           </div>
         ))}
@@ -165,7 +164,26 @@ export default function StatutoryCompliance() {
               </tr>
             </thead>
             <tbody>
-              {data.map((item) => (
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="table-row">
+                    <td className="table-cell">
+                      <div className="flex gap-2">
+                        <Skeleton variant="circle" className="w-8 h-8 rounded-lg" />
+                        <Skeleton variant="text" className="w-24" />
+                      </div>
+                    </td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="button" className="w-8 h-8" /></td>
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr><td colSpan="7" className="p-8 text-center text-slate-400">No compliance records found.</td></tr>
+              ) : data.map((item) => (
                 <tr key={item.id} className="table-row hover:bg-slate-50 transition-colors">
                   <td className="table-cell">
                     <div className="flex items-center gap-2">

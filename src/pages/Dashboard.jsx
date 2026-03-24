@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, FolderKanban, Users,
     Package, AlertTriangle, CheckCircle, Clock, Activity,
@@ -7,6 +8,7 @@ import {
     AreaChart, Area, BarChart, Bar, LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import Skeleton from '../components/common/Skeleton';
 
 const revenueData = [
     { month: 'Sep', revenue: 18.2, expense: 12.1, profit: 6.1 },
@@ -66,6 +68,13 @@ const statusConfig = {
 };
 
 export default function Dashboard() {
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(timer);
+    }, []);
     const stats = [
         {
             label: 'Total Revenue (FY)',
@@ -142,12 +151,20 @@ export default function Dashboard() {
                                 <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
                                     <Icon className={`w-6 h-6 ${stat.color}`} />
                                 </div>
-                                <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${stat.positive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'}`}>
-                                    {stat.positive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                                    {stat.change}
-                                </span>
+                                {isLoading ? (
+                                    <Skeleton variant="badge" className="h-5 w-16" />
+                                ) : (
+                                    <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${stat.positive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'}`}>
+                                        {stat.positive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                                        {stat.change}
+                                    </span>
+                                )}
                             </div>
-                            <p className="text-3xl font-extrabold text-slate-900 mb-1">{stat.value}</p>
+                            {isLoading ? (
+                                <Skeleton variant="text" className="h-10 w-24 mb-1" />
+                            ) : (
+                                <p className="text-3xl font-extrabold text-slate-900 mb-1">{stat.value}</p>
+                            )}
                             <p className="text-slate-500 text-sm font-medium">{stat.label}</p>
                         </div>
                     );
@@ -167,26 +184,32 @@ export default function Dashboard() {
                             <RefreshCw className="w-4 h-4" /> <span className="font-semibold">Refresh</span>
                         </button>
                     </div>
-                    <ResponsiveContainer width="100%" height={260}>
-                        <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#16a34a" stopOpacity={0.4} />
-                                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                            <XAxis dataKey="month" stroke="#94a3b8" tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-                            <YAxis stroke="#94a3b8" tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#22c55e" fill="url(#revGrad)" strokeWidth={3} dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                            <Area type="monotone" dataKey="profit" name="Profit" stroke="#16a34a" fill="url(#profGrad)" strokeWidth={3} dot={{ fill: '#16a34a', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div className="h-[260px] w-full">
+                        {isLoading ? (
+                            <Skeleton className="w-full h-full rounded-xl" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.4} />
+                                            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                    <XAxis dataKey="month" stroke="#94a3b8" tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                                    <YAxis stroke="#94a3b8" tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#22c55e" fill="url(#revGrad)" strokeWidth={3} dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                    <Area type="monotone" dataKey="profit" name="Profit" stroke="#16a34a" fill="url(#profGrad)" strokeWidth={3} dot={{ fill: '#16a34a', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </div>
                 </div>
 
                 {/* Project Distribution */}

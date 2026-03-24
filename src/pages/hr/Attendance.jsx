@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
 import { 
   Calendar, Clock, UserCheck, UserX, AlertCircle, 
   ChevronLeft, ChevronRight, Search, Download, 
   MapPin, CheckCircle2, MoreHorizontal, Info, Plus, X, ChevronDown,
   Fingerprint, CalendarDays, ArrowLeft, Undo2, Eye
 } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 
-const initialAttendance = [
-  { id: '1', empId: 'EMP-001', name: 'Rajesh Kumar', date: '2024-03-13', checkIn: '09:05 AM', checkOut: '06:15 PM', status: 'Present', workHours: '09:10', location: 'Head Office' },
-  { id: '2', empId: 'EMP-002', name: 'Suresh Verma', date: '2024-03-13', checkIn: '09:35 AM', checkOut: '06:45 PM', status: 'Late', workHours: '09:10', location: 'Site-A' },
-  { id: '3', empId: 'EMP-003', name: 'Priya Devi', date: '2024-03-13', checkIn: '08:55 AM', checkOut: '05:30 PM', status: 'Present', workHours: '08:35', location: 'Site-B' },
-];
+const initialAttendance = [];
 
 export default function Attendance() {
   const [attendance, setAttendance] = useState(initialAttendance);
@@ -30,6 +26,13 @@ export default function Attendance() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [toast, setToast] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
@@ -425,7 +428,29 @@ export default function Attendance() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAttendance.map((row) => (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4"><div className="flex items-center gap-3"><Skeleton variant="circle" className="w-8 h-8" /><Skeleton variant="text" className="w-24" /></div></td>
+                    <td className="px-6 py-4"><Skeleton variant="text" className="w-16" /></td>
+                    <td className="px-6 py-4"><Skeleton variant="text" className="w-12" /></td>
+                    <td className="px-6 py-4"><Skeleton variant="text" className="w-12" /></td>
+                    <td className="px-6 py-4"><Skeleton variant="text" className="w-12" /></td>
+                    <td className="px-6 py-4"><Skeleton variant="badge" /></td>
+                    <td className="px-6 py-4 text-right"><div className="flex justify-end gap-2"><Skeleton variant="button" className="w-8 h-8" /><Skeleton variant="button" className="w-8 h-8" /></div></td>
+                  </tr>
+                ))
+              ) : filteredAttendance.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
+                      <UserX className="w-12 h-12 text-slate-400" />
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-500">No records found for this period</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredAttendance.map((row) => (
                 <tr key={row.id} className="table-row group">
                   <td className="table-cell">
                     <div className="flex items-center gap-3">
@@ -475,7 +500,7 @@ export default function Attendance() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

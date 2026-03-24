@@ -3,6 +3,7 @@ import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, Ch
 import { useApp } from '../../context/AppContext';
 import { employeeAPI } from '../../api/employee';
 import toast from 'react-hot-toast';
+import Skeleton from '../../components/common/Skeleton';
 export default function EmployeeMaster() {
     const { setActiveModule, setSelectedEmployee, employees, setEmployees } = useApp();
     const [search, setSearch] = useState('');
@@ -173,9 +174,24 @@ export default function EmployeeMaster() {
                             </tr>
                         </thead>
                         <tbody>
-                                {isFetching && (
-                                    <tr><td colSpan="9" className="p-12 text-center text-slate-400">Loading employees from server...</td></tr>
-                                )}
+                                {isFetching && Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={`skeleton-${i}`} className="table-row">
+                                        <td className="table-cell"><Skeleton variant="text" className="w-16" /></td>
+                                        <td className="table-cell">
+                                            <div className="flex items-center gap-3">
+                                                <Skeleton variant="circle" />
+                                                <div className="w-32"><Skeleton variant="text" count={2} /></div>
+                                            </div>
+                                        </td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="badge" /></td>
+                                        <td className="table-cell"><Skeleton variant="button" /></td>
+                                    </tr>
+                                ))}
                                 {!isFetching && filtered.length === 0 ? (
                                     <tr><td colSpan="9" className="p-6 text-center text-slate-500">No employees found. Add a new one.</td></tr>
                                 ) : filtered.map((e, i) => (

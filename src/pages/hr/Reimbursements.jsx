@@ -1,13 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Receipt, Wallet, CheckCircle2, XCircle, Clock, Plus, Search, X, ChevronDown } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 
-const initialClaims = [
-  { id: 'CLM-001', empId: 'EMP-001', name: 'Rajesh Kumar', date: '2026-03-05', category: 'Travel & Lodging', amount: 1250, description: 'Client meeting at Site-A', status: 'Approved', department: 'Operations' },
-  { id: 'CLM-002', empId: 'EMP-002', name: 'Suresh Verma', date: '2026-03-08', category: 'Food & Meals', amount: 450, description: 'Overtime dinner during project peak', status: 'Pending', department: 'Engineering' },
-  { id: 'CLM-003', empId: 'EMP-003', name: 'Priya Devi', date: '2026-03-02', category: 'Supplies & Stationary', amount: 2800, description: 'Office stationery and printing paper', status: 'Rejected', department: 'Admin' },
-  { id: 'CLM-004', empId: 'EMP-004', name: 'Amit Singh', date: '2026-03-10', category: 'Client Entertainment', amount: 4500, description: 'Dinner with VIP Client for North-End Project', status: 'Pending', department: 'Sales' },
-];
+const initialClaims = [];
 
 const statusBadge = {
   'Approved': 'badge-green',
@@ -21,6 +17,13 @@ export default function Reimbursements() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({ name: '', category: 'Travel & Lodging', date: new Date().toISOString().split('T')[0], amount: '', description: '' });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 900);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleAddClaim = (e) => {
     e.preventDefault();
@@ -75,7 +78,7 @@ export default function Reimbursements() {
           { label: 'Total Claims', value: claims.length, color: 'text-purple-500' },
         ].map((s, i) => (
           <div key={i} className="card p-4">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            {isLoading ? <Skeleton variant="badge" className="h-8 w-16 mb-1" /> : <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>}
             <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
           </div>
         ))}
@@ -113,7 +116,20 @@ export default function Reimbursements() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="table-row">
+                    <td className="table-cell"><Skeleton variant="text" className="w-12" /></td>
+                    <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-7 h-7" /><Skeleton variant="text" className="w-24" /></div></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="text" /></td>
+                    <td className="table-cell"><Skeleton variant="badge" /></td>
+                    <td className="table-cell"><Skeleton variant="button" className="w-16 h-8" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan="8" className="p-8 text-center text-slate-400">No claims found.</td></tr>
               ) : filtered.map((claim, i) => (
                 <tr key={i} className="table-row hover:bg-slate-50 transition-colors">

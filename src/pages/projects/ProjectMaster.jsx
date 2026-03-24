@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, MapPin, Building2, TrendingUp, BarChart3, DollarSign, Loader2 } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 import { projectAPI } from '../../api/project';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
@@ -194,8 +195,20 @@ export default function ProjectMaster() {
             />
 
             {isLoadingData ? (
-                <div className="card w-full p-12 flex justify-center items-center text-slate-400 gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Fetching projects remotely...
+                <div className="card overflow-hidden">
+                    <div className="p-8 space-y-4">
+                        <Skeleton variant="title" />
+                        <div className="space-y-3">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="flex gap-4">
+                                    <Skeleton variant="text" className="w-20" />
+                                    <Skeleton variant="text" className="flex-1" />
+                                    <Skeleton variant="badge" />
+                                    <Skeleton variant="button" className="w-16" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <ProjectTable 
