@@ -126,23 +126,33 @@ export default function EmployeeMaster() {
 
     return (
         <div className="space-y-5 animate-fade-in relative">
-            {/* Header */}
+            {/* Header section with Title and Add Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Employee Master</h1>
+                    <p className="text-slate-500 text-sm mt-1">Manage employee records, roles, and profiles</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button className="btn-secondary whitespace-nowrap hidden sm:flex items-center gap-1.5">
+                        <Upload className="w-4 h-4" /> Import
+                    </button>
+                    <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
+                        <Plus className="w-4 h-4" /> Add Employee
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters and Search */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input className="input pl-9 w-full" placeholder="Search by name or employee ID..." value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
-                <div className="flex gap-2">
-                    <div className="relative group/select">
-                        <select className="select w-32 bg-white pr-8 appearance-none" value={dept} onChange={e => setDept(e.target.value)}>
-                            {depts.map(d => <option key={d}>{d}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
-                    </div>
-                    <button className="btn-secondary whitespace-nowrap"><Upload className="w-4 h-4 mr-1" /> Import</button>
-                    <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
-                        <Plus className="w-4 h-4" /> Add Employee
-                    </button>
+                <div className="relative group/select">
+                    <select className="select w-full sm:w-40 bg-white pr-8 appearance-none" value={dept} onChange={e => setDept(e.target.value)}>
+                        {depts.map(d => <option key={d}>{d}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
                 </div>
             </div>
 

@@ -12,5 +12,17 @@ export const leaveAPI = {
         // payload: { type: string, total: number }
         const response = await axiosInstance.post('/leaves', leaveData);
         return response.data;
+    },
+
+    // Get all leave allocations
+    getAllLeaveAllocations: async () => {
+        const response = await axiosInstance.get('/leave-allocations');
+        return response.data;
+    },
+
+    // Create a new leave allocation
+    createLeaveAllocation: async (allocationData) => {
+        const response = await axiosInstance.post('/leave-allocations', allocationData);
+        return response.data;
     }
 };

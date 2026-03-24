@@ -184,11 +184,11 @@ export default function Dashboard() {
                             <RefreshCw className="w-4 h-4" /> <span className="font-semibold">Refresh</span>
                         </button>
                     </div>
-                    <div className="h-[260px] w-full">
+                    <div className="h-[260px] w-full min-h-[260px]">
                         {isLoading ? (
                             <Skeleton className="w-full h-full rounded-xl" />
                         ) : (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="99%" height="99%">
                                 <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">

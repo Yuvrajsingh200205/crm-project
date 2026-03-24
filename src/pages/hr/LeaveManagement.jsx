@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { leaveAPI } from '../../api/leave';
 import { Calendar, Briefcase, Clock, CheckCircle2, XCircle, Plus, Search, TrendingUp, X, Info, ChevronDown, Loader2 } from 'lucide-react';
+import Skeleton from '../../components/common/Skeleton';
 
 const initialRequests = [];
 
