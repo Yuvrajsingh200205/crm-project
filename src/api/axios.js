@@ -30,8 +30,11 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip token refresh for auth endpoints (login, etc.) — let their errors propagate normally
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login');
+
     // Check if error is 401 Unauthorized or 403 Forbidden and we haven't retried yet
-    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+    if (!isAuthEndpoint && (error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {

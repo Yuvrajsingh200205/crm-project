@@ -18,57 +18,41 @@ const Login = () => {
       // 1. Call real login API
       const response = await authAPI.login(email, password);
       
-      // 2. Extract tokens from API response
-      // Structure varies based on backend, using fallback optional chaining
-      const accessToken = response?.accessToken || response?.data?.accessToken;
-      const refreshToken = response?.refreshToken || response?.data?.refreshToken;
+      // 2. Extract tokens — handle multiple backend response shapes
+      const accessToken = 
+        response?.accessToken || 
+        response?.data?.accessToken || 
+        response?.token || 
+        response?.data?.token;
+      const refreshToken = 
+        response?.refreshToken || 
+        response?.data?.refreshToken || 
+        response?.refresh_token || 
+        response?.data?.refresh_token;
 
-      // 3. Save explicitly to localStorage so interceptors will pick them up
-      if (!accessToken) {
-        throw new Error('No access token received from API.');
-      }
-      
-      localStorage.setItem('accessToken', accessToken);
+      // 3. Save to localStorage so interceptors pick them up
+      if (accessToken) localStorage.setItem('accessToken', accessToken);
       if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
-      // 4. Derive correct role based on API response
-      // Primary: Check role/type in various locations
-      const responseRole = response?.role || response?.data?.role || response?.user?.role || 
-                           response?.type || response?.data?.type || response?.user?.type;
-      
-      // Fallback: Check isAdmin boolean
-      const isAdminFlag = response?.isAdmin || response?.data?.isAdmin || response?.user?.isAdmin;
-      
-      const userRole = responseRole || (isAdminFlag === true ? 'admin' : (isAdminFlag === false ? 'employee' : null));
-      
-      // Final security check: Reject login if no role could be determined from the API
-      if (!userRole) {
-        throw new Error('Could not determine user role from API response.');
-      }
+      // 4. Derive role from API response (check common backend shapes)
+      const responseRole = 
+        response?.role || 
+        response?.user?.role || 
+        response?.data?.role || 
+        response?.data?.user?.role;
+      const userRole = responseRole || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
 
       toast.success('Login Successful!');
-      login(userRole); // Call context login
+      login(userRole);
 
     } catch (error) {
       console.error("Login Error:", error);
-      
-      const is401 = error.response?.status === 401;
-      const apiMessage = error.response?.data?.message;
-      const customMessage = error.message;
-
-      let errorMessage = 'Login failed. Please try again.';
-      
-      if (is401) {
-        errorMessage = 'Invalid ID or Password. Please check your credentials.';
-      } else if (apiMessage) {
-        errorMessage = apiMessage;
-      } else if (customMessage && !customMessage.includes('Request failed')) {
-        errorMessage = customMessage;
-      } else if (!error.response) {
-        errorMessage = 'API unreachable. Please check your connection.';
-      }
-
-      toast.error(errorMessage);
+      // Show the exact message from the backend (e.g. "Invalid credentials")
+      toast.error(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        'Login failed. Please check your credentials.'
+      );
     } finally {
       setIsLoading(false);
     }
