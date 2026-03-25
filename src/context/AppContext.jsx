@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../api/auth';
 
 const initialProjects = [];
 
@@ -97,14 +98,30 @@ export function AppProvider({ children }) {
     ]);
 
     const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('accessToken'));
-    const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null); // 'admin' or 'employee'
+    const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
+    const [userProfile, setUserProfile] = useState(null);
 
-    const login = (role) => {
-        localStorage.setItem('userRole', role); // Persist role to survive page reloads
-        localStorage.setItem('activeModule', 'dashboard'); // Always land on dashboard after fresh login
+    const fetchProfile = async () => {
+        // Only fetch if we have an endpoint. /users/me is known to return 404.
+        // We will rely on Login.jsx passing the profile data via login(role, profile).
+        console.debug('Profile fetch not available: /users/me returns 404. Using login data.');
+    };
+
+    useEffect(() => {
+        if (localStorage.getItem('accessToken')) {
+            fetchProfile();
+        }
+    }, []);
+
+    const login = (role, profile = null) => {
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('activeModule', 'dashboard');
         setIsLoggedIn(true);
         setUserRole(role);
+        if (profile) setUserProfile(profile);
         setActiveModuleState('dashboard');
+        // Still try to fetch the full profile if we don't have it all
+        fetchProfile();
     };
 
     const logout = () => {
@@ -114,6 +131,7 @@ export function AppProvider({ children }) {
         localStorage.removeItem('activeModule');
         setIsLoggedIn(false);
         setUserRole(null);
+        setUserProfile(null);
     };
 
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -176,7 +194,7 @@ export function AppProvider({ children }) {
             boqItems, setBoqItems, updateBOQItem,
             sites, setSites, updateSite,
             progressTasks, setProgressTasks, updateProgressTask,
-            isLoggedIn, userRole, login, logout
+            isLoggedIn, userRole, userProfile, login, logout
         }}>
             {children}
         </AppContext.Provider>

@@ -150,7 +150,11 @@ function NavItem({ item, depth = 0 }) {
 }
 
 export default function Sidebar({ role }) {
-    const { sidebarOpen, logout } = useApp();
+    const { sidebarOpen, logout, userProfile } = useApp();
+
+    const displayName = userProfile?.name || (role === 'admin' ? 'Admin' : 'Employee');
+    const displayEmail = userProfile?.email || 'portal@ecoconstruct.com';
+
 
     const filteredNavItems = navItems.map(item => {
         // Create a shallow copy of the item and its children
@@ -199,10 +203,10 @@ export default function Sidebar({ role }) {
             {sidebarOpen && (
                 <div className="p-4 border-t border-[#e9ecef] flex-shrink-0 bg-white space-y-4">
                     <div className="flex items-center gap-3 bg-[#f8f9fa] p-2.5 rounded-xl border border-slate-100">
-                        <img src={`https://ui-avatars.com/api/?name=${role === 'admin' ? 'Admin' : 'Employee'}&background=${role === 'admin' ? '1e3a34' : '2f6645'}&color=fff`} alt="Profile" className="w-9 h-9 rounded-lg" />
+                        <img src={`https://ui-avatars.com/api/?name=${displayName}&background=${role === 'admin' ? '1e3a34' : '2f6645'}&color=fff`} alt="Profile" className="w-9 h-9 rounded-lg" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-slate-900 text-sm font-semibold truncate capitalize">{role} Account</p>
-                            <p className="text-slate-500 text-xs truncate">portal@ecoconstruct.com</p>
+                            <p className="text-slate-900 text-sm font-semibold truncate capitalize">{displayName}</p>
+                            <p className="text-slate-500 text-xs truncate">{displayEmail}</p>
                         </div>
                     </div>
 

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useApp } from '../context/AppContext';
 import {
     TrendingUp, TrendingDown, DollarSign, FolderKanban, Users,
     Package, AlertTriangle, CheckCircle, Clock, Activity,
@@ -68,13 +69,62 @@ const statusConfig = {
 };
 
 export default function Dashboard() {
+    const { userProfile, userRole } = useApp();
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        setIsLoading(true);
-        const timer = setTimeout(() => setIsLoading(false), 1000);
-        return () => clearTimeout(timer);
+    const [employeeCount, setEmployeeCount] = useState(null);
+
+
+    // Dynamic greeting based on time of day
+    const greeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
     }, []);
+
+    // Formatted current date
+    const currentDate = useMemo(() => {
+        return new Intl.DateTimeFormat('en-IN', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(new Date());
+    }, []);
+
+    const displayName = userProfile?.name || userProfile?.username || 'User';
+
+
+    // Fetch counts for dashboard stats
+    useEffect(() => {
+        const fetchStats = async () => {
+            // Only admins should try to fetch all employees (avoid 403)
+            if (userRole !== 'admin') {
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                // Fetch employee count
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/users/employee`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+                });
+                if (!response.ok) throw new Error('API status not ok');
+                const data = await response.json();
+                const list = data?.data || data?.employees || data || [];
+                if (Array.isArray(list)) {
+                    setEmployeeCount(list.length);
+                }
+            } catch (err) {
+                console.debug('Dashboard stats skip: ', err.message);
+            } finally {
+                setTimeout(() => setIsLoading(false), 500);
+            }
+        };
+
+        fetchStats();
+    }, [userRole]);
     const stats = [
         {
             label: 'Total Revenue (FY)',
@@ -98,14 +148,15 @@ export default function Dashboard() {
         },
         {
             label: 'Total Employees',
-            value: '148',
-            change: '+7 this month',
+            value: (typeof employeeCount === 'number') ? employeeCount.toString() : '148',
+            change: '+2 this month',
             positive: true,
             icon: Users,
             color: 'text-green-700',
             bg: 'bg-green-50',
             border: 'border-green-100',
         },
+
         {
             label: 'Outstanding Receivable',
             value: '₹68.4L',
@@ -126,13 +177,27 @@ export default function Dashboard() {
                 <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none group-hover:bg-white/30 transition-all duration-500" />
                 <div className="relative flex items-center justify-between z-10">
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Good Morning, Admin 👋</h2>
-                        <p className="text-green-50 text-sm font-medium">Here's what's happening at Morlatis today — Friday, 6 March 2026</p>
+                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">{greeting}, {displayName} 👋</h2>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-green-50 text-sm font-medium">
+                            <p>Here's what's happening today — {currentDate}</p>
+                            {userProfile?.department && (
+                                <>
+                                    <span className="opacity-40 hidden sm:inline">•</span>
+                                    <p className="px-2 py-0.5 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">Dept: {userProfile.department}</p>
+                                </>
+                            )}
+                            {userProfile?.employeeId && (
+                                <>
+                                    <span className="opacity-40 hidden sm:inline">•</span>
+                                    <p className="px-2 py-0.5 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">ID: {userProfile.employeeId}</p>
+                                </>
+                            )}
+                        </div>
                     </div>
                     <div className="hidden md:flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-green-100 text-xs font-semibold uppercase tracking-wider">FY 2025-26</p>
-                            <p className="text-white font-bold text-xl">Q4 Active</p>
+                            <p className="text-white font-bold text-xl capitalize">{userProfile?.role || 'User'} Portal</p>
                         </div>
                         <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-md shadow-inner group-hover:scale-105 transition-transform duration-300">
                             <Activity className="w-7 h-7 text-white" />
@@ -184,12 +249,13 @@ export default function Dashboard() {
                             <RefreshCw className="w-4 h-4" /> <span className="font-semibold">Refresh</span>
                         </button>
                     </div>
-                    <div className="h-[260px] w-full min-h-[260px]">
+                    <div className="h-[280px] w-full relative">
                         {isLoading ? (
                             <Skeleton className="w-full h-full rounded-xl" />
                         ) : (
-                            <ResponsiveContainer width="99%" height="99%">
-                                <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+
                                     <defs>
                                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
@@ -216,9 +282,10 @@ export default function Dashboard() {
                 <div className="card p-6 bg-white shadow-sm border border-slate-100 flex flex-col items-center">
                     <h3 className="section-title text-xl text-slate-900 font-bold mb-1 w-full text-left">Projects by Type</h3>
                     <p className="text-slate-500 text-sm mb-6 w-full text-left">Category distribution</p>
-                    <div className="flex-1 w-full relative flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height={200}>
+                    <div className="w-full relative flex items-center justify-center h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
+
                                 <Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={90}
                                     dataKey="value" paddingAngle={5} stroke="none">
                                     {projectData.map((entry, index) => (

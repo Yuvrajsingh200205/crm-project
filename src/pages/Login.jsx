@@ -34,16 +34,13 @@ const Login = () => {
       if (accessToken) localStorage.setItem('accessToken', accessToken);
       if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
-      // 4. Derive role from API response (check common backend shapes)
-      const responseRole = 
-        response?.role || 
-        response?.user?.role || 
-        response?.data?.role || 
-        response?.data?.user?.role;
-      const userRole = responseRole || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
+      // 4. Derive role & profile info from API response
+      const profile = response?.user || response?.data?.user || response?.data || response;
+      const userRole = profile?.role || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
 
       toast.success('Login Successful!');
-      login(userRole);
+      login(userRole, profile);
+
 
     } catch (error) {
       console.error("Login Error:", error);

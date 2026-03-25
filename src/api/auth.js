@@ -25,5 +25,14 @@ export const authAPI = {
       refreshToken: token,
     });
     return response.data;
-  }
+  },
+
+  /**
+   * Get the currently logged-in user's profile
+   * GET /users/me
+   */
+  getProfile: async () => {
+    const response = await axiosInstance.get('/users/me');
+    return response.data;
+  },
 };
