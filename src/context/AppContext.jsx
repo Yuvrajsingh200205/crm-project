@@ -78,7 +78,15 @@ const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
 export function AppProvider({ children }) {
-    const [activeModule, setActiveModule] = useState('dashboard');
+    // Restore active module from localStorage so page refresh stays on the same page
+    const [activeModule, setActiveModuleState] = useState(
+        () => localStorage.getItem('activeModule') || 'dashboard'
+    );
+
+    const setActiveModule = (module) => {
+        localStorage.setItem('activeModule', module);
+        setActiveModuleState(module);
+    };
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [notifications, setNotifications] = useState([
         { id: 1, type: 'warning', message: 'Material shortage on SWPL-BRGF project', time: '5m ago', read: false },
@@ -93,15 +101,17 @@ export function AppProvider({ children }) {
 
     const login = (role) => {
         localStorage.setItem('userRole', role); // Persist role to survive page reloads
+        localStorage.setItem('activeModule', 'dashboard'); // Always land on dashboard after fresh login
         setIsLoggedIn(true);
         setUserRole(role);
-        setActiveModule('dashboard');
+        setActiveModuleState('dashboard');
     };
 
     const logout = () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('userRole');
+        localStorage.removeItem('activeModule');
         setIsLoggedIn(false);
         setUserRole(null);
     };

@@ -1,9 +1,9 @@
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 
 const woTypes = ['Rate Contract', 'Lumpsum', 'Unit Rate', 'Cost Plus'];
-const statusOptions = ['Active', 'Draft', 'Pending Approval', 'Completed'];
+const statusOptions = ['active', 'draft', 'pending approval', 'completed'];
 
-export default function WorkOrderModal({ isOpen, isEditing, formData, projects, onClose, onSave, onInputChange }) {
+export default function WorkOrderModal({ isOpen, isEditing, formData, projects, isSaving, onClose, onSave, onInputChange }) {
     if (!isOpen) return null;
 
     return (
@@ -18,44 +18,68 @@ export default function WorkOrderModal({ isOpen, isEditing, formData, projects, 
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                
+
                 <form onSubmit={onSave} className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[75vh]">
                     <h3 className="text-sm font-semibold text-[#1e3a34] border-b pb-2">1. Order Context</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* projectId as number */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Parent Project <span className="text-red-500">*</span></label>
-                            <select required name="projectId" value={formData.projectId || ''} onChange={onInputChange} className="input">
-                                <option value="">Select Project...</option>
-                                {projects.map(p => <option key={p.id} value={p.id}>{p.id} - {p.name}</option>)}
-                            </select>
+                            <label className="text-xs font-semibold text-slate-600">Project ID <span className="text-red-500">*</span></label>
+                            <input
+                                required
+                                type="number"
+                                name="projectId"
+                                value={formData.projectId || ''}
+                                onChange={onInputChange}
+                                className="input"
+                                placeholder="e.g. 1"
+                            />
                         </div>
+                        {/* contractor (API field) */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-600">Contractor/Vendor <span className="text-red-500">*</span></label>
-                            <input required name="vendorName" value={formData.vendorName || ''} onChange={onInputChange} className="input" placeholder="Enter Vendor Name..." />
+                            <label className="text-xs font-semibold text-slate-600">Contractor <span className="text-red-500">*</span></label>
+                            <input
+                                required
+                                name="contractor"
+                                value={formData.contractor || formData.vendorName || ''}
+                                onChange={onInputChange}
+                                className="input"
+                                placeholder="Enter contractor name..."
+                            />
                         </div>
+                        {/* description (API field) */}
                         <div className="md:col-span-2 space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Work Description <span className="text-red-500">*</span></label>
-                            <textarea required name="workDescription" value={formData.workDescription || ''} onChange={onInputChange} className="input" rows="2" placeholder="Describe the scope of work..." />
+                            <textarea
+                                required
+                                name="description"
+                                value={formData.description || formData.workDescription || ''}
+                                onChange={onInputChange}
+                                className="input"
+                                rows="2"
+                                placeholder="Describe the scope of work..."
+                            />
                         </div>
                     </div>
 
-                    <h3 className="text-sm font-semibold text-[#1e3a34] border-b pb-2 mt-6">2. Terms & Timeline</h3>
+                    <h3 className="text-sm font-semibold text-[#1e3a34] border-b pb-2 mt-6">2. Terms &amp; Timeline</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Order Value (₹) <span className="text-red-500">*</span></label>
-                            <input required type="number" name="value" value={formData.value || ''} onChange={onInputChange} className="input" placeholder="1250000" />
+                            <input required type="number" name="value" value={formData.value || ''} onChange={onInputChange} className="input" placeholder="e.g. 3" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Retention (%)</label>
-                            <input type="number" name="retention" value={formData.retention || ''} onChange={onInputChange} className="input" placeholder="5" />
+                            <input type="number" name="retention" value={formData.retention || ''} onChange={onInputChange} className="input" placeholder="4" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Start Date</label>
                             <input required type="date" name="startDate" value={formData.startDate || ''} onChange={onInputChange} className="input" />
                         </div>
+                        {/* target (API field for completion date) */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Completion Target</label>
-                            <input required type="date" name="endDate" value={formData.endDate || ''} onChange={onInputChange} className="input" />
+                            <input required type="date" name="target" value={formData.target || formData.endDate || ''} onChange={onInputChange} className="input" />
                         </div>
                     </div>
 
@@ -69,8 +93,10 @@ export default function WorkOrderModal({ isOpen, isEditing, formData, projects, 
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600">Order Status</label>
-                            <select name="status" value={formData.status || 'Draft'} onChange={onInputChange} className="input">
-                                {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                            <select name="status" value={(formData.status || 'active').toLowerCase()} onChange={onInputChange} className="input">
+                                {statusOptions.map(s => (
+                                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                ))}
                             </select>
                         </div>
                         {isEditing && (
@@ -82,8 +108,13 @@ export default function WorkOrderModal({ isOpen, isEditing, formData, projects, 
                     </div>
 
                     <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-                        <button type="submit" className="btn-primary flex-1">{isEditing ? 'Update Work Order' : 'Create Work Order'}</button>
+                        <button type="button" onClick={onClose} disabled={isSaving} className="btn-secondary flex-1">Cancel</button>
+                        <button type="submit" disabled={isSaving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                            {isSaving
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                                : (isEditing ? 'Update Work Order' : 'Create Work Order')
+                            }
+                        </button>
                     </div>
                 </form>
             </div>

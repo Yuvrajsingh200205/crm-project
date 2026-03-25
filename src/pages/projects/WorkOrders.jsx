@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
-import { Plus, ClipboardList, AlertCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Plus, ClipboardList, AlertCircle, TrendingUp, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
+import { workOrderAPI } from '../../api/workorder';
 
 // Sub-components
 import WorkOrderStats from '../../components/workorders/WorkOrderStats';
@@ -12,8 +13,13 @@ import WorkOrderModal from '../../components/workorders/WorkOrderModal';
 import WorkOrderDetailSidebar from '../../components/workorders/WorkOrderDetailSidebar';
 
 export default function WorkOrders() {
-    const { projects, workOrders, setWorkOrders, updateWorkOrder } = useApp();
-    
+    const { projects } = useApp();
+
+    // Local state — data comes from API, not AppContext
+    const [workOrders, setWorkOrders] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
     // UI States
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('All');
@@ -23,33 +29,73 @@ export default function WorkOrders() {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
 
-    // 1. Filtered Logic
+    // ─── Fetch all work orders ────────────────────────────────────────────────
+    const fetchWorkOrders = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await workOrderAPI.getAllWorkOrders();
+            const list = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.data)
+                ? data.data
+                : Array.isArray(data?.works)
+                ? data.works
+                : [];
+            // Newest first
+            setWorkOrders([...list].reverse());
+        } catch (error) {
+            console.error('Failed to fetch work orders:', error);
+            toast.error(error.response?.data?.message || 'Failed to load work orders.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchWorkOrders();
+    }, [fetchWorkOrders]);
+
+    // ─── Derived / memoised ───────────────────────────────────────────────────
     const filteredWOs = useMemo(() => {
         return workOrders.filter(wo => {
-            const matchesSearch = wo.id.toLowerCase().includes(search.toLowerCase()) || 
-                               wo.vendorName.toLowerCase().includes(search.toLowerCase()) ||
-                               wo.projectId.toLowerCase().includes(search.toLowerCase()) ||
-                               wo.projectName.toLowerCase().includes(search.toLowerCase());
-            const matchesStatus = filter === 'All' || wo.status === filter;
+            const id = String(wo.id || wo._id || '').toLowerCase();
+            const contractor = (wo.contractor || wo.vendorName || '').toLowerCase();
+            const description = (wo.description || wo.workDescription || '').toLowerCase();
+            const projectId = String(wo.projectId || '').toLowerCase();
+            const status = (wo.status || '').toLowerCase();
+
+            const matchesSearch =
+                id.includes(search.toLowerCase()) ||
+                contractor.includes(search.toLowerCase()) ||
+                description.includes(search.toLowerCase()) ||
+                projectId.includes(search.toLowerCase());
+
+            const matchesStatus =
+                filter === 'All' || status === filter.toLowerCase();
+
             return matchesSearch && matchesStatus;
         });
     }, [workOrders, search, filter]);
 
-    // 2. Stats Calculation
     const stats = useMemo(() => {
-        const totalVal = workOrders.reduce((sum, wo) => sum + wo.value, 0);
+        const totalVal = workOrders.reduce((sum, wo) => sum + Number(wo.value || 0), 0);
+        const activeCount = workOrders.filter(wo => (wo.status || '').toLowerCase() === 'active').length;
+        const pendingCount = workOrders.filter(wo => (wo.status || '').toLowerCase() === 'pending approval').length;
+        const avgProgress = workOrders.length
+            ? Math.round(workOrders.reduce((s, wo) => s + Number(wo.progress || 0), 0) / workOrders.length)
+            : 0;
         return [
             { label: 'Total Value', value: `₹${(totalVal / 100000).toFixed(1)}L`, icon: ClipboardList, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: 'Active Orders', value: workOrders.filter(wo => wo.status === 'Active').length, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Pending Approval', value: workOrders.filter(wo => wo.status === 'Pending Approval').length, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
-            { label: 'Execution Rate', value: `${workOrders.length ? Math.round(workOrders.reduce((s, wo) => s + wo.progress, 0) / workOrders.length) : 0}%`, icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Active Orders', value: activeCount, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Pending Approval', value: pendingCount, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: 'Execution Rate', value: `${avgProgress}%`, icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-50' },
         ];
     }, [workOrders]);
 
-    // 3. Handlers
+    // ─── Handlers ─────────────────────────────────────────────────────────────
     const handleOpenAdd = () => {
         setIsEditing(false);
-        setFormData({ status: 'Draft', type: 'Rate Contract', progress: 0, retention: 5 });
+        setFormData({ status: 'active', type: 'Rate Contract', retention: 5 });
         setIsModalOpen(true);
     };
 
@@ -65,48 +111,56 @@ export default function WorkOrders() {
         setIsDetailOpen(true);
     };
 
-    const handleDelete = (e, id) => {
+    const handleDelete = (e, wo) => {
         e.stopPropagation();
-        confirmToast('Delete this work order permanently?', () => {
-            setWorkOrders(prev => prev.filter(wo => wo.id !== id));
-            toast.success("Work Order discarded");
+        const id = wo.id || wo._id;
+        confirmToast('Delete this work order permanently?', async () => {
+            try {
+                await workOrderAPI.deleteWorkOrder(id);
+                setWorkOrders(prev => prev.filter(w => (w.id || w._id) !== id));
+                toast.success('Work Order deleted');
+            } catch (error) {
+                console.error('Delete work order error:', error);
+                toast.error(error.response?.data?.message || 'Failed to delete work order.');
+            }
         });
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        const promise = new Promise(r => setTimeout(r, 1000));
-        
-        const project = projects.find(p => p.id === formData.projectId);
-        const finalData = { 
-            ...formData, 
-            projectName: project ? project.name : 'Unknown Project',
-            value: Number(formData.value),
-            retention: Number(formData.retention),
-            progress: Number(formData.progress)
-        };
-
-        if (isEditing) {
-            updateWorkOrder(finalData);
-            toast.promise(promise, {
-                loading: 'Updating Order...',
-                success: 'Work Order Authored!',
-                error: 'Update Failed',
-            });
-        } else {
-            const newWO = {
-                ...finalData,
-                id: `WO-${new Date().getFullYear()}-${String(workOrders.length + 1).padStart(3, '0')}`,
-                vendorId: `VEND-${Math.floor(100 + Math.random() * 900)}`
+        setIsSaving(true);
+        try {
+            // Build the exact payload the API expects
+            const payload = {
+                projectId: Number(formData.projectId),
+                contractor: formData.contractor || formData.vendorName || '',
+                description: formData.description || formData.workDescription || '',
+                value: Number(formData.value),
+                retention: Number(formData.retention) || 0,
+                startDate: formData.startDate || '',
+                target: formData.target || formData.endDate || '',
+                type: formData.type || 'Rate Contract',
+                status: (formData.status || 'active').toLowerCase(),
             };
-            setWorkOrders([newWO, ...workOrders]);
-            toast.promise(promise, {
-                loading: 'Creating Order...',
-                success: 'Work Order Dispatched!',
-                error: 'Creation Failed',
-            });
+
+            if (isEditing) {
+                const id = formData.id || formData._id;
+                await workOrderAPI.updateWorkOrder(id, payload);
+                toast.success('Work Order updated!');
+            } else {
+                await workOrderAPI.createWorkOrder(payload);
+                toast.success('Work Order created!');
+            }
+
+            setIsModalOpen(false);
+            // Re-fetch to get authoritative data from backend
+            await fetchWorkOrders();
+        } catch (error) {
+            console.error('Save work order error:', error);
+            toast.error(error.response?.data?.message || 'Failed to save work order.');
+        } finally {
+            setIsSaving(false);
         }
-        setIsModalOpen(false);
     };
 
     const handleInputChange = (e) => {
@@ -114,6 +168,7 @@ export default function WorkOrders() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    // ─── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="space-y-6 animate-fade-in pb-12">
             {/* Header */}
@@ -127,38 +182,76 @@ export default function WorkOrders() {
                         <p className="text-sm text-slate-500 mt-1">Allocation of scope & subcontracting control</p>
                     </div>
                 </div>
-                <button onClick={handleOpenAdd} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
-                    <Plus className="w-5 h-5" /> Issue New Order
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={fetchWorkOrders}
+                        title="Refresh"
+                        className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleOpenAdd} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
+                        <Plus className="w-5 h-5" /> Issue New Order
+                    </button>
+                </div>
             </div>
 
             <WorkOrderStats stats={stats} />
 
-            <WorkOrderFilters 
-                search={search} 
-                setSearch={setSearch} 
-                filter={filter} 
-                setFilter={setFilter} 
+            <WorkOrderFilters
+                search={search}
+                setSearch={setSearch}
+                filter={filter}
+                setFilter={setFilter}
             />
 
-            <WorkOrderTable 
-                workOrders={filteredWOs}
-                onEdit={handleOpenEdit}
-                onDelete={handleDelete}
-                onViewDetails={handleViewDetails}
-            />
+            {/* Loading skeleton */}
+            {isLoading ? (
+                <div className="card overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    {['WO ID', 'Description', 'Contractor', 'Value', 'Progress', 'Status', 'Actions'].map(h => (
+                                        <th key={h} className="table-header">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[1, 2, 3, 4].map(i => (
+                                    <tr key={i} className="border-b border-slate-100">
+                                        {[1, 2, 3, 4, 5, 6, 7].map(j => (
+                                            <td key={j} className="table-cell">
+                                                <div className="h-4 bg-slate-100 rounded animate-pulse w-3/4" />
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <WorkOrderTable
+                    workOrders={filteredWOs}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleDelete}
+                    onViewDetails={handleViewDetails}
+                />
+            )}
 
-            <WorkOrderModal 
+            <WorkOrderModal
                 isOpen={isModalOpen}
                 isEditing={isEditing}
                 formData={formData}
                 projects={projects}
+                isSaving={isSaving}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 onInputChange={handleInputChange}
             />
 
-            <WorkOrderDetailSidebar 
+            <WorkOrderDetailSidebar
                 isOpen={isDetailOpen}
                 workOrder={selectedWO}
                 onClose={() => setIsDetailOpen(false)}
