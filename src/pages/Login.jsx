@@ -24,28 +24,51 @@ const Login = () => {
       const refreshToken = response?.refreshToken || response?.data?.refreshToken;
 
       // 3. Save explicitly to localStorage so interceptors will pick them up
-      if (accessToken) localStorage.setItem('accessToken', accessToken);
+      if (!accessToken) {
+        throw new Error('No access token received from API.');
+      }
+      
+      localStorage.setItem('accessToken', accessToken);
       if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
-      // 4. Derive correct role from the API response or fallback to email test
-      const responseRole = response?.role || response?.user?.role || response?.data?.role;
-      const userRole = responseRole || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
+      // 4. Derive correct role based on API response
+      // Primary: Check role/type in various locations
+      const responseRole = response?.role || response?.data?.role || response?.user?.role || 
+                           response?.type || response?.data?.type || response?.user?.type;
+      
+      // Fallback: Check isAdmin boolean
+      const isAdminFlag = response?.isAdmin || response?.data?.isAdmin || response?.user?.isAdmin;
+      
+      const userRole = responseRole || (isAdminFlag === true ? 'admin' : (isAdminFlag === false ? 'employee' : null));
+      
+      // Final security check: Reject login if no role could be determined from the API
+      if (!userRole) {
+        throw new Error('Could not determine user role from API response.');
+      }
 
       toast.success('Login Successful!');
       login(userRole); // Call context login
 
     } catch (error) {
       console.error("Login Error:", error);
-      toast.error(error.response?.data?.message || 'Invalid credentials or API unreachable.');
       
-      // Optional: For testing purposes if backend is down, we automatically let the user in if they typed admin 
-      // (REMOVE this block in production)
-      if (!error.response) {
-        toast('Simulation fallback -> letting you in since API is down.');
-        const userRole = email.toLowerCase().includes('admin') ? 'admin' : 'employee';
-        localStorage.setItem('accessToken', 'mock_token');
-        login(userRole);
+      const is401 = error.response?.status === 401;
+      const apiMessage = error.response?.data?.message;
+      const customMessage = error.message;
+
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (is401) {
+        errorMessage = 'Invalid ID or Password. Please check your credentials.';
+      } else if (apiMessage) {
+        errorMessage = apiMessage;
+      } else if (customMessage && !customMessage.includes('Request failed')) {
+        errorMessage = customMessage;
+      } else if (!error.response) {
+        errorMessage = 'API unreachable. Please check your connection.';
       }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
