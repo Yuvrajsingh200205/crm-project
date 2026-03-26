@@ -12,6 +12,7 @@ const initialAttendance = [];
 export default function Attendance() {
   const [attendance, setAttendance] = useState(initialAttendance);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [filter, setFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -88,7 +89,8 @@ export default function Attendance() {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.empId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'All' || item.status === filter;
-    return matchesSearch && matchesFilter;
+    const matchesDate = !selectedDate || item.date === selectedDate;
+    return matchesSearch && matchesFilter && matchesDate;
   });
 
   if (selectedEmployee) {
@@ -392,15 +394,26 @@ export default function Attendance() {
 
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-surface-border bg-slate-50/50 flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search by Employee..." 
-              className="input pl-10 bg-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex-1 relative flex gap-2">
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="date" 
+                className="input pl-10 bg-white w-40"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </div>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Search by Employee..." 
+                className="input pl-10 bg-white w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <div className="relative group/select">
