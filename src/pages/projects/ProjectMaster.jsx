@@ -11,6 +11,7 @@ import ProjectFilters from '../../components/projects/ProjectFilters';
 import ProjectTable from '../../components/projects/ProjectTable';
 import ProjectModal from '../../components/projects/ProjectModal';
 import ProjectDetailSidebar from '../../components/projects/ProjectDetailSidebar';
+import ProjectGanttModal from '../../components/projects/ProjectGanttModal';
 
 export default function ProjectMaster() {
     // API State Managers
@@ -161,9 +162,53 @@ export default function ProjectMaster() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const [isGanttOpen, setIsGanttOpen] = useState(false);
+
     const handleDownloadReports = () => {
-        toast.loading("Generating comprehensive project reports...", { duration: 2000 });
-        setTimeout(() => toast.success("Reports downloaded successfully"), 2000);
+        if (!projectsList || projectsList.length === 0) {
+            toast.error("No project data available to export");
+            return;
+        }
+
+        const toastId = toast.loading("Preparing project reports...");
+        
+        try {
+            // CSV construction
+            const headers = ["Project Code", "Project Name", "Client", "Location", "Value (INR)", "Status", "Progress (%)", "Start Date", "End Date"];
+            const rows = projectsList.map(p => [
+                `"${p.code || p.id || ''}"`,
+                `"${p.name || ''}"`,
+                `"${p.client || ''}"`,
+                `"${p.location || ''}"`,
+                p.value || 0,
+                `"${p.status || ''}"`,
+                p.advancement || 0,
+                `"${p.startDate || ''}"`,
+                `"${p.endDate || ''}"`
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n"
+                + rows.map(r => r.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Project_Inventory_Report_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast.success("Comprehensive report downloaded", { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to generate report", { id: toastId });
+        }
+    };
+
+    const handleOpenGantt = (project) => {
+        setSelectedProj(project);
+        setIsGanttOpen(true);
     };
 
     return (
@@ -235,8 +280,18 @@ export default function ProjectMaster() {
                 project={selectedProj}
                 onClose={() => setIsDetailOpen(false)}
                 onEdit={(e, p) => { handleOpenEdit(e, p); setIsDetailOpen(false); }}
-                onOpenGantt={() => toast.success("Gantt view ready")}
+                onOpenGantt={() => { setIsGanttOpen(true); setIsDetailOpen(false); }}
             />
+
+            {isGanttOpen && selectedProj && (
+                <ProjectGanttModal 
+                    project={selectedProj} 
+                    onClose={() => setIsGanttOpen(false)} 
+                />
+            )}
         </div>
     );
 }
+
+// Inline Project Gantt Modal component for easier management or I could create a file.
+// Let's create a file.

@@ -23,9 +23,10 @@ export default function EmployeeMaster() {
         setIsFetching(true);
         try {
             const res = await employeeAPI.getAllEmployees();
-            // Map backend fields to frontend fields if needed
-            const backendEmployees = res?.employees || (Array.isArray(res) ? res : (res?.data || []));
-            const mapped = backendEmployees.map(emp => ({
+            console.log('Employee API Result:', res);
+            // Robust check for different potential response keys
+            const backendEmployees = res?.employees || res?.users || res?.staff || res?.data?.employees || (Array.isArray(res) ? res : (res?.data || []));
+            const mapped = (Array.isArray(backendEmployees) ? backendEmployees : []).map(emp => ({
                 id: emp.id?.toString() || `EMP-${emp.empId || '00'}`,
                 name: emp.name || 'Unknown',
                 designation: emp.designation || 'N/A',

@@ -144,6 +144,7 @@ export function AppProvider({ children }) {
     const [selectedBOQItem, setSelectedBOQItem] = useState(null);
     const [sites, setSites] = useState(initialSites);
     const [progressTasks, setProgressTasks] = useState(initialProgressTasks);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
 
     const updateEmployee = (updatedEmp) => {
         setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
@@ -194,6 +195,7 @@ export function AppProvider({ children }) {
             boqItems, setBoqItems, updateBOQItem,
             sites, setSites, updateSite,
             progressTasks, setProgressTasks, updateProgressTask,
+            selectedInvoice, setSelectedInvoice,
             isLoggedIn, userRole, userProfile, login, logout
         }}>
             {children}

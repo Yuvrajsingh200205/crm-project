@@ -44,16 +44,15 @@ axiosInstance.interceptors.response.use(
         }
 
         console.log("Interceptor: Triggering refresh token API call...");
-        const currentAccessToken = localStorage.getItem('accessToken');
         
-        // Call refresh token API without an interceptor to avoid infinite loop
+        // Call refresh token API without an interceptor
+        // Removing Authorization header as it's expired and some servers reject refresh calls with it
         const result = await axios.post(`${BASE_URL}/auth/refresh-token`, {
           refreshToken: refreshToken,
-          token: refreshToken // Many backend schemas expect simply 'token'
+          token: refreshToken 
         }, {
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentAccessToken}` 
+            'Content-Type': 'application/json'
           }
         });
 

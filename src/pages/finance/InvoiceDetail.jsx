@@ -1,20 +1,56 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { 
     ArrowLeft, Printer, Download, Share2, 
-    Building2, FileText, Landmark
+    Building2, FileText, Landmark, Loader2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import toast from 'react-hot-toast';
 
 export default function InvoiceDetail() {
-    const { setActiveModule } = useApp();
+    const { setActiveModule, selectedInvoice } = useApp();
+    const invoiceRef = useRef();
+    const [isExporting, setIsExporting] = useState(false);
 
-    const invoice = {
-        id: 'INV-2025-001',
-        date: '2025-03-10',
-        dueDate: '2025-03-25',
-        status: 'Pending',
+    const handleDownloadPDF = async () => {
+        if (!invoiceRef.current) return;
+        
+        setIsExporting(true);
+        const toastId = toast.loading('Generating PDF document...');
+        
+        try {
+            const canvas = await html2canvas(invoiceRef.current, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`Invoice_${invoice.id}_${new Date().getTime()}.pdf`);
+            
+            toast.success('Invoice downloaded successfully!', { id: toastId });
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            toast.error('Failed to generate PDF. Please try again.', { id: toastId });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Default static data for fields not present in the simple invoice model
+    const defaultData = {
+        dueDate: selectedInvoice?.date ? new Date(new Date(selectedInvoice.date).getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : '2025-03-25',
         client: {
-            name: 'Larsen & Toubro Ltd.',
+            name: selectedInvoice?.clientOrProject || 'Larsen & Toubro Ltd.',
             address: 'Construction Division, Mount Poonamallee Road, Manapakkam, Chennai - 600089',
             gstin: '33AAACL0123A1Z2',
             email: 'billing@lntecc.com'
@@ -27,6 +63,29 @@ export default function InvoiceDetail() {
             ifsc: 'SBIN0000001',
             account: '33445566778'
         },
+        items: [
+            { desc: selectedInvoice?.type || 'PSC Pole Erection - 9Mtr', qty: 1, rate: selectedInvoice?.amount || 3379500, total: selectedInvoice?.amount || 3379500 },
+        ]
+    };
+
+    const invoice = selectedInvoice ? {
+        id: selectedInvoice.invoiceId,
+        date: selectedInvoice.date,
+        status: selectedInvoice.status,
+        ...defaultData,
+        subTotal: selectedInvoice.amount,
+        gstRate: selectedInvoice.gst || 18,
+        gstAmount: (selectedInvoice.amount * (selectedInvoice.gst || 18)) / 100,
+        retentionRate: selectedInvoice.retention || 5,
+        retentionAmount: (selectedInvoice.amount * (selectedInvoice.retention || 5)) / 100,
+        totalAmount: selectedInvoice.amount + ((selectedInvoice.amount * (selectedInvoice.gst || 18)) / 100) - ((selectedInvoice.amount * (selectedInvoice.retention || 5)) / 100)
+    } : {
+        id: 'INV-2025-001',
+        date: '2025-03-10',
+        dueDate: '2025-03-25',
+        status: 'Pending',
+        client: defaultData.client,
+        company: defaultData.company,
         items: [
             { desc: 'PSC Pole Erection - 9Mtr', qty: 450, rate: 2450, total: 1102500 },
             { desc: 'ABC Cable Installation - 50Sqmm', qty: 12, rate: 85000, total: 1020000 },
@@ -53,9 +112,9 @@ export default function InvoiceDetail() {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">{invoice.id}</h1>
+                        <h1 className="text-2xl font-bold text-slate-800">{invoice.id || 'INV-000'}</h1>
                         <p className="text-sm text-slate-500 flex items-center gap-2">
-                            Tax Invoice · <span className="badge badge-yellow">{invoice.status}</span>
+                            Tax Invoice · <span className={`badge ${invoice.status === 'Paid' ? 'badge-green' : 'badge-yellow'}`}>{invoice.status}</span>
                         </p>
                     </div>
                 </div>
@@ -64,17 +123,22 @@ export default function InvoiceDetail() {
                     <button className="btn-secondary flex items-center gap-2">
                         <Share2 className="w-4 h-4" /> Share
                     </button>
-                    <button className="btn-secondary flex items-center gap-2">
+                    <button onClick={() => window.print()} className="btn-secondary flex items-center gap-2">
                         <Printer className="w-4 h-4" /> Print
                     </button>
-                    <button className="btn-primary flex items-center gap-2">
-                        <Download className="w-4 h-4" /> Download PDF
+                    <button 
+                        onClick={handleDownloadPDF} 
+                        disabled={isExporting}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        {isExporting ? 'Exporting...' : 'Download PDF'}
                     </button>
                 </div>
             </div>
 
             {/* The Actual Invoice "Paper" */}
-            <div className="max-w-4xl mx-auto card overflow-hidden relative bg-white">
+            <div ref={invoiceRef} className="max-w-4xl mx-auto card overflow-hidden relative bg-white">
                 {/* Watermark/Accent */}
                 <div className="absolute top-10 right-10 opacity-5 pointer-events-none">
                     <FileText className="w-64 h-64 text-slate-400" />

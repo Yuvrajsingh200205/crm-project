@@ -1,48 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     BookOpen, Search, Plus, ChevronRight, ChevronDown, 
     Landmark, Wallet, ArrowRightLeft, Download, Edit2, Trash2, ShieldCheck, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
+import { accountAPI } from '../../api/account';
 
-const INITIAL_ACCOUNTS = [
-    { id: '1000', name: 'Assets', type: 'Asset', balance: 45000000, category: 'Root', subAccounts: [
-        { id: '1100', name: 'Fixed Assets', type: 'Asset', balance: 25000000, category: 'Non-Current', subAccounts: [
-            { id: '1110', name: 'Machinery & Equipment', type: 'Asset', balance: 15000000, category: 'Fixed' },
-            { id: '1120', name: 'Office Premises', type: 'Asset', balance: 10000000, category: 'Fixed' },
-        ]},
-        { id: '1200', name: 'Current Assets', type: 'Asset', balance: 20000000, category: 'Current', subAccounts: [
-            { id: '1210', name: 'Bank Accounts', type: 'Asset', balance: 12000000, category: 'Cash', subAccounts: [
-                { id: '1211', name: 'HDFC Bank - Operation', type: 'Asset', balance: 8500000, category: 'Bank' },
-                { id: '1212', name: 'SBI - Petty Cash', type: 'Asset', balance: 3500000, category: 'Bank' },
-            ]},
-            { id: '1220', name: 'Accounts Receivable', type: 'Asset', balance: 8000000, category: 'Receivable' },
-        ]},
-    ]},
-    { id: '2000', name: 'Liabilities', type: 'Liability', balance: 18000000, category: 'Root', subAccounts: [
-        { id: '2100', name: 'Current Liabilities', type: 'Liability', balance: 12000000, category: 'Current', subAccounts: [
-            { id: '2110', name: 'Accounts Payable', type: 'Liability', balance: 8500000, category: 'Payable' },
-            { id: '2120', name: 'GST Payable', type: 'Liability', balance: 2500000, category: 'Tax' },
-            { id: '2130', name: 'TDS Payable', type: 'Liability', balance: 1000000, category: 'Tax' },
-        ]},
-        { id: '2200', name: 'Long Term Loans', type: 'Liability', balance: 6000000, category: 'Non-Current' },
-    ]},
-    { id: '3000', name: 'Equity', type: 'Equity', balance: 27000000, category: 'Root' },
-    { id: '4000', name: 'Income', type: 'Income', balance: 32000000, category: 'Root', subAccounts: [
-        { id: '4100', name: 'Project Revenue', type: 'Income', balance: 30000000, category: 'Operating' },
-        { id: '4200', name: 'Interest Income', type: 'Income', balance: 2000000, category: 'Non-Operating' },
-    ]},
-    { id: '5000', name: 'Expenses', type: 'Expense', balance: 21500000, category: 'Root', subAccounts: [
-        { id: '5100', name: 'Direct Project Costs', type: 'Expense', balance: 15000000, category: 'Direct', subAccounts: [
-            { id: '5110', name: 'Material Cost', type: 'Expense', balance: 9000000, category: 'Cost of Goods' },
-            { id: '5120', name: 'Labour Wages', type: 'Expense', balance: 6000000, category: 'Cost of Goods' },
-        ]},
-        { id: '5200', name: 'Administrative Expenses', type: 'Expense', balance: 6500000, category: 'Indirect' },
-    ]},
-];
-
-// Helper to flatten and search accounts
+// Helper to flatten accounts for parent selection
 const getAllAccountsFlat = (acctList) => {
     let result = [];
     acctList.forEach(a => {
@@ -54,17 +19,27 @@ const getAllAccountsFlat = (acctList) => {
     return result;
 };
 
-// Helper to update deeply nested item
-const updateNestedAccount = (accounts, id, newData) => {
-    return accounts.map(acc => {
-        if (acc.id === id) {
-            return { ...acc, ...newData };
-        }
-        if (acc.subAccounts) {
-            return { ...acc, subAccounts: updateNestedAccount(acc.subAccounts, id, newData) };
-        }
-        return acc;
+// Helper to reconstruct tree from flat list with "parents" references
+const buildTree = (flatList) => {
+    const map = {};
+    const roots = [];
+    
+    // First pass: map everything by code
+    flatList.forEach(item => {
+        map[item.code] = { ...item, subAccounts: [] };
     });
+    
+    // Second pass: assign to parents
+    flatList.forEach(item => {
+        const node = map[item.code];
+        if (item.parents && map[item.parents]) {
+            map[item.parents].subAccounts.push(node);
+        } else {
+            roots.push(node);
+        }
+    });
+    
+    return roots;
 };
 
 const typeBadge = {
@@ -82,7 +57,7 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
     return (
         <>
             <tr className={`table-row hover:bg-slate-50 transition-colors ${depth === 0 ? 'bg-slate-50/50' : ''}`}>
-                <td className="table-cell w-12 text-center font-medium text-slate-500">{account.id}</td>
+                <td className="table-cell w-12 text-center font-medium text-slate-500">{account.code}</td>
                 <td className="table-cell">
                     <div style={{ paddingLeft: `${depth * 20}px` }} className="flex items-center gap-2">
                         {hasSubs ? (
@@ -93,13 +68,13 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
                             <div className="w-5" />
                         )}
                         <span className={`text-slate-800 ${depth === 0 ? 'font-semibold' : 'font-medium'} text-sm`}>{account.name}</span>
-                        <span className="text-xs text-slate-400">{account.category}</span>
+                        <span className="text-xs text-slate-400 ml-2">{account.parents ? `(Under ${account.parents})` : '(Root)'}</span>
                     </div>
                 </td>
                 <td className="table-cell">
                     <span className={`badge ${typeBadge[account.type] || 'badge-blue'}`}>{account.type}</span>
                 </td>
-                <td className="table-cell text-emerald-600 font-semibold">₹{(account.balance / 100000).toFixed(2)}L</td>
+                <td className="table-cell text-emerald-600 font-semibold">₹{((account.balance || 0) / 100000).toFixed(2)}L</td>
                 <td className="table-cell" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 opacity-100 transition-all">
                         <button onClick={() => onEdit(account)} className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-500 hover:text-emerald-600 transition-all cursor-pointer">
@@ -107,7 +82,7 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
                         </button>
                         <button onClick={() => {
                             confirmToast(`Delete account ${account.name} permanently?`, () => {
-                                toast.error('Account deletion is locked during trial');
+                                toast.error('Account deletion is locked');
                             });
                         }} className="p-1.5 bg-slate-100 hover:bg-red-50 rounded text-slate-500 hover:text-red-600 transition-all cursor-pointer">
                             <Trash2 className="w-3.5 h-3.5" />
@@ -116,7 +91,7 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
                 </td>
             </tr>
             {isExpanded && hasSubs && account.subAccounts.map(sub => (
-                <AccountRow key={sub.id} account={sub} depth={depth + 1} onEdit={onEdit} />
+                <AccountRow key={sub.code} account={sub} depth={depth + 1} onEdit={onEdit} />
             ))}
         </>
     );
@@ -124,76 +99,81 @@ const AccountRow = ({ account, depth = 0, onEdit }) => {
 
 export default function ChartOfAccounts() {
     const [search, setSearch] = useState('');
-    const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
+    const [accounts, setAccounts] = useState([]);
+    const [flatData, setFlatData] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const flatAccounts = getAllAccountsFlat(accounts);
+    useEffect(() => {
+        fetchAccounts();
+    }, []);
+
+    const fetchAccounts = async () => {
+        setIsLoading(true);
+        try {
+            const res = await accountAPI.getAllAccounts();
+            const data = Array.isArray(res) ? res : (res?.data || res?.accounts || []);
+            setFlatData(data);
+            setAccounts(buildTree(data));
+        } catch (error) {
+            console.error('Failed to fetch accounts:', error);
+            toast.error('Failed to load chart of accounts');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const [formData, setFormData] = useState({
-        id: '',
+        code: '',
         name: '',
-        type: 'Asset',
-        category: 'Operating',
-        parentId: 'root'
+        type: 'Expense',
+        balance: 0,
+        parents: ''
     });
 
     const handleOpenAdd = () => {
         setEditingId(null);
-        setFormData({ id: '', name: '', type: 'Asset', category: 'Operating', parentId: 'root' });
+        setFormData({ code: '', name: '', type: 'Asset', balance: 0, parents: '' });
         setIsModalOpen(true);
     };
 
     const handleOpenEdit = (acc) => {
-        setEditingId(acc.id);
-        const p = flatAccounts.find(x => x.subAccounts && x.subAccounts.some(s => s.id === acc.id));
+        setEditingId(acc.code);
         setFormData({
-            id: acc.id,
+            code: acc.code,
             name: acc.name,
             type: acc.type,
-            category: acc.category || '',
-            parentId: p ? p.id : 'root'
+            balance: acc.balance || 0,
+            parents: acc.parents || ''
         });
         setIsModalOpen(true);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (editingId) {
-            setAccounts(updateNestedAccount(accounts, editingId, {
-                id: formData.id,
-                name: formData.name,
-                type: formData.type,
-                category: formData.category
-            }));
-            toast.success('Chart of Accounts updated');
-        } else {
-            const newAcc = {
-                id: formData.id,
-                name: formData.name,
-                type: formData.type,
-                category: formData.category,
-                balance: 0,
-                subAccounts: []
+        setIsLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                balance: Number(formData.balance)
             };
 
-            if (formData.parentId === 'root') {
-                setAccounts([...accounts, newAcc]);
+            if (editingId) {
+                await accountAPI.updateAccount(editingId, payload);
+                toast.success('Account updated successfully');
             } else {
-                setAccounts(accounts.map(acc => {
-                    if (acc.id === formData.parentId) {
-                        return { ...acc, subAccounts: [...(acc.subAccounts || []), newAcc] };
-                    }
-                    if (acc.subAccounts) {
-                        return { ...acc, subAccounts: updateNestedAccount(acc.subAccounts, formData.parentId, { subAccounts: [...(acc.subAccounts.find(x => x.id === formData.parentId)?.subAccounts || []), newAcc] }) };
-                    }
-                    return acc;
-                }));
+                await accountAPI.createAccount(payload);
+                toast.success('New ledger account created');
             }
-            toast.success('New ledger account created');
+            fetchAccounts();
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Failed to save account:', error);
+            toast.error('Failed to save account changes');
+        } finally {
+            setIsLoading(false);
         }
-        setIsModalOpen(false);
     };
 
     return (
@@ -249,7 +229,7 @@ export default function ChartOfAccounts() {
                         </thead>
                         <tbody>
                             {accounts.map(acc => (
-                                <AccountRow key={acc.id} account={acc} onEdit={handleOpenEdit} />
+                                <AccountRow key={acc.code} account={acc} onEdit={handleOpenEdit} />
                             ))}
                         </tbody>
                     </table>
@@ -274,7 +254,7 @@ export default function ChartOfAccounts() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-600">Account Code</label>
-                                    <input required value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} className="input" placeholder="e.g. 5130" />
+                                    <input required value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="input" placeholder="e.g. AC-1021" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-600">Account Type</label>
@@ -290,25 +270,23 @@ export default function ChartOfAccounts() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-600">Account Name</label>
-                                    <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input" placeholder="e.g. Travel Expenses" />
+                                    <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input" placeholder="e.g. Material Purchase" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Sub-Category</label>
-                                    <input value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="input" placeholder="e.g. Operational" />
+                                    <label className="text-xs font-semibold text-slate-600">Initial Balance (₹)</label>
+                                    <input type="number" value={formData.balance} onChange={e => setFormData({...formData, balance: e.target.value})} className="input" placeholder="0" />
                                 </div>
                             </div>
 
-                            {!editingId && (
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Parent Account</label>
-                                    <select value={formData.parentId} onChange={e => setFormData({...formData, parentId: e.target.value})} className="input">
-                                        <option value="root">None (Root Level)</option>
-                                        {flatAccounts.map(a => (
-                                            <option key={a.id} value={a.id}>{a.id} - {a.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600">Parent Account (Code)</label>
+                                <select value={formData.parents} onChange={e => setFormData({...formData, parents: e.target.value})} className="input">
+                                    <option value="">None (Root Level)</option>
+                                    {flatData.map(a => (
+                                        <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
+                                    ))}
+                                </select>
+                            </div>
 
                             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">Cancel</button>

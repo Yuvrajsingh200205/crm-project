@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Download, CheckCircle2, Clock, FileText, TrendingUp, X, Edit2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import toast from 'react-hot-toast';
-import { confirmToast } from '../../utils/toastUtils';
 import Skeleton from '../../components/common/Skeleton';
-
-const INITIAL_INVOICES = [];
+import { invoiceAPI } from '../../api/invoice';
 
 const statusBadge = {
     'Paid': 'badge-green',
@@ -15,77 +13,110 @@ const statusBadge = {
 };
 
 export default function Invoicing() {
-    const { setActiveModule } = useApp();
+    const { setActiveModule, setSelectedInvoice } = useApp();
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('All');
-    const [invoices, setInvoices] = useState(INITIAL_INVOICES);
+    const [invoices, setInvoices] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        setIsLoading(true);
-        const timer = setTimeout(() => setIsLoading(false), 1100);
-        return () => clearTimeout(timer);
+        fetchInvoices();
     }, []);
 
+    const fetchInvoices = async () => {
+        setIsLoading(true);
+        try {
+            const res = await invoiceAPI.getAllInvoices();
+            const backendInvoices = res?.invoices || (Array.isArray(res) ? res : (res?.data || []));
+            setInvoices(backendInvoices);
+        } catch (error) {
+            console.error('Failed to fetch invoices:', error);
+            toast.error('Failed to load invoices');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const [formData, setFormData] = useState({
-        client: '',
-        project: '',
-        type: 'RA Bill',
+        invoiceId: '',
+        projectId: '',
+        clientOrProject: '',
+        type: 'Running Bill',
+        date: new Date().toISOString().split('T')[0],
+        gst: 18,
+        retention: 5,
         amount: '',
-        date: '',
         status: 'Pending'
     });
 
-    const filteredInvoices = invoices.filter(inv =>
-        (inv.client.toLowerCase().includes(search.toLowerCase()) || inv.id.toLowerCase().includes(search.toLowerCase())) &&
+    const filteredInvoices = (Array.isArray(invoices) ? invoices : []).filter(inv =>
+        ((inv.clientOrProject?.toLowerCase() || '').includes(search.toLowerCase()) || 
+         (inv.invoiceId?.toLowerCase() || '').includes(search.toLowerCase())) &&
         (filter === 'All' || inv.status === filter)
     );
 
     const handleOpenAdd = () => {
         setEditingId(null);
-        setFormData({ client: '', project: '', type: 'RA Bill', amount: '', date: '', status: 'Pending' });
+        setFormData({
+            invoiceId: `INV-2026-00${invoices.length + 1}`,
+            projectId: '',
+            clientOrProject: '',
+            type: 'Running Bill',
+            date: new Date().toISOString().split('T')[0],
+            gst: 18,
+            retention: 5,
+            amount: '',
+            status: 'Pending'
+        });
         setIsModalOpen(true);
     };
 
     const handleOpenEdit = (e, inv) => {
         e.stopPropagation();
-        setEditingId(inv.id);
+        setEditingId(inv._id || inv.id);
         setFormData({
-            client: inv.client,
-            project: inv.project,
+            invoiceId: inv.invoiceId,
+            projectId: inv.projectId,
+            clientOrProject: inv.clientOrProject,
             type: inv.type,
             amount: inv.amount,
             date: inv.date,
+            gst: inv.gst || 18,
+            retention: inv.retention || 5,
             status: inv.status
         });
         setIsModalOpen(true);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const baseAmount = Number(formData.amount);
-        const taxVal = baseAmount * 0.18;
-        const retVal = baseAmount * 0.05;
-
-        if (editingId) {
-            setInvoices(invoices.map(i => i.id === editingId ? { 
-                ...i, ...formData, amount: baseAmount, tax: taxVal, retention: retVal 
-            } : i));
-            toast.success('Invoice revised successfully');
-        } else {
-            const newInv = {
-                id: `INV-2025-00${invoices.length + 1}`,
+        setIsLoading(true);
+        try {
+            const payload = {
                 ...formData,
-                amount: baseAmount,
-                tax: taxVal,
-                retention: retVal
+                amount: Number(formData.amount),
+                projectId: Number(formData.projectId) || 1,
+                gst: Number(formData.gst),
+                retention: Number(formData.retention)
             };
-            setInvoices([newInv, ...invoices]);
-            toast.success('New invoice / RA Bill generated');
+
+            if (editingId) {
+                await invoiceAPI.updateInvoice(editingId, payload);
+                toast.success('Invoice revised successfully');
+            } else {
+                await invoiceAPI.createInvoice(payload);
+                toast.success('New invoice / RA Bill generated');
+            }
+            fetchInvoices();
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Failed to save invoice:', error);
+            toast.error(editingId ? 'Failed to update invoice' : 'Failed to create invoice');
+        } finally {
+            setIsLoading(false);
         }
-        setIsModalOpen(false);
     };
 
     return (
@@ -169,16 +200,16 @@ export default function Invoicing() {
                             ) : filteredInvoices.length === 0 ? (
                                 <tr><td colSpan="9" className="p-6 text-center text-slate-500">No invoices found.</td></tr>
                             ) : filteredInvoices.map((inv, i) => (
-                                <tr key={inv.id} className="table-row hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setActiveModule('invoice-detail')}>
-                                    <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{inv.id}</td>
+                                <tr key={inv._id || inv.id} className="table-row hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => { setSelectedInvoice(inv); setActiveModule('invoice-detail'); }}>
+                                    <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{inv.invoiceId}</td>
                                     <td className="table-cell">
-                                        <p className="text-slate-900 font-medium">{inv.client}</p>
-                                        <p className="text-slate-400 text-xs">{inv.project}</p>
+                                        <p className="text-slate-900 font-medium">{inv.clientOrProject}</p>
+                                        <p className="text-slate-400 text-xs">Project Id: {inv.projectId}</p>
                                     </td>
                                     <td className="table-cell"><span className="badge badge-blue">{inv.type}</span></td>
                                     <td className="table-cell text-slate-500 text-xs whitespace-nowrap">{inv.date}</td>
-                                    <td className="table-cell text-slate-600">₹{(inv.tax / 1000).toFixed(0)}K</td>
-                                    <td className="table-cell text-slate-600">₹{(inv.retention / 1000).toFixed(0)}K</td>
+                                    <td className="table-cell text-slate-600">{inv.gst}%</td>
+                                    <td className="table-cell text-slate-600">{inv.retention}%</td>
                                     <td className="table-cell text-emerald-600 font-semibold">₹{(inv.amount / 100000).toFixed(2)}L</td>
                                     <td className="table-cell">
                                         <span className={`badge ${statusBadge[inv.status] || 'badge-yellow'}`}>{inv.status}</span>
@@ -188,7 +219,7 @@ export default function Invoicing() {
                                             <button onClick={(e) => handleOpenEdit(e, inv)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors">
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
-                                            <button onClick={() => setActiveModule('invoice-detail')} className="btn-secondary text-xs py-1 px-2 border border-slate-200 bg-white hover:bg-slate-50 rounded">
+                                             <button onClick={() => { setSelectedInvoice(inv); setActiveModule('invoice-detail'); }} className="btn-secondary text-xs py-1 px-2 border border-slate-200 bg-white hover:bg-slate-50 rounded">
                                                 View
                                             </button>
                                         </div>
@@ -215,32 +246,46 @@ export default function Invoicing() {
                         </div>
                         
                         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Invoice ID</label>
+                                    <input required value={formData.invoiceId} onChange={e => setFormData({...formData, invoiceId: e.target.value})} className="input" placeholder="INV-2026-001" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Project ID</label>
+                                    <input required type="number" value={formData.projectId} onChange={e => setFormData({...formData, projectId: e.target.value})} className="input" placeholder="1" />
+                                </div>
+                            </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">Client / Organization</label>
-                                <input required value={formData.client} onChange={e => setFormData({...formData, client: e.target.value})} className="input" placeholder="e.g. Larsen & Toubro" />
+                                <label className="text-xs font-semibold text-slate-600">Client / Project Name</label>
+                                <input required value={formData.clientOrProject} onChange={e => setFormData({...formData, clientOrProject: e.target.value})} className="input" placeholder="e.g. ABC Infra / Rural Electrification" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Project</label>
-                                    <input required value={formData.project} onChange={e => setFormData({...formData, project: e.target.value})} className="input" placeholder="e.g. Metro Phase 2" />
-                                </div>
-                                <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-600">Bill Type</label>
                                     <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input">
-                                        <option value="RA Bill">RA Bill</option>
+                                        <option value="Running Bill">Running Bill</option>
                                         <option value="Tax Invoice">Tax Invoice</option>
                                         <option value="Proforma">Proforma</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Base Amount (₹)</label>
-                                    <input required type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="input" placeholder="0.00" />
-                                </div>
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-600">Date</label>
                                     <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">GST (%)</label>
+                                    <input required type="number" value={formData.gst} onChange={e => setFormData({...formData, gst: e.target.value})} className="input" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Retention (%)</label>
+                                    <input required type="number" value={formData.retention} onChange={e => setFormData({...formData, retention: e.target.value})} className="input" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-600">Amount (₹)</label>
+                                    <input required type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="input" placeholder="0.00" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">

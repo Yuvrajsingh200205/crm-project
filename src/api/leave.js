@@ -24,5 +24,25 @@ export const leaveAPI = {
     createLeaveAllocation: async (allocationData) => {
         const response = await axiosInstance.post('/leave-allocations', allocationData);
         return response.data;
+    },
+
+    // Get employee leave details
+    getEmployeeLeave: async (userId) => {
+        // user provided specific path with double slash: {{URL}}/leaves//user/:userId
+        const response = await axiosInstance.get(`/leaves//user/${userId}`);
+        return response.data;
+    },
+
+    // Approve leave request
+    approveLeave: async (id) => {
+        const response = await axiosInstance.patch(`/leaves/${id}/approve`);
+        return response.data;
+    },
+
+    // Reject leave request
+    rejectLeave: async (id, reason) => {
+        // payload: { rejectionReason: string }
+        const response = await axiosInstance.patch(`/leaves/${id}/reject`, { rejectionReason: reason || "No reason provided" });
+        return response.data;
     }
 };
