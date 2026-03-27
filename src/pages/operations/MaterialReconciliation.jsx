@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCircle, Info, AlertCircle, RefreshCw, Download, Plus, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle, Info, AlertCircle, RefreshCw, Download, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { materialReconciliationAPI } from '../../api/materialReconciliation';
+import Skeleton from '../../components/common/Skeleton';
 
 const initialReconciliationData = [
     {
@@ -59,12 +61,35 @@ function getStatus(diff, poQty) {
 }
 
 export default function MaterialReconciliation() {
-    const [reconciliationData, setReconciliationData] = useState(initialReconciliationData);
+    const [reconciliationData, setReconciliationData] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
     const [tab, setTab] = useState('summary');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({});
+    const [formData, setFormData] = useState({
+        billCode: '', description: '', unit: '', contRate: '', subRate: '', poQty: '', billedQty: '', status: 'pending'
+    });
+
+    useEffect(() => {
+        fetchReconciliations();
+    }, []);
+
+    const fetchReconciliations = async () => {
+        setIsLoading(true);
+        try {
+            const res = await materialReconciliationAPI.getAllMaterialReconciliations();
+            // User provided: { "materialReconciliations": [...] }
+            const data = res?.materialReconciliations || res?.reconciliations || (Array.isArray(res) ? res : (res?.data || []));
+            setReconciliationData(data);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to sync reconciliations');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const criticalItems = reconciliationData.filter(r => r.diff < 0 || (r.poQty > 0 && Math.abs(r.diff / r.poQty) * 100 > 5));
 
@@ -80,32 +105,43 @@ export default function MaterialReconciliation() {
         }));
     };
 
-    const handleRecordIssuance = (e) => {
+    const handleRecordIssuance = async (e) => {
         e.preventDefault();
-        const poQty = parseFloat(formData.poQty || 0);
-        const subVals = formData.subVals || {};
-        const contractorTotal = Object.values(subVals).reduce((a, b) => a + b, 0);
-
-        const newItem = {
-            code: formData.code || `${reconciliationData.length * 10 + 10}`,
-            description: formData.description || '',
-            unit: formData.unit || 'No',
-            contractorRate: parseFloat(formData.contractorRate || 0),
-            subRate: parseFloat(formData.subRate || 0),
-            poQty: poQty,
-            billedQty: contractorTotal,
-            subcontractors: subcontractors.reduce((acc, sub) => {
-                acc[sub] = subVals[sub] || 0;
-                return acc;
-            }, {}),
-            contractorTotal: contractorTotal,
-            diff: poQty - contractorTotal,
-        };
-        
-        setReconciliationData([newItem, ...reconciliationData]);
-        setIsModalOpen(false);
-        setFormData({});
-        toast.success('Material issuance recorded and reconciled');
+        setIsSaving(true);
+        try {
+            const poQty = parseFloat(formData.poQty || 0);
+            const subVals = formData.subVals || {};
+            const billedQty = Object.values(subVals).reduce((a, b) => a + b, 0);
+            const contRate = parseFloat(formData.contRate || 0);
+            const subRate = parseFloat(formData.subRate || 0);
+            
+            const payload = {
+                billCode: formData.billCode || `BC-${Date.now().toString().slice(-4)}`,
+                description: formData.description,
+                unit: formData.unit,
+                contRate: contRate,
+                subRate: subRate,
+                poQty: poQty,
+                billedQty: billedQty,
+                contTotal: billedQty, // Based on the code logic (contractor total is billed qty)
+                diffQty: poQty - billedQty,
+                diffValue: (poQty - billedQty) * contRate,
+                status: "pending",
+                // subVals can be stored if the backend supports extra fields, 
+                // but let's stick to the requested body first
+            };
+            
+            await materialReconciliationAPI.createMaterialReconciliation(payload);
+            toast.success('Material issuance recorded and reconciled');
+            setIsModalOpen(false);
+            setFormData({ billCode: '', description: '', unit: '', contRate: '', subRate: '', poQty: '', billedQty: '', status: 'pending' });
+            fetchReconciliations();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to record issuance');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -164,25 +200,38 @@ export default function MaterialReconciliation() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {reconciliationData.map((row, i) => {
-                                    const status = getStatus(row.diff, row.poQty);
+                                {isLoading ? (
+                                    Array.from({ length: 3 }).map((_, i) => (
+                                        <tr key={i} className="border-b border-slate-100">
+                                            {Array.from({ length: 11 }).map((__, j) => (
+                                                <td key={j} className="px-4 py-4"><Skeleton className="w-16" /></td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                ) : reconciliationData.length === 0 ? (
+                                    <tr><td colSpan="11" className="p-12 text-center text-slate-500 font-medium italic">No reconciliation data found. Syncing RA bills suggested.</td></tr>
+                                ) : reconciliationData.map((row, i) => {
+                                    const diffQty = row.diffQty ?? (row.poQty - row.billedQty);
+                                    const status = getStatus(diffQty, row.poQty);
+                                    const contRate = row.contRate || row.contractorRate || 0;
+
                                     return (
-                                        <tr key={i} className={`table-row hover:bg-slate-50 transition-colors ${row.diff < 0 ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}>
-                                            <td className="table-cell font-mono font-bold text-blue-500">{row.code}</td>
+                                        <tr key={row.id || i} className={`table-row hover:bg-slate-50 transition-colors ${diffQty < 0 ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}>
+                                            <td className="table-cell font-mono font-bold text-blue-500">{row.billCode || row.code}</td>
                                             <td className="table-cell max-w-[200px]">
                                                 <p className="text-slate-900 leading-snug truncate" title={row.description}>{row.description}</p>
                                             </td>
                                             <td className="table-cell text-slate-500">{row.unit}</td>
-                                            <td className="table-cell text-emerald-600 font-semibold">₹{row.contractorRate.toLocaleString()}</td>
-                                            <td className="table-cell text-slate-500">₹{row.subRate.toLocaleString()}</td>
+                                            <td className="table-cell text-emerald-600 font-semibold">₹{contRate.toLocaleString()}</td>
+                                            <td className="table-cell text-slate-500">₹{(row.subRate || 0).toLocaleString()}</td>
                                             <td className="table-cell text-slate-900 font-bold">{row.poQty}</td>
                                             <td className="table-cell text-slate-700">{row.billedQty}</td>
-                                            <td className="table-cell text-slate-700">{row.contractorTotal}</td>
-                                            <td className={`table-cell font-bold text-sm ${row.diff < 0 ? 'text-red-500' : row.diff === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                {row.diff > 0 ? '+' : ''}{row.diff.toFixed(2)}
+                                            <td className="table-cell text-slate-700">{row.contTotal || row.contractorTotal}</td>
+                                            <td className={`table-cell font-bold text-sm ${diffQty < 0 ? 'text-red-500' : diffQty === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                {diffQty > 0 ? '+' : ''}{diffQty.toFixed(2)}
                                             </td>
-                                            <td className={`table-cell font-semibold ${row.diff < 0 ? 'text-red-500' : 'text-slate-500'}`}>
-                                                {row.diff !== 0 ? `₹${Math.abs(Math.round(row.diff * row.contractorRate)).toLocaleString()}` : '₹0'}
+                                            <td className={`table-cell font-semibold ${diffQty < 0 ? 'text-red-500' : 'text-slate-500'}`}>
+                                                {diffQty !== 0 ? `₹${Math.abs(Math.round(diffQty * contRate)).toLocaleString()}` : '₹0'}
                                             </td>
                                             <td className="table-cell">
                                                 <span className={`badge ${status.badge}`}>{status.label}</span>
@@ -225,8 +274,8 @@ export default function MaterialReconciliation() {
                                             <td className="table-cell text-slate-900 max-w-[200px] truncate">{row.description}</td>
                                             <td className="table-cell text-slate-500">{row.unit}</td>
                                             {subcontractors.map(s => (
-                                                <td key={s} className={`table-cell text-center font-semibold ${row.subcontractors[s] > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
-                                                    {row.subcontractors[s] || '0'}
+                                                <td key={s} className={`table-cell text-center font-semibold ${(row.subcontractors?.[s] || 0) > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                    {row.subcontractors?.[s] || '0'}
                                                 </td>
                                             ))}
                                             <td className="table-cell text-slate-900 font-bold">{row.contractorTotal}</td>
@@ -259,23 +308,25 @@ export default function MaterialReconciliation() {
                             </thead>
                             <tbody>
                                 {reconciliationData.map((row, i) => {
-                                    const issued = row.poQty;
-                                    const consumed = row.contractorTotal;
+                                    const issued = Number(row.poQty || 0);
+                                    const consumed = Number(row.billedQty || row.contractorTotal || 0);
                                     const balance = issued - consumed;
                                     const storeBalance = Math.max(0, balance * 0.4);
                                     const siteBalance = Math.max(0, balance * 0.6);
-                                    const status = getStatus(row.diff, row.poQty);
+                                    const diffQty = Number(row.diffQty ?? row.diff ?? balance);
+                                    const status = getStatus(diffQty, row.poQty);
+                                    
                                     return (
-                                        <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
+                                        <tr key={row.id || i} className="table-row hover:bg-slate-50 transition-colors">
                                             <td className="table-cell text-slate-900 max-w-[200px] truncate" title={row.description}>{row.description}</td>
-                                            <td className="table-cell text-slate-500">{row.unit}</td>
-                                            <td className="table-cell text-slate-900 font-bold">{row.poQty}</td>
+                                            <td className="table-cell text-slate-500 font-bold uppercase text-[10px]">{row.unit}</td>
+                                            <td className="table-cell text-slate-900 font-bold">{issued}</td>
                                             <td className="table-cell text-blue-500 font-medium">{issued}</td>
                                             <td className="table-cell text-orange-500 font-medium">{consumed}</td>
                                             <td className="table-cell text-emerald-500 font-medium">{storeBalance.toFixed(2)}</td>
                                             <td className="table-cell text-cyan-500 font-medium">{siteBalance.toFixed(2)}</td>
-                                            <td className={`table-cell font-bold ${row.diff < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                {row.diff > 0 ? '+' : ''}{row.diff.toFixed(2)}
+                                            <td className={`table-cell font-bold ${diffQty < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                {diffQty > 0 ? '+' : ''}{diffQty.toFixed(2)}
                                             </td>
                                             <td className="table-cell">
                                                 <span className={`badge ${status.badge}`}>{status.label}</span>
@@ -314,7 +365,7 @@ export default function MaterialReconciliation() {
 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Bill Code <span className="text-red-500">*</span></label>
-                                        <input required name="code" value={formData.code || ''} onChange={handleInputChange} className="input w-full font-mono" placeholder="e.g. 140" />
+                                        <input required name="billCode" value={formData.billCode || ''} onChange={handleInputChange} className="input w-full font-mono" placeholder="e.g. Bill-1020" />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -324,7 +375,7 @@ export default function MaterialReconciliation() {
 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Contractor Rate (₹) <span className="text-red-500">*</span></label>
-                                        <input required type="number" step="0.01" name="contractorRate" value={formData.contractorRate || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. 6200" />
+                                        <input required type="number" step="0.01" name="contRate" value={formData.contRate || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. 6200" />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -359,11 +410,12 @@ export default function MaterialReconciliation() {
                             </div>
 
                             <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
+                                <button type="button" disabled={isSaving} onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 shadow-sm shadow-green-500/20 transition-all flex items-center gap-2">
-                                    Calculate & Save
+                                <button type="submit" disabled={isSaving} className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 shadow-sm shadow-green-500/20 transition-all flex items-center gap-2">
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                    {isSaving ? 'Saving...' : 'Calculate & Save'}
                                 </button>
                             </div>
                         </form>

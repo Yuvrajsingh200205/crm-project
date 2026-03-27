@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Plus, Search, ClipboardCheck, Truck, CheckCircle, Clock, AlertTriangle, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, ClipboardCheck, Truck, CheckCircle, Clock, AlertTriangle, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { confirmToast } from '../../utils/toastUtils';
+import { procurementAPI } from '../../api/procurement';
+import Skeleton from '../../components/common/Skeleton';
 
 const initialPurchaseOrders = [
     { id: 'PO-2026-047', vendor: 'Bihar Cable Industries', items: 'ABC Cable 3X185 – 1 CKM', amount: 385000, raised: '2026-03-01', expectedDelivery: '2026-03-15', status: 'Pending Approval', approver: 'GM – Ops', stage: 1 },
@@ -22,16 +23,46 @@ const statusBadge = {
 };
 
 export default function Procurement() {
-    const [purchaseOrders, setPurchaseOrders] = useState(initialPurchaseOrders);
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
     const [search, setSearch] = useState('');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({});
+    const [formData, setFormData] = useState({ 
+        poNumber: '', 
+        vendor: '', 
+        items: '', 
+        amount: '', 
+        expectedDelivery: '',
+        progress: 'Indent',
+        status: 'pending'
+    });
+
+    useEffect(() => {
+        fetchProcurements();
+    }, []);
+
+    const fetchProcurements = async () => {
+        setIsLoading(true);
+        try {
+            const res = await procurementAPI.getAllProcurements();
+            // User example: { "procurements": [...] } or array
+            const data = res?.procurements || (Array.isArray(res) ? res : (res?.data || []));
+            setPurchaseOrders(data);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to load procurements');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const filtered = purchaseOrders.filter(po =>
-        po.vendor.toLowerCase().includes(search.toLowerCase()) ||
-        po.id.toLowerCase().includes(search.toLowerCase())
+        (po.vendor || '').toLowerCase().includes(search.toLowerCase()) ||
+        (po.poNumber || po.id || '').toLowerCase().includes(search.toLowerCase()) ||
+        (po.items || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const handleInputChange = (e) => {
@@ -39,23 +70,45 @@ export default function Procurement() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleCreatePO = (e) => {
+    const handleUpdateStatus = async (id, newStatus, newProgress) => {
+        try {
+            await procurementAPI.updateProcurementStatus(id, { status: newStatus, progress: newProgress });
+            toast.success(`Order moved to ${newProgress}`);
+            fetchProcurements();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update status');
+        }
+    };
+
+    const handleCreatePO = async (e) => {
         e.preventDefault();
-        const newPO = {
-            id: `PO-2026-0${purchaseOrders.length + 43}`,
-            vendor: formData.vendor || '',
-            items: formData.items || '',
-            amount: parseFloat(formData.amount || 0),
-            raised: new Date().toISOString().split('T')[0],
-            expectedDelivery: formData.expectedDelivery || '',
-            status: 'Pending Approval',
-            approver: 'Pending',
-            stage: 0
-        };
-        setPurchaseOrders([newPO, ...purchaseOrders]);
-        setIsModalOpen(false);
-        setFormData({});
-        toast.success('Purchase Order raised successfully');
+        setIsSaving(true);
+        try {
+            const payload = {
+                poNumber: formData.poNumber || `PO-${Date.now().toString().slice(-5)}`,
+                vendor: formData.vendor,
+                items: formData.items,
+                amount: Number(formData.amount),
+                raised: new Date().toISOString().split('T')[0],
+                expectedDelivery: formData.expectedDelivery,
+                progress: formData.progress || "Indent",
+                status: "pending"
+            };
+            
+            await procurementAPI.createProcurement(payload);
+            toast.success('Purchase Order raised successfully');
+            setIsModalOpen(false);
+            setFormData({
+                poNumber: '', vendor: '', items: '', amount: '', expectedDelivery: '', progress: 'Indent', status: 'pending'
+            });
+            fetchProcurements();
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to create PO');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -114,33 +167,83 @@ export default function Procurement() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
-                                <tr><td colSpan="9" className="p-6 text-center text-slate-500">No Purchase Orders found. Create a new one.</td></tr>
+                            {isLoading ? (
+                                Array.from({ length: 3 }).map((_, i) => (
+                                    <tr key={i} className="border-b border-slate-100">
+                                        <td className="px-6 py-4"><Skeleton className="w-20" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-32" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-48" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-20" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-20" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-20" /></td>
+                                        <td className="px-6 py-4"><Skeleton className="w-24" /></td>
+                                        <td className="px-6 py-4"><Skeleton variant="badge" /></td>
+                                        <td className="px-6 py-4"><Skeleton variant="button" className="w-16 h-8" /></td>
+                                    </tr>
+                                ))
+                            ) : filtered.length === 0 ? (
+                                <tr><td colSpan="9" className="p-12 text-center text-slate-500 font-medium">No Purchase Orders found. Create a new one.</td></tr>
                             ) : filtered.map((po, i) => {
-                                const stage = statusToStage[po.status] ?? 0;
+                                const stageName = po.progress || 'Indent';
+                                const stageIndex = stages.includes(stageName) ? stages.indexOf(stageName) : 0;
+                                const displayStatus = po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1).toLowerCase() : 'Pending';
+
                                 return (
-                                    <tr key={i} className="table-row hover:bg-slate-50 transition-colors">
-                                        <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{po.id}</td>
-                                        <td className="table-cell text-slate-900 font-medium">{po.vendor}</td>
-                                        <td className="table-cell text-slate-500 text-xs max-w-xs truncate" title={po.items}>{po.items}</td>
-                                        <td className="table-cell text-emerald-600 font-semibold">₹{po.amount.toLocaleString()}</td>
-                                        <td className="table-cell text-slate-500 text-xs">{po.raised}</td>
-                                        <td className="table-cell text-slate-500 text-xs">{po.expectedDelivery}</td>
+                                    <tr key={po.id || i} className="table-row hover:bg-emerald-50/20 transition-colors group">
+                                        <td className="table-cell font-mono text-blue-500 text-xs font-bold">{po.poNumber || po.id}</td>
+                                        <td className="table-cell text-slate-900 font-black">{po.vendor}</td>
+                                        <td className="table-cell text-slate-500 text-xs max-w-xs truncate font-medium" title={po.items}>"{po.items}"</td>
+                                        <td className="table-cell text-emerald-600 font-black">₹{Number(po.amount).toLocaleString()}</td>
+                                        <td className="table-cell text-slate-400 text-[10px] font-bold uppercase">{po.raised}</td>
+                                        <td className="table-cell text-slate-400 text-[10px] font-bold uppercase">{po.expectedDelivery}</td>
                                         <td className="table-cell w-36">
                                             <div className="flex gap-0.5">
-                                                {stages.map((s, si) => (
-                                                    <div key={si} className={`flex-1 h-1.5 rounded-full transition-all ${si <= stage ? 'bg-[#22c55e]' : 'bg-slate-200'}`} />
+                                                {stages.map((_, si) => (
+                                                    <div key={si} className={`flex-1 h-1 rounded-full transition-all ${si <= stageIndex ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-slate-100'}`} />
                                                 ))}
                                             </div>
-                                            <p className="text-slate-500 text-xs mt-1">{stages[Math.min(stage, stages.length - 1)]}</p>
+                                            <p className="text-slate-400 text-[9px] font-black uppercase tracking-tighter mt-1.5">{stageName}</p>
                                         </td>
                                         <td className="table-cell">
-                                            <span className={`badge ${statusBadge[po.status] || 'badge-gray'}`}>{po.status}</span>
+                                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${statusBadge[displayStatus] || statusBadge[po.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                {displayStatus}
+                                            </span>
                                         </td>
-                                        <td className="table-cell" onClick={e => e.stopPropagation()}>
-                                            <button className="btn-secondary text-xs py-1 px-2 border border-slate-200 hover:bg-slate-100/50 transition-colors rounded">
-                                                {po.status === 'Pending Approval' ? 'Approve' : po.status === 'GRN Pending' ? 'GRN' : 'View'}
-                                            </button>
+                                        <td className="table-cell">
+                                            <div className="flex items-center gap-1.5">
+                                                {po.status === 'pending' && (
+                                                    <button 
+                                                        onClick={() => handleUpdateStatus(po.id, 'approved', 'Approval')}
+                                                        className="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <CheckCircle className="w-3 h-3" /> Approve
+                                                    </button>
+                                                )}
+                                                {po.status === 'approved' && (
+                                                    <button 
+                                                        onClick={() => handleUpdateStatus(po.id, 'issued', 'PO Issued')}
+                                                        className="px-2.5 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <Truck className="w-3 h-3" /> Issue PO
+                                                    </button>
+                                                )}
+                                                {po.status === 'issued' && (
+                                                    <button 
+                                                        onClick={() => handleUpdateStatus(po.id, 'delivered', 'Delivered')}
+                                                        className="px-2.5 py-1.5 bg-orange-50 text-orange-600 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-orange-500 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <ClipboardCheck className="w-3 h-3" /> GRN
+                                                    </button>
+                                                )}
+                                                {po.status === 'delivered' && (
+                                                    <button 
+                                                        className="p-1 text-slate-300 cursor-not-allowed"
+                                                        title="Process Complete"
+                                                    >
+                                                        <CheckCircle className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -165,6 +268,11 @@ export default function Procurement() {
                         
                         <form onSubmit={handleCreatePO} className="flex-1 overflow-y-auto p-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">PO Number <span className="text-slate-400 text-[10px]">(Optional)</span></label>
+                                    <input name="poNumber" value={formData.poNumber || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. PO-00002" />
+                                </div>
+
                                 <div className="space-y-1.5 md:col-span-2">
                                     <label className="text-sm font-medium text-slate-700">Select Vendor <span className="text-red-500">*</span></label>
                                     <input required name="vendor" value={formData.vendor || ''} onChange={handleInputChange} className="input w-full" placeholder="e.g. National Pole Manufacturers" />
@@ -187,11 +295,12 @@ export default function Procurement() {
                             </div>
 
                             <div className="pt-8 mt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
+                                <button type="button" disabled={isSaving} onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn-primary">
-                                    Generate PO
+                                <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2">
+                                    {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {isSaving ? 'Generating...' : 'Generate PO'}
                                 </button>
                             </div>
                         </form>
