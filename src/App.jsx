@@ -37,6 +37,10 @@ import EmployeeDetails from './pages/hr/EmployeeDetails';
 import FinancialAnalytics from './pages/analytics/FinancialAnalytics';
 
 import Tenders from './pages/business/Tenders';
+import CRM from './pages/business/CRM';
+import Quotations from './pages/business/Quotations';
+import Contracts from './pages/business/Contracts';
+import VendorManagement from './pages/business/VendorManagement';
 
 import {
   FolderKanban, ClipboardList, MapPin, TrendingUp, GitBranch,
@@ -85,11 +89,11 @@ const pageMap = {
   'employee-details': <EmployeeDetails />,
 
   // Business Dev
-  'crm': <PlaceholderPage title="CRM" description="Lead management, client interactions, opportunity pipeline, and win/loss analysis." icon={Target} />,
-  'quotations': <PlaceholderPage title="Quotation Management" description="BOQ-based costing, margin calculation, revision tracking, and quote-to-order conversion." icon={FileText} />,
+  'crm': <CRM />,
+  'quotations': <Quotations />,
   'tenders': <Tenders />,
-  'contracts': <PlaceholderPage title="Contract Management" description="Contract repository, milestone tracking, PBG management, and amendment handling." icon={FileBarChart} />,
-  'vendor-management': <PlaceholderPage title="Vendor Management" description="Vendor rating, rate contracts, due diligence (PAN/GST), and preferred vendor list." icon={Users} />,
+  'contracts': <Contracts />,
+  'vendor-management': <VendorManagement />,
 
   // Compliance
   'legal-compliance': <PlaceholderPage title="Legal & Regulatory Compliance" description="Compliance calendar, license renewal reminders, and document repository for all statutory requirements." icon={Shield} />,
