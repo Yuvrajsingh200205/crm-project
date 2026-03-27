@@ -246,7 +246,16 @@ export default function Subcontractors() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700">Primary Contact <span className="text-red-500">*</span></label>
-                    <input required className="input w-full" placeholder="+91 XXXX XXX XXX" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} />
+                    <input 
+                      required 
+                      className="input w-full" 
+                      placeholder="10 digit mobile number" 
+                      value={formData.contact} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        if (val.length <= 10) setFormData({...formData, contact: val});
+                      }} 
+                    />
                   </div>
 
                   <div className="space-y-1.5">
