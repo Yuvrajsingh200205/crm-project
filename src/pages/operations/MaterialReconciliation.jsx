@@ -413,7 +413,7 @@ export default function MaterialReconciliation() {
                                 <button type="button" disabled={isSaving} onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" disabled={isSaving} className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-medium hover:bg-green-600 shadow-sm shadow-green-500/20 transition-all flex items-center gap-2">
+                                <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2">
                                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                                     {isSaving ? 'Saving...' : 'Calculate & Save'}
                                 </button>

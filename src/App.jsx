@@ -24,6 +24,9 @@ import VoucherDetail from './pages/finance/VoucherDetail';
 import GSTManagement from './pages/finance/GSTManagement';
 import MaterialReconciliation from './pages/operations/MaterialReconciliation';
 import Procurement from './pages/operations/Procurement';
+import InventoryStore from './pages/operations/InventoryStore';
+import EquipmentAssets from './pages/operations/EquipmentAssets';
+import Subcontractors from './pages/operations/Subcontractors';
 import EmployeeMaster from './pages/hr/EmployeeMaster';
 import Attendance from './pages/hr/Attendance';
 import LeaveManagement from './pages/hr/LeaveManagement';
@@ -67,10 +70,10 @@ const pageMap = {
 
   // Operations
   'procurement': <Procurement />,
-  'inventory': <PlaceholderPage title="Inventory & Store Management" description="Multi-location inventory tracking with FIFO/LIFO valuation, reorder alerts, and stock verification." icon={Package} />,
+  'inventory': <InventoryStore />,
   'material-reconciliation': <MaterialReconciliation />,
-  'equipment': <PlaceholderPage title="Equipment & Asset Management" description="Track machinery utilization, maintenance schedules, fuel logs, and depreciation." icon={Wrench} />,
-  'subcontractors': <PlaceholderPage title="Subcontractor Management" description="Manage subcontractor work orders, rate contracts, billing, TDS, and performance ratings." icon={Users} />,
+  'equipment': <EquipmentAssets />,
+  'subcontractors': <Subcontractors />,
 
   // HR
   'employee-master': <EmployeeMaster />,
