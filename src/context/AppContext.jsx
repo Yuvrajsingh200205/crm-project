@@ -134,7 +134,24 @@ export function AppProvider({ children }) {
         setUserProfile(null);
     };
 
-    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    const [selectedEmployee, setSelectedEmployeeState] = useState(() => {
+        try {
+            const saved = localStorage.getItem('selectedEmployee');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
+
+    const setSelectedEmployee = (emp) => {
+        if (emp) {
+            localStorage.setItem('selectedEmployee', JSON.stringify(emp));
+        } else {
+            localStorage.removeItem('selectedEmployee');
+        }
+        setSelectedEmployeeState(emp);
+    };
+
     const [employees, setEmployees] = useState(initialEmployees);
     const [projects, setProjects] = useState(initialProjects);
     const [selectedProject, setSelectedProject] = useState(null);

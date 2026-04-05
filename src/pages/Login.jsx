@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, User, ArrowRight, Lock, Mail, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, User, ArrowRight, Lock, Mail, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authAPI } from '../api/auth';
 
@@ -8,6 +8,7 @@ const Login = () => {
   const { login } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -36,7 +37,20 @@ const Login = () => {
 
       // 4. Derive role & profile info from API response
       const profile = response?.user || response?.data?.user || response?.data || response;
-      const userRole = profile?.role || (email.toLowerCase().includes('admin') ? 'admin' : 'employee');
+      let userRole = profile?.role;
+      const lowerEmail = email.toLowerCase();
+      const lowerDept = (profile?.department || '').toLowerCase();
+
+      // If backend doesn't provide a clear role, or it's 'employee', try to detect 'hr'
+      if (!userRole || userRole === 'employee' || userRole === 'user') {
+          if (lowerEmail.includes('admin')) {
+              userRole = 'admin';
+          } else if (lowerEmail.includes('hr') || lowerDept.includes('hr') || lowerDept.includes('human resource')) {
+              userRole = 'hr';
+          } else {
+              userRole = 'employee';
+          }
+      }
 
       toast.success('Login Successful!');
       login(userRole, profile);
@@ -140,13 +154,20 @@ const Login = () => {
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2f6645] transition-colors" size={18} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f6645]/20 focus:border-[#2f6645] transition-all text-slate-900 placeholder:text-slate-400"
+                  className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f6645]/20 focus:border-[#2f6645] transition-all text-slate-900 placeholder:text-slate-400"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#2f6645] transition-colors p-1"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
               </div>
             </div>
 

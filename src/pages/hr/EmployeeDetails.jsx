@@ -148,7 +148,7 @@ export default function EmployeeDetails() {
                                     <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-[#2f6645]">
                                         <Mail className="w-4 h-4" />
                                     </div>
-                                    <span>{selectedEmployee.name.toLowerCase().replace(' ', '.')}@construction.com</span>
+                                    <span>{employee.email || (selectedEmployee.name.toLowerCase().replace(' ', '.') + '@construction.com')}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-sm text-slate-600">
                                     <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
@@ -238,6 +238,7 @@ export default function EmployeeDetails() {
                                                 { label: 'Work Location', value: 'Main Office - Patna', field: 'location' },
                                                 { label: 'Department', value: employee.department, field: 'department', isSelect: true, options: ['Operations', 'Civil', 'Electrical', 'HR', 'Finance', 'Solar', 'Stores', 'Interior'] },
                                                 { label: 'Reporting Manager', value: 'Rajesh Kumar', field: 'manager' },
+                                                { label: 'Employee Email', value: employee.email, field: 'email' },
                                                 { label: 'Employee Type', value: employee.type, field: 'type', isSelect: true, options: ['Permanent', 'Contract', 'Trainee'] },
                                                 { label: 'Date of Joining', value: employee.doj, field: 'doj', isDate: true },
                                             ].map((f, i) => (

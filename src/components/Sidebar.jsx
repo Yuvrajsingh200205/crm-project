@@ -162,14 +162,29 @@ export default function Sidebar({ role }) {
 
         if (role === 'admin') return newItem;
 
-        // Employee logic: Only show specific modules
-        const employeeModules = ['dashboard', 'projects', 'hr', 'analytics'];
+        // HR logic: Only show Dashboard and HR
+        if (role === 'hr') {
+            const hrModules = ['dashboard', 'hr'];
+            if (!hrModules.includes(newItem.id)) return null;
+            
+            // Filter children for HR: Employee Master, Attendance, Leave, Payroll, Statutory, Reimbursements
+            if (newItem.id === 'hr' && newItem.children) {
+                newItem.children = newItem.children.filter(c =>
+                    ['employee-master', 'attendance', 'leave-management', 'payroll', 'statutory-compliance', 'reimbursements'].includes(c.id)
+                );
+            }
+            return newItem;
+        }
+
+        // Employee logic: Only show Dashboard and HR by default (for employees with HR duties)
+        // If an employee is NOT an admin or specifically an HR, they see a minimal view.
+        const employeeModules = ['dashboard', 'hr'];
         if (!employeeModules.includes(newItem.id)) return null;
 
-        // Further filter children for employee
+        // Further filter children for employee (full set for HR modules if seen)
         if (newItem.id === 'hr' && newItem.children) {
             newItem.children = newItem.children.filter(c =>
-                ['attendance', 'leave-management', 'reimbursements'].includes(c.id)
+                ['employee-master', 'attendance', 'leave-management', 'payroll', 'statutory-compliance', 'reimbursements'].includes(c.id)
             );
         }
         if (newItem.id === 'projects' && newItem.children) {

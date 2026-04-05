@@ -40,6 +40,7 @@ export default function EmployeeMaster() {
                 pan: emp.pancardNo || '',
                 uan: emp.uanNumber || '',
                 type: emp.type === 'employee' ? 'Permanent' : 'Contract',
+                email: emp.email || '',
                 status: 'Active'
             }));
             setEmployees(mapped);
@@ -112,6 +113,7 @@ export default function EmployeeMaster() {
                 pan: payload.pancardNo || '',
                 uan: payload.uanNumber || '',
                 type: payload.type || 'Permanent',
+                email: payload.email,
                 status: 'Active'
             };
             setEmployees([newEmp, ...employees]);
@@ -185,72 +187,75 @@ export default function EmployeeMaster() {
                             </tr>
                         </thead>
                         <tbody>
-                                {isFetching && Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={`skeleton-${i}`} className="table-row">
-                                        <td className="table-cell"><Skeleton variant="text" className="w-16" /></td>
-                                        <td className="table-cell">
-                                            <div className="flex items-center gap-3">
-                                                <Skeleton variant="circle" />
-                                                <div className="w-32"><Skeleton variant="text" count={2} /></div>
-                                            </div>
-                                        </td>
-                                        <td className="table-cell"><Skeleton variant="text" /></td>
-                                        <td className="table-cell"><Skeleton variant="badge" /></td>
-                                        <td className="table-cell"><Skeleton variant="text" /></td>
-                                        <td className="table-cell"><Skeleton variant="text" /></td>
-                                        <td className="table-cell"><Skeleton variant="badge" /></td>
-                                        <td className="table-cell"><Skeleton variant="badge" /></td>
-                                        <td className="table-cell"><Skeleton variant="button" /></td>
-                                    </tr>
-                                ))}
-                                {!isFetching && filtered.length === 0 ? (
+                                {isFetching ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={`skeleton-${i}`} className="table-row">
+                                            <td className="table-cell"><Skeleton variant="text" className="w-16" /></td>
+                                            <td className="table-cell">
+                                                <div className="flex items-center gap-3">
+                                                    <Skeleton variant="circle" />
+                                                    <div className="w-32"><Skeleton variant="text" count={2} /></div>
+                                                </div>
+                                            </td>
+                                            <td className="table-cell"><Skeleton variant="text" /></td>
+                                            <td className="table-cell"><Skeleton variant="badge" /></td>
+                                            <td className="table-cell"><Skeleton variant="text" /></td>
+                                            <td className="table-cell"><Skeleton variant="text" /></td>
+                                            <td className="table-cell"><Skeleton variant="badge" /></td>
+                                            <td className="table-cell"><Skeleton variant="badge" /></td>
+                                            <td className="table-cell"><Skeleton variant="button" /></td>
+                                        </tr>
+                                    ))
+                                ) : filtered.length === 0 ? (
                                     <tr><td colSpan="9" className="p-6 text-center text-slate-500">No employees found. Add a new one.</td></tr>
-                                ) : filtered.map((e, i) => (
-                                <tr key={i} className="table-row cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => {
-                                    setSelectedEmployee(e);
-                                    setActiveModule('employee-details');
-                                }}>
-                                    <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{e.id}</td>
-                                    <td className="table-cell">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold flex-shrink-0">
-                                                {e.name.split(' ').map(n => n?.[0]).join('')}
-                                            </div>
-                                            <div>
-                                                <p className="text-slate-900 font-medium whitespace-nowrap">{e.name}</p>
-                                                <p className="text-slate-500 text-xs font-mono">{e.pan}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="table-cell text-slate-700">{e.designation}</td>
-                                    <td className="table-cell"><span className="badge badge-green">{e.department}</span></td>
-                                    <td className="table-cell text-slate-500 text-xs whitespace-nowrap">{e.doj}</td>
-                                    <td className="table-cell">
-                                        <p className="text-slate-900 font-semibold">₹{e.gross.toLocaleString()}</p>
-                                        <p className="text-slate-500 text-xs">Net: ₹{e.net.toLocaleString()}</p>
-                                    </td>
-                                    <td className="table-cell">
-                                        <div className="flex gap-1">
-                                            {e.pf === 'Active' && <span className="badge badge-green">PF</span>}
-                                            {e.esi && <span className="badge badge-blue">ESI</span>}
-                                        </div>
-                                    </td>
-                                    <td className="table-cell">
-                                        <span className={`badge ${e.type === 'Permanent' ? 'badge-green' : 'badge-yellow'}`}>{e.type}</span>
-                                    </td>
-                                    <td className="table-cell" onClick={ev => ev.stopPropagation()}>
-                                        <button 
-                                            onClick={() => {
-                                                setSelectedEmployee(e);
-                                                setActiveModule('employee-details');
-                                            }}
-                                            className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded flex items-center gap-1.5"
-                                        >
-                                            <Eye className="w-3.5 h-3.5" /> View Details
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                                ) : (
+                                    filtered.map((e, i) => (
+                                        <tr key={i} className="table-row cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => {
+                                            setSelectedEmployee(e);
+                                            setActiveModule('employee-details');
+                                        }}>
+                                            <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{e.id}</td>
+                                            <td className="table-cell">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold flex-shrink-0">
+                                                        {e.name.split(' ').map(n => n?.[0]).join('')}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-slate-900 font-medium whitespace-nowrap">{e.name}</p>
+                                                        <p className="text-slate-500 text-xs font-mono">{e.pan}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="table-cell text-slate-700">{e.designation}</td>
+                                            <td className="table-cell"><span className="badge badge-green">{e.department}</span></td>
+                                            <td className="table-cell text-slate-500 text-xs whitespace-nowrap">{e.doj}</td>
+                                            <td className="table-cell">
+                                                <p className="text-slate-900 font-semibold">₹{e.gross.toLocaleString()}</p>
+                                                <p className="text-slate-500 text-xs">Net: ₹{e.net.toLocaleString()}</p>
+                                            </td>
+                                            <td className="table-cell">
+                                                <div className="flex gap-1">
+                                                    {e.pf === 'Active' && <span className="badge badge-green">PF</span>}
+                                                    {e.esi && <span className="badge badge-blue">ESI</span>}
+                                                </div>
+                                            </td>
+                                            <td className="table-cell">
+                                                <span className={`badge ${e.type === 'Permanent' ? 'badge-green' : 'badge-yellow'}`}>{e.type}</span>
+                                            </td>
+                                            <td className="table-cell" onClick={ev => ev.stopPropagation()}>
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedEmployee(e);
+                                                        setActiveModule('employee-details');
+                                                    }}
+                                                    className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded flex items-center gap-1.5"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" /> View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                         </tbody>
                     </table>
                 </div>
