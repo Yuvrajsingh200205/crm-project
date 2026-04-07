@@ -93,7 +93,8 @@ export default function EmployeeMaster() {
                 isAdmin: !!formData.isAdmin,
                 adminId: 1,
                 uanNumber: formData.uan || '',
-                age: parseInt(formData.age || 25, 10)
+                dateOfBirth: formData.dob || '2000-01-01',
+                age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 25
             };
 
             const response = await employeeAPI.createEmployee(payload);
@@ -288,8 +289,8 @@ export default function EmployeeMaster() {
                                         <input required type="email" name="email" value={formData.email || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. rahul@crm.com" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-1">
-                                        <label className="text-sm font-medium text-slate-700">Age <span className="text-red-500">*</span></label>
-                                        <input required type="number" name="age" value={formData.age || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. 35" />
+                                        <label className="text-sm font-medium text-slate-700">Date of Birth <span className="text-red-500">*</span></label>
+                                        <input required type="date" name="dob" value={formData.dob || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -299,7 +300,19 @@ export default function EmployeeMaster() {
 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Department <span className="text-red-500">*</span></label>
-                                        <input required name="department" value={formData.department || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all" placeholder="e.g. Civil" />
+                                        <div className="relative group/select">
+                                            <select required name="department" value={formData.department || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all bg-white appearance-none pr-8">
+                                                <option value="" disabled>Select Department</option>
+                                                <option value="General And Administration">General And Administration</option>
+                                                <option value="Human Resource">Human Resource</option>
+                                                <option value="Accounts Department">Accounts Department</option>
+                                                <option value="Marketing">Marketing</option>
+                                                <option value="Tender">Tender</option>
+                                                <option value="Electrical">Electrical</option>
+                                                <option value="Taxation">Taxation</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1.5">

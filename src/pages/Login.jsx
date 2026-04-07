@@ -37,18 +37,25 @@ const Login = () => {
 
       // 4. Derive role & profile info from API response
       const profile = response?.user || response?.data?.user || response?.data || response;
-      let userRole = profile?.role;
-      const lowerEmail = email.toLowerCase();
-      const lowerDept = (profile?.department || '').toLowerCase();
-
-      // If backend doesn't provide a clear role, or it's 'employee', try to detect 'hr'
-      if (!userRole || userRole === 'employee' || userRole === 'user') {
-          if (lowerEmail.includes('admin')) {
-              userRole = 'admin';
-          } else if (lowerEmail.includes('hr') || lowerDept.includes('hr') || lowerDept.includes('human resource')) {
-              userRole = 'hr';
-          } else {
-              userRole = 'employee';
+      let userRole = 'employee';
+      
+      if (profile?.roleId !== undefined && profile?.roleId !== null) {
+          const roleId = parseInt(profile.roleId, 10);
+          if (roleId === 0 || roleId === 1) userRole = 'admin';
+          else if (roleId === 2) userRole = 'hr';
+          else if (roleId === 3) userRole = 'accounts';
+          else if (roleId === 4) userRole = 'marketing';
+      } else {
+          // Fallback if no roleId is provided
+          userRole = profile?.role || 'employee';
+          const lowerEmail = email.toLowerCase();
+          const lowerDept = (profile?.department || '').toLowerCase();
+          if (!userRole || userRole === 'employee' || userRole === 'user') {
+              if (lowerEmail.includes('admin')) {
+                  userRole = 'admin';
+              } else if (lowerEmail.includes('hr') || lowerDept.includes('hr') || lowerDept.includes('human resource')) {
+                  userRole = 'hr';
+              }
           }
       }
 

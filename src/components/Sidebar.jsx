@@ -102,7 +102,7 @@ const navItems = [
     },
 ];
 
-function NavItem({ item, depth = 0 }) {
+function NavItem({ item, depth = 0, role }) {
     const { activeModule, setActiveModule } = useApp();
     const [expanded, setExpanded] = useState(
         item.children?.some(c => c.id === activeModule || (c.id === 'employee-master' && activeModule === 'employee-details')) || item.id === activeModule
@@ -111,9 +111,13 @@ function NavItem({ item, depth = 0 }) {
     const isActive = activeModule === item.id || (item.id === 'employee-master' && activeModule === 'employee-details');
     const hasChildren = item.children?.length > 0;
 
+    // Non-admin roles have categories always expanded and no chevrons
+    const isAlwaysExpanded = role !== 'admin' && depth === 0 && hasChildren;
+    const effectivelyExpanded = isAlwaysExpanded || expanded;
+
     const handleClick = () => {
         if (hasChildren) {
-            setExpanded(!expanded);
+            if (!isAlwaysExpanded) setExpanded(!effectivelyExpanded);
         } else {
             setActiveModule(item.id);
         }
@@ -131,17 +135,17 @@ function NavItem({ item, depth = 0 }) {
                     )}
                     <span className="font-semibold text-[13px]">{item.label}</span>
                 </div>
-                {hasChildren && (
+                {hasChildren && !isAlwaysExpanded && (
                     <span className="text-slate-400 group-hover:text-slate-800 ml-auto">
-                        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        {effectivelyExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                     </span>
                 )}
             </div>
 
-            {hasChildren && expanded && (
+            {hasChildren && effectivelyExpanded && (
                 <div className="ml-7 mt-1 mb-2 space-y-0.5 border-l-2 border-slate-100 pl-3">
                     {item.children.map(child => (
-                        <NavItem key={child.id} item={child} depth={depth + 1} />
+                        <NavItem key={child.id} item={child} depth={depth + 1} role={role} />
                     ))}
                 </div>
             )}
@@ -166,25 +170,30 @@ export default function Sidebar({ role }) {
         if (role === 'hr') {
             const hrModules = ['dashboard', 'hr'];
             if (!hrModules.includes(newItem.id)) return null;
-            
-            // Filter children for HR: Employee Master, Attendance, Leave, Payroll, Statutory, Reimbursements
-            if (newItem.id === 'hr' && newItem.children) {
-                newItem.children = newItem.children.filter(c =>
-                    ['employee-master', 'attendance', 'leave-management', 'payroll', 'statutory-compliance', 'reimbursements'].includes(c.id)
-                );
-            }
             return newItem;
         }
 
-        // Employee logic: Only show Dashboard and HR by default (for employees with HR duties)
-        // If an employee is NOT an admin or specifically an HR, they see a minimal view.
-        const employeeModules = ['dashboard', 'hr'];
+        // Accounts logic: Only show Dashboard and Finance
+        if (role === 'accounts') {
+            const accountsModules = ['dashboard', 'finance'];
+            if (!accountsModules.includes(newItem.id)) return null;
+            return newItem;
+        }
+
+        // Marketing logic: Show Dashboard and Business Dev
+        if (role === 'marketing') {
+            const marketingModules = ['dashboard', 'business-dev'];
+            if (!marketingModules.includes(newItem.id)) return null;
+            return newItem;
+        }
+
+        // Employee logic: Minimal view
+        const employeeModules = ['dashboard', 'hr', 'projects'];
         if (!employeeModules.includes(newItem.id)) return null;
 
-        // Further filter children for employee (full set for HR modules if seen)
         if (newItem.id === 'hr' && newItem.children) {
             newItem.children = newItem.children.filter(c =>
-                ['employee-master', 'attendance', 'leave-management', 'payroll', 'statutory-compliance', 'reimbursements'].includes(c.id)
+                ['attendance', 'leave-management', 'reimbursements'].includes(c.id)
             );
         }
         if (newItem.id === 'projects' && newItem.children) {
@@ -209,7 +218,7 @@ export default function Sidebar({ role }) {
             {sidebarOpen && (
                 <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
                     {filteredNavItems.map(item => (
-                        <NavItem key={item.id} item={item} />
+                        <NavItem key={item.id} item={item} role={role} />
                     ))}
                 </nav>
             )}
