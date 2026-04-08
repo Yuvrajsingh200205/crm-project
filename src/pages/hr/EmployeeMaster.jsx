@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown } from 'lucide-react';
+import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown, Trash2, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { employeeAPI } from '../../api/employee';
 import toast from 'react-hot-toast';
@@ -173,6 +173,26 @@ export default function EmployeeMaster() {
         toast.success('Employee data exported successfully!');
     };
 
+    const handleDeleteEmployee = async (e, id) => {
+        e.stopPropagation();
+        
+        try {
+            await employeeAPI.deleteEmployee(id);
+            setEmployees(prev => prev.filter(emp => emp.id !== id));
+            toast.success("Employee deleted successfully");
+        } catch(error) {
+            console.error('Delete error', error);
+            // Even if the API fails, we could conditionally remove it from the state if needed locally
+            // But let's trust the API first. If it's a dummy ID, maybe fallback manually
+            if (error.response?.status === 404) {
+               setEmployees(prev => prev.filter(emp => emp.id !== id));
+               toast.success("Employee deleted locally (API 404).");
+            } else {
+               toast.error("Failed to delete employee: " + (error.response?.data?.message || error.message));
+            }
+        }
+    };
+
     return (
         <div className="space-y-5 animate-fade-in relative">
             {/* Header section with Title and Add Button */}
@@ -289,15 +309,24 @@ export default function EmployeeMaster() {
                                                 <span className={`badge ${e.type === 'Permanent' ? 'badge-green' : 'badge-yellow'}`}>{e.type}</span>
                                             </td>
                                             <td className="table-cell" onClick={ev => ev.stopPropagation()}>
-                                                <button 
-                                                    onClick={() => {
-                                                        setSelectedEmployee(e);
-                                                        setActiveModule('employee-details');
-                                                    }}
-                                                    className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded flex items-center gap-1.5"
-                                                >
-                                                    <Eye className="w-3.5 h-3.5" /> View Details
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedEmployee(e);
+                                                            setActiveModule('employee-details');
+                                                        }}
+                                                        className="btn-secondary text-xs py-1 px-3 border border-slate-200 bg-white hover:bg-slate-50 rounded flex items-center gap-1.5"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" /> View
+                                                    </button>
+                                                    <button 
+                                                        onClick={(ev) => handleDeleteEmployee(ev, e.id)}
+                                                        className="btn-secondary text-xs py-1 px-2 border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 rounded flex items-center justify-center transition-colors"
+                                                        title="Delete Employee"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

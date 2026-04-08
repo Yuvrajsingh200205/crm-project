@@ -44,4 +44,9 @@ export const employeeAPI = {
     const response = await axiosInstance.post('/users/employee', employeeData);
     return response.data;
   },
+
+  deleteEmployee: async (id) => {
+    const response = await axiosInstance.delete(`/users/${id}`);
+    return response.data;
+  },
 };

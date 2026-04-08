@@ -89,9 +89,6 @@ export default function EmployeeDetails() {
                         </>
                     ) : (
                         <>
-                            <button className="btn-secondary flex items-center gap-2">
-                                <Download className="w-4 h-4" /> Export PDF
-                            </button>
                             <button onClick={startEditing} className="btn-primary flex items-center gap-2 bg-[#2f6645] hover:bg-[#204a30]">
                                 <Edit2 className="w-4 h-4" /> Edit Profile
                             </button>
