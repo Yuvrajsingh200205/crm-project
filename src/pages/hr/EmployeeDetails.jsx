@@ -236,7 +236,7 @@ export default function EmployeeDetails() {
                                             {[
                                                 { label: 'Employee ID', value: employee.id, mono: true, readonly: true },
                                                 { label: 'Work Location', value: 'Main Office - Patna', field: 'location' },
-                                                { label: 'Department', value: employee.department, field: 'department', isSelect: true, options: ['General And Administration', 'Human Resource', 'Accounts Department', 'Marketing', 'Tender', 'Electrical', 'Taxation'] },
+                                                { label: 'Department', value: employee.department, field: 'department', isSelect: true, options: ['Admin', 'General & Administration', 'HR', 'Accounts', 'Marketing'] },
                                                 { label: 'Reporting Manager', value: 'Rajesh Kumar', field: 'manager' },
                                                 { label: 'Employee Email', value: employee.email, field: 'email' },
                                                 { label: 'Employee Type', value: employee.type, field: 'type', isSelect: true, options: ['Permanent', 'Contract', 'Trainee'] },

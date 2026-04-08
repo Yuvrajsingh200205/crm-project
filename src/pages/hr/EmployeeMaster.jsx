@@ -30,7 +30,7 @@ export default function EmployeeMaster() {
                 id: emp.id?.toString() || `EMP-${emp.empId || '00'}`,
                 name: emp.name || 'Unknown',
                 designation: emp.designation || 'N/A',
-                department: emp.department || 'Operations',
+                department: emp.department || 'HR',
                 doj: emp.dateOfJoining ? new Date(emp.dateOfJoining).toISOString().split('T')[0] : '2024-01-01',
                 basic: Number(emp.sallery || 0) * 0.6, // assumption for breakdown
                 gross: Number(emp.sallery || 0),
@@ -79,7 +79,7 @@ export default function EmployeeMaster() {
             const payload = {
                 name: formData.name || '',
                 email: formData.email || '',
-                department: formData.department || 'Operations',
+                department: formData.department || 'HR',
                 designation: formData.designation || '',
                 dateOfJoining: formData.doj || new Date().toISOString().split('T')[0],
                 sallery: gross,
@@ -94,7 +94,12 @@ export default function EmployeeMaster() {
                 adminId: 1,
                 uanNumber: formData.uan || '',
                 dateOfBirth: formData.dob || '2000-01-01',
-                age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 25
+                age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 25,
+                roleId: formData.department === 'Admin' ? 0 : 
+                        formData.department === 'General & Administration' ? 1 :
+                        formData.department === 'HR' ? 2 :
+                        formData.department === 'Accounts' ? 3 :
+                        formData.department === 'Marketing' ? 4 : 2 // Default to HR or similar safe role
             };
 
             const response = await employeeAPI.createEmployee(payload);
@@ -303,13 +308,11 @@ export default function EmployeeMaster() {
                                         <div className="relative group/select">
                                             <select required name="department" value={formData.department || ''} onChange={handleInputChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#22c55e]/20 focus:border-[#22c55e] outline-none transition-all bg-white appearance-none pr-8">
                                                 <option value="" disabled>Select Department</option>
-                                                <option value="General And Administration">General And Administration</option>
-                                                <option value="Human Resource">Human Resource</option>
-                                                <option value="Accounts Department">Accounts Department</option>
+                                                <option value="Admin">Admin</option>
+                                                <option value="General & Administration">General & Administration</option>
+                                                <option value="HR">HR</option>
+                                                <option value="Accounts">Accounts</option>
                                                 <option value="Marketing">Marketing</option>
-                                                <option value="Tender">Tender</option>
-                                                <option value="Electrical">Electrical</option>
-                                                <option value="Taxation">Taxation</option>
                                             </select>
                                             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-green-600 transition-colors" />
                                         </div>
