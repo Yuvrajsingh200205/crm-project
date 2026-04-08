@@ -39,6 +39,7 @@ const navItems = [
             { id: 'tds-management', label: 'TDS Management' },
             { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
             { id: 'job-costing', label: 'Job Costing (P&L)' },
+            { id: 'statutory-compliance', label: 'Statutory Compliance' },
         ]
     },
     {
@@ -62,7 +63,6 @@ const navItems = [
             { id: 'attendance', label: 'Attendance' },
             { id: 'leave-management', label: 'Leave Management' },
             { id: 'payroll', label: 'Payroll Processing' },
-            { id: 'statutory-compliance', label: 'Statutory Compliance' },
             { id: 'reimbursements', label: 'Reimbursements' },
         ]
     },
