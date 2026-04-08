@@ -219,7 +219,6 @@ export default function Attendance() {
                 <th className="table-header">Clock Out</th>
                 <th className="table-header">Duration</th>
                 <th className="table-header">Status</th>
-                <th className="table-header text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -232,12 +231,11 @@ export default function Attendance() {
                     <td className="px-6 py-4"><Skeleton variant="text" className="w-12" /></td>
                     <td className="px-6 py-4"><Skeleton variant="text" className="w-12" /></td>
                     <td className="px-6 py-4"><Skeleton variant="badge" /></td>
-                    <td className="px-6 py-4 text-right"><div className="flex justify-end gap-2"><Skeleton variant="button" className="w-8 h-8" /></div></td>
                   </tr>
                 ))
               ) : filteredAttendance.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
+                  <td colSpan="6" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                       <UserX className="w-12 h-12 text-slate-400" />
                       <p className="text-xs font-black uppercase tracking-widest text-slate-500">No records found for this period</p>
@@ -273,19 +271,6 @@ export default function Attendance() {
                       }`}>
                         {row.status}
                       </span>
-                    </td>
-                    <td className="table-cell text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => {
-                            setAttendance(attendance.filter(a => a.id !== row.id));
-                            showToast('Attendance log deleted!', 'error');
-                          }}
-                          className="p-2.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all active:scale-95 border-none shadow-sm"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))

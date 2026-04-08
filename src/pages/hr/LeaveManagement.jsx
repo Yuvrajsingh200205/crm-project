@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import { useApp } from '../../context/AppContext';
 import { leaveAPI } from '../../api/leave';
 import { employeeAPI } from '../../api/employee';
-import { attendanceAPI } from '../../api/attendance';
 import { CheckCircle2, XCircle, Plus, Search, X, ChevronDown, Loader2, UserPlus, FileText } from 'lucide-react';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -32,7 +31,6 @@ export default function LeaveManagement() {
 
   const [employees, setEmployees] = useState([]);
   const [allocations, setAllocations] = useState([]);
-  const [attendanceLogs, setAttendanceLogs] = useState([]); // Store attendance
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [rejectionModal, setRejectionModal] = useState({ show: false, id: null, reason: '' });
@@ -42,24 +40,7 @@ export default function LeaveManagement() {
     fetchEmployees(); // load employees everywhere
     fetchAllocations(); // load allocations everywhere
     fetchRequests();
-    fetchAttendance(); // Fetch attendance in leave management as requested
   }, [userRole]);
-
-  const fetchAttendance = async () => {
-    try {
-      let res;
-      if (userRole === 'employee') {
-          res = await attendanceAPI.getUserLogs(userProfile?.id || userProfile?.userId || 1);
-      } else {
-          res = await attendanceAPI.getAllLogs();
-      }
-      const logs = res?.data || res?.logs || res?.attendanceLogs || (Array.isArray(res) ? res : []);
-      setAttendanceLogs(Array.isArray(logs) ? logs : []);
-      console.log('Attendance Logs successfully fetched in Leave Management:', logs);
-    } catch (err) {
-      console.error('Failed to fetch attendance in Leave Management:', err);
-    }
-  };
 
   const resolveMissingNames = async (reqs) => {
     const ids = [...new Set(reqs.map(r => r.userId || r.user_id))].filter(Boolean);
@@ -109,7 +90,14 @@ export default function LeaveManagement() {
       } else {
           res = await leaveAPI.getAllLeaveAllocations();
       }
-      const backendAllocations = res?.leaveAllocations || res?.allocations || res?.data || (Array.isArray(res) ? res : []);
+      console.log('Leave allocations API response:', res);
+      
+      let backendAllocations = res?.leaveAllocations || res?.allocations || res?.data || res?.items || res;
+      if (!Array.isArray(backendAllocations)) {
+          // If the array is wrapped in some other unknown key, extract the first array found
+          backendAllocations = Object.values(res || {}).find(Array.isArray) || [];
+      }
+      
       setAllocations(Array.isArray(backendAllocations) ? backendAllocations : []);
     } catch (error) {
       console.error(error);
@@ -448,8 +436,8 @@ export default function LeaveManagement() {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        {['Employee', 'Status', 'Taken', 'Reason'].map(h => (
-                          <th key={h} className={`table-header text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-4 ${h === 'Reason' ? 'text-right' : 'text-left'}`}>
+                        {['Employee', 'Sick', 'Casual', 'Annual', 'Company', 'Other', 'Total'].map(h => (
+                          <th key={h} className="table-header text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-4 text-center first:text-left">
                             {h}
                           </th>
                         ))}
@@ -457,7 +445,7 @@ export default function LeaveManagement() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {allocations.length === 0 ? (
-                        <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 text-sm italic font-medium">No allocations found.</td></tr>
+                        <tr><td colSpan="7" className="px-6 py-8 text-center text-slate-400 text-sm italic font-medium">No allocations found.</td></tr>
                       ) : allocations.map((al, idx) => {
                         const empName = employees.find(e => e.id === al.userId?.toString())?.name || `Employee #${al.userId}`;
                         return (
@@ -470,13 +458,24 @@ export default function LeaveManagement() {
                                 <p className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{empName}</p>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${al.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-                                {al.status || 'Active'}
-                              </span>
+                            <td className="px-6 py-4 text-center">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 text-amber-700 font-black text-xs">{al.sick || 0}</span>
                             </td>
-                            <td className="px-6 py-4 font-bold text-slate-500">{al.taken || 0}</td>
-                            <td className="px-6 py-4 text-xs font-medium text-slate-400 text-right">{al.reason || '-'}</td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-700 font-black text-xs">{al.casual || 0}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-black text-xs">{al.annual || 0}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-50 text-purple-700 font-black text-xs">{al.company || 0}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center font-bold text-slate-500">
+                              {al.other || 0}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="font-black text-[#2f6645] bg-green-100 px-3 py-1 rounded-full text-xs">{(al.sick || 0) + (al.casual || 0) + (al.annual || 0) + (al.company || 0) + (al.other || 0)}</span>
+                            </td>
                           </tr>
                         );
                       })}
