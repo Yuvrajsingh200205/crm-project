@@ -26,6 +26,12 @@ export const leaveAPI = {
         return response.data;
     },
 
+    // Get specific user's leave allocations
+    getUserLeaveAllocations: async (userId) => {
+        const response = await axiosInstance.get(`/leave-allocations/user/${userId}`);
+        return response.data;
+    },
+
     // Get employee leave details
     getEmployeeLeave: async (userId) => {
         // user provided specific path with double slash: {{URL}}/leaves//user/:userId

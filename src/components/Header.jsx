@@ -1,6 +1,8 @@
-import { Bell, Search, Menu, X, Sun, ChevronDown, Zap, LogOut, User, Settings, Mail as MailIcon } from 'lucide-react';
+import { Bell, Search, Menu, X, Sun, ChevronDown, Zap, LogOut, User, Settings, Mail as MailIcon, Clock, LogIn } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { axiosInstance } from '../api/axios';
+import toast from 'react-hot-toast';
 
 const moduleTitles = {
     'dashboard': 'Dashboard',
@@ -51,6 +53,24 @@ export default function Header() {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
 
+    const notificationsRef = useRef(null);
+    const profileRef = useRef(null);
+
+    // Close dropdowns on outside click
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setShowProfileDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const unreadCount = notifications.filter(n => !n.read).length;
 
     const typeColors = {
@@ -62,6 +82,44 @@ export default function Header() {
 
     const profileName = userProfile?.name || (userRole === 'admin' ? 'Admin' : 'Employee');
     const profileEmail = userProfile?.email || '';
+
+    const handleClockIn = async () => {
+        try {
+            const res = await axiosInstance.post('/attendance-logs/clock-in', {
+                userId: userProfile?.id || userProfile?.userId
+            });
+            toast.success(res.data?.message || "Clocked In successfully!");
+            setShowProfileDropdown(false);
+        } catch (error) {
+            let msg = "Failed to Clock In";
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string' 
+                      ? (error.response.data.includes('"message"') ? JSON.parse(error.response.data).message : error.response.data) 
+                      : (error.response.data.message || msg);
+            }
+            toast.error(msg);
+            setShowProfileDropdown(false);
+        }
+    };
+
+    const handleClockOut = async () => {
+        try {
+            const res = await axiosInstance.post('/attendance-logs/clock-out', {
+                userId: userProfile?.id || userProfile?.userId
+            });
+            toast.success(res.data?.message || "Clocked Out successfully!");
+            setShowProfileDropdown(false);
+        } catch (error) {
+            let msg = "Failed to Clock Out";
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string' 
+                      ? (error.response.data.includes('"message"') ? JSON.parse(error.response.data).message : error.response.data) 
+                      : (error.response.data.message || msg);
+            }
+            toast.error(msg);
+            setShowProfileDropdown(false);
+        }
+    };
 
     return (
         <header className={`fixed top-0 right-0 h-20 z-20 flex items-center justify-between px-4 md:px-8 bg-[#f4f7f6]/80 backdrop-blur-lg border-b border-[#e9ecef] transition-all duration-300 ${sidebarOpen ? 'left-0 md:left-64' : 'left-0 md:left-16'}`}>
@@ -111,7 +169,7 @@ export default function Header() {
                 </div>
 
                 {/* Notifications */}
-                <div className="relative">
+                <div className="relative" ref={notificationsRef}>
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}
                         className="relative flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full bg-slate-50 border border-slate-100 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
@@ -146,7 +204,7 @@ export default function Header() {
                     )}
                 </div>
 
-                <div className="relative">
+                <div className="relative" ref={profileRef}>
                     <button 
                         onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                         className="flex items-center gap-3 pl-1 pr-2 py-1 bg-slate-50 border border-slate-100 rounded-full hover:bg-slate-100 transition-all shadow-sm md:ml-2"
@@ -164,12 +222,7 @@ export default function Header() {
                     </button>
 
                     {showProfileDropdown && (
-                        <>
-                            <div 
-                                className="fixed inset-0 z-40" 
-                                onClick={() => setShowProfileDropdown(false)}
-                            />
-                            <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-200/50 animate-fade-in z-50 overflow-hidden">
+                        <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-200/50 animate-fade-in z-50 overflow-hidden">
                                 {/* Header */}
                                 <div className="px-5 py-4 border-b border-slate-50 bg-slate-50/50">
                                     <p className="text-sm font-bold text-slate-900">{profileName}</p>
@@ -182,7 +235,29 @@ export default function Header() {
                                 </div>
 
                                 {/* Menu Items */}
-                                <div className="p-2">
+                                <div className="p-2 space-y-1">
+                                    {/* Attendance / Clock (Hidden for Admin) */}
+                                    {userRole !== 'admin' && (
+                                        <>
+                                            <div className="flex items-center gap-2 p-1">
+                                                <button 
+                                                    onClick={handleClockIn}
+                                                    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all text-xs font-bold ring-1 ring-emerald-100"
+                                                >
+                                                    <LogIn className="w-4 h-4" />
+                                                    Clock In
+                                                </button>
+                                                <button 
+                                                    onClick={handleClockOut}
+                                                    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 px-1 text-slate-500 hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-all text-xs font-bold ring-1 ring-slate-100"
+                                                >
+                                                    <LogOut className="w-4 h-4" />
+                                                    Clock Out
+                                                </button>
+                                            </div>
+                                            <div className="h-px w-full bg-slate-50 my-2"></div>
+                                        </>
+                                    )}
                                     <button className="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all text-sm font-medium group">
                                         <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all text-slate-500">
                                             <User className="w-4 h-4" />
@@ -210,7 +285,6 @@ export default function Header() {
                                     </button>
                                 </div>
                             </div>
-                        </>
                     )}
                 </div>
             </div>

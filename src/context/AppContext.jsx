@@ -99,7 +99,14 @@ export function AppProvider({ children }) {
 
     const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('accessToken'));
     const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
-    const [userProfile, setUserProfile] = useState(null);
+    const [userProfile, setUserProfile] = useState(() => {
+        try {
+            const saved = localStorage.getItem('userProfile');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
 
     const fetchProfile = async () => {
         // Only fetch if we have an endpoint. /users/me is known to return 404.
@@ -116,9 +123,12 @@ export function AppProvider({ children }) {
     const login = (role, profile = null) => {
         localStorage.setItem('userRole', role);
         localStorage.setItem('activeModule', 'dashboard');
+        if (profile) {
+            localStorage.setItem('userProfile', JSON.stringify(profile));
+            setUserProfile(profile);
+        }
         setIsLoggedIn(true);
         setUserRole(role);
-        if (profile) setUserProfile(profile);
         setActiveModuleState('dashboard');
         // Still try to fetch the full profile if we don't have it all
         fetchProfile();
@@ -129,6 +139,7 @@ export function AppProvider({ children }) {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('userRole');
         localStorage.removeItem('activeModule');
+        localStorage.removeItem('userProfile');
         setIsLoggedIn(false);
         setUserRole(null);
         setUserProfile(null);
