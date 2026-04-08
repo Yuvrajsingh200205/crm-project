@@ -26,8 +26,12 @@ export default function EmployeeMaster() {
             console.log('Employee API Result:', res);
             // Robust check for different potential response keys
             const backendEmployees = res?.employees || res?.users || res?.staff || res?.data?.employees || (Array.isArray(res) ? res : (res?.data || []));
-            const mapped = (Array.isArray(backendEmployees) ? backendEmployees : []).map(emp => ({
-                id: emp.id?.toString() || `EMP-${emp.empId || '00'}`,
+            const mapped = (Array.isArray(backendEmployees) ? backendEmployees : []).map(emp => {
+                const rawId = emp.id?.toString() || '0';
+                const paddedId = rawId.padStart(3, '0');
+                return {
+                    id: emp.id, // KEEP REAL ID FOR API
+                    displayId: `EMP-${paddedId}`, // FOR UI ONLY
                 name: emp.name || 'Unknown',
                 designation: emp.designation || 'N/A',
                 department: emp.department || 'HR',
@@ -42,11 +46,11 @@ export default function EmployeeMaster() {
                 type: emp.type === 'employee' ? 'Permanent' : 'Contract',
                 email: emp.email || '',
                 status: 'Active'
-            }));
+                };
+            });
             setEmployees(mapped);
         } catch (error) {
             console.error("Failed to fetch employees:", error);
-            // Don't show toast error on every fetch if it's just a 404/Empty
         } finally {
             setIsFetching(false);
         }
@@ -54,7 +58,9 @@ export default function EmployeeMaster() {
 
     const depts = ['All', ...new Set(employees.map(e => e.department))];
     const filtered = employees.filter(e => {
-        const matchSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = e.name.toLowerCase().includes(search.toLowerCase()) || 
+                           (e.displayId || '').toLowerCase().includes(search.toLowerCase()) ||
+                           e.id.toString().includes(search);
         const matchDept = dept === 'All' || e.department === dept;
         return matchSearch && matchDept;
     });
@@ -103,26 +109,11 @@ export default function EmployeeMaster() {
             };
 
             const response = await employeeAPI.createEmployee(payload);
-            toast.success('Employee created successfully via API!');
-
-            const newEmp = {
-                id: response?.data?.id || `EMP-00${employees.length + 1}`,
-                name: payload.name,
-                designation: payload.designation,
-                department: payload.department,
-                doj: payload.dateOfJoining,
-                basic,
-                gross,
-                net,
-                pf: payload.pfDeduction ? 'Active' : 'Inactive',
-                esi: payload.esiDeduction || false,
-                pan: payload.pancardNo || '',
-                uan: payload.uanNumber || '',
-                type: payload.type || 'Permanent',
-                email: payload.email,
-                status: 'Active'
-            };
-            setEmployees([newEmp, ...employees]);
+            toast.success('Employee created successfully!');
+            
+            // Re-fetch all employees to get real IDs from the backend
+            await loadEmployees();
+            
             setIsModalOpen(false);
             setFormData({});
         } catch (error) {
@@ -280,7 +271,7 @@ export default function EmployeeMaster() {
                                             setSelectedEmployee(e);
                                             setActiveModule('employee-details');
                                         }}>
-                                            <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{e.id}</td>
+                                            <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{e.displayId}</td>
                                             <td className="table-cell">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold flex-shrink-0">

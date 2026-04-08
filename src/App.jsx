@@ -30,6 +30,7 @@ import Subcontractors from './pages/operations/Subcontractors';
 import EmployeeMaster from './pages/hr/EmployeeMaster';
 import Attendance from './pages/hr/Attendance';
 import LeaveManagement from './pages/hr/LeaveManagement';
+import ApplyLeave from './pages/hr/ApplyLeave';
 import Payroll from './pages/hr/Payroll';
 import StatutoryCompliance from './pages/hr/StatutoryCompliance';
 import Reimbursements from './pages/hr/Reimbursements';
@@ -83,6 +84,7 @@ const pageMap = {
   'employee-master': <EmployeeMaster />,
   'attendance': <Attendance />,
   'leave-management': <LeaveManagement />,
+  'apply-leave': <ApplyLeave />,
   'payroll': <Payroll />,
   'statutory-compliance': <StatutoryCompliance />,
   'reimbursements': <Reimbursements />,

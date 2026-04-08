@@ -30,23 +30,31 @@ export const employeeAPI = {
 
   // Get user by id
   getEmployeeById: async (id) => {
-      // user provided specific path: {{URL}}/leaves//user/:userId
-      const response = await axiosInstance.get(`/leaves//user/${id}`);
-      return response.data.employee;
+      const response = await axiosInstance.get(`/users/employee/${id}`);
+      return response.data;
   },
 
   /**
    * Create a new employee
-   * @param {Object} employeeData 
-   * @returns expected response data object
    */
   createEmployee: async (employeeData) => {
     const response = await axiosInstance.post('/users/employee', employeeData);
     return response.data;
   },
 
+  /**
+   * Update an employee
+   */
+  updateEmployee: async (id, employeeData) => {
+    const response = await axiosInstance.put(`/users/employee/${id}`, employeeData);
+    return response.data;
+  },
+
+  /**
+   * Delete an employee
+   */
   deleteEmployee: async (id) => {
-    const response = await axiosInstance.delete(`/users/${id}`);
+    const response = await axiosInstance.delete(`/users/employee/${id}`);
     return response.data;
   },
 };

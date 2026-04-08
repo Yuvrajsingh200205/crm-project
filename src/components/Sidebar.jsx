@@ -154,46 +154,41 @@ function NavItem({ item, depth = 0, role }) {
 }
 
 export default function Sidebar({ role }) {
-    const { sidebarOpen, logout, userProfile } = useApp();
+    const { sidebarOpen, logout, userProfile, activeModule, setActiveModule } = useApp();
 
     const displayName = userProfile?.name || (role === 'admin' ? 'Admin' : 'Employee');
     const displayEmail = userProfile?.email || 'portal@ecoconstruct.com';
 
 
-    const filteredNavItems = navItems.map(item => {
-        // Create a shallow copy of the item and its children
+    const baseFiltered = navItems.map(item => {
         const newItem = { ...item, children: item.children ? [...item.children] : undefined };
 
         if (role === 'admin') return newItem;
 
-        // HR logic: Only show Dashboard and HR
         if (role === 'hr') {
             const hrModules = ['dashboard', 'hr'];
             if (!hrModules.includes(newItem.id)) return null;
             return newItem;
         }
 
-        // Accounts logic: Only show Dashboard and Finance
         if (role === 'accounts') {
             const accountsModules = ['dashboard', 'finance'];
             if (!accountsModules.includes(newItem.id)) return null;
             return newItem;
         }
 
-        // Marketing logic: Show Dashboard and Business Dev
         if (role === 'marketing') {
             const marketingModules = ['dashboard', 'business-dev'];
             if (!marketingModules.includes(newItem.id)) return null;
             return newItem;
         }
 
-        // Employee logic: Minimal view
         const employeeModules = ['dashboard', 'hr', 'projects'];
         if (!employeeModules.includes(newItem.id)) return null;
 
         if (newItem.id === 'hr' && newItem.children) {
             newItem.children = newItem.children.filter(c =>
-                ['attendance', 'leave-management', 'reimbursements'].includes(c.id)
+                ['attendance'].includes(c.id) // Only attendance left inside HR for simple employees
             );
         }
         if (newItem.id === 'projects' && newItem.children) {
@@ -203,6 +198,8 @@ export default function Sidebar({ role }) {
         }
         return newItem;
     }).filter(Boolean);
+
+    const filteredNavItems = [...baseFiltered];
 
     return (
         <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-white border-r border-[#e9ecef] transition-all duration-300
@@ -226,6 +223,28 @@ export default function Sidebar({ role }) {
             {/* Footer */}
             {sidebarOpen && (
                 <div className="p-4 border-t border-[#e9ecef] flex-shrink-0 bg-white space-y-4">
+                    {role !== 'admin' && (
+                        <div className="space-y-1.5 pb-2 border-b border-slate-100">
+                            <button
+                                onClick={() => setActiveModule('apply-leave')}
+                                className={activeModule === 'apply-leave' ? 'sidebar-link-active w-full justify-start' : 'sidebar-link group w-full justify-start'}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <ClipboardList className={`w-4 h-4 flex-shrink-0 ${activeModule === 'apply-leave' ? 'text-[#1e3a34]' : 'text-slate-400 group-hover:text-slate-800'}`} />
+                                    <span className="font-semibold text-[13px]">Apply Leave</span>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setActiveModule('reimbursements')}
+                                className={activeModule === 'reimbursements' ? 'sidebar-link-active w-full justify-start' : 'sidebar-link group w-full justify-start'}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <DollarSign className={`w-4 h-4 flex-shrink-0 ${activeModule === 'reimbursements' ? 'text-[#1e3a34]' : 'text-slate-400 group-hover:text-slate-800'}`} />
+                                    <span className="font-semibold text-[13px]">Apply Reimbursements</span>
+                                </div>
+                            </button>
+                        </div>
+                    )}
                     <div className="flex items-center gap-3 bg-[#f8f9fa] p-2.5 rounded-xl border border-slate-100">
                         <img src={`https://ui-avatars.com/api/?name=${displayName}&background=${role === 'admin' ? '1e3a34' : '2f6645'}&color=fff`} alt="Profile" className="w-9 h-9 rounded-lg" />
                         <div className="flex-1 min-w-0">

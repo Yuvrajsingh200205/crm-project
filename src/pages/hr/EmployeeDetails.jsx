@@ -4,8 +4,10 @@ import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar,
     CreditCard, ShieldCheck, FileText, Download, Edit2,
     BarChart3, Clock, CheckCircle2, AlertCircle, Save, X,
-    ChevronDown, Upload, Cloud, Eye
+    ChevronDown, Upload, Cloud, Eye, Trash2
 } from 'lucide-react';
+import { employeeAPI } from '../../api/employee';
+import toast from 'react-hot-toast';
 
 export default function EmployeeDetails() {
     const { selectedEmployee, setSelectedEmployee, setActiveModule, updateEmployee } = useApp();
@@ -34,21 +36,53 @@ export default function EmployeeDetails() {
         setIsEditing(true);
     };
 
-    const handleSave = () => {
-        // Calculate dynamic fields
-        const basic = parseFloat(editData.basic || 0);
-        const gross = parseFloat(editData.gross || (basic * 1.5));
-        const net = gross - (basic * 0.12) - (gross * 0.05) - 200; // Simplified sync calculation
+    const handleSave = async () => {
+        try {
+            // Map our local state to the expected API body
+            const payload = {
+                name: editData.name,
+                department: editData.department,
+                designation: editData.designation,
+                dateOfJoining: editData.doj || editData.dateOfJoining,
+                sallery: parseFloat(editData.gross || editData.sallery || 0),
+                type: editData.type === 'Permanent' ? 'employee' : editData.type.toLowerCase(),
+                pancardUrl: editData.pancardUrl || '',
+                aadharUrl: editData.aadharUrl || '',
+                pfDeduction: editData.pf === 'Active',
+                esiDeduction: !!editData.esi,
+                isAdmin: !!editData.isAdmin,
+                age: parseInt(editData.age || 0)
+            };
 
-        const finalData = {
-            ...editData,
-            basic,
-            gross,
-            net
-        };
+            // Ensure we use ONLY the numeric part of the ID for the API, removing lead zeros (e.g., 013 -> 13)
+            const numericId = parseInt(selectedEmployee.id.toString().replace(/\D/g, ''), 10);
 
-        updateEmployee(finalData);
-        setIsEditing(false);
+            await employeeAPI.updateEmployee(numericId, payload);
+            
+            // Sync local state
+            updateEmployee({ ...selectedEmployee, ...editData });
+            setIsEditing(false);
+            toast.success('Employee updated successfully!');
+        } catch (error) {
+            console.error('Failed to update employee:', error);
+            toast.error(error.response?.data?.message || 'Failed to update employee');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this employee?')) {
+            try {
+                // Ensure we use ONLY the numeric part of the ID for the API, removing lead zeros (e.g., 013 -> 13)
+                const numericId = parseInt(selectedEmployee.id.toString().replace(/\D/g, ''), 10);
+                
+                await employeeAPI.deleteEmployee(numericId);
+                toast.success('Employee deleted successfully!');
+                setActiveModule('employee-master');
+            } catch (error) {
+                console.error('Failed to delete employee:', error);
+                toast.error(error.response?.data?.message || 'Failed to delete employee');
+            }
+        }
     };
 
     const employee = isEditing ? editData : selectedEmployee;
@@ -89,6 +123,9 @@ export default function EmployeeDetails() {
                         </>
                     ) : (
                         <>
+                            <button onClick={handleDelete} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all">
+                                <Trash2 className="w-5 h-5" />
+                            </button>
                             <button onClick={startEditing} className="btn-primary flex items-center gap-2 bg-[#2f6645] hover:bg-[#204a30]">
                                 <Edit2 className="w-4 h-4" /> Edit Profile
                             </button>
@@ -231,7 +268,7 @@ export default function EmployeeDetails() {
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-12">
                                             {[
-                                                { label: 'Employee ID', value: employee.id, mono: true, readonly: true },
+                                                { label: 'Employee ID', value: employee.displayId || employee.id, mono: true, readonly: true },
                                                 { label: 'Work Location', value: 'Main Office - Patna', field: 'location' },
                                                 { label: 'Department', value: employee.department, field: 'department', isSelect: true, options: ['Admin', 'General & Administration', 'HR', 'Accounts', 'Marketing'] },
                                                 { label: 'Reporting Manager', value: 'Rajesh Kumar', field: 'manager' },

@@ -383,6 +383,13 @@ export default function LeaveManagement() {
               e.preventDefault();
               setIsSaving(true);
               try {
+                // Pre-validation to prevent negative values
+                if ([allotData.sick, allotData.annual, allotData.other, allotData.casual, allotData.company].some(val => Number(val) < 0)) {
+                  toast.error('Leave values cannot be negative');
+                  setIsSaving(false);
+                  return;
+                }
+
                 const payload = {
                   userId: Number(allotData.userId),
                   sick: Number(allotData.sick),
@@ -415,7 +422,7 @@ export default function LeaveManagement() {
                 {['sick', 'annual', 'casual', 'other', 'company'].map(type => (
                   <div key={type} className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1 capitalize">{type} Leave</label>
-                    <input required type="number" className="input h-14 bg-slate-50 border-slate-100" value={allotData[type]} onChange={(e) => setAllotData({ ...allotData, [type]: e.target.value })} />
+                    <input required type="number" min="0" className="input h-14 bg-slate-50 border-slate-100" value={allotData[type]} onChange={(e) => setAllotData({ ...allotData, [type]: e.target.value })} />
                   </div>
                 ))}
                 <div className="flex items-end">

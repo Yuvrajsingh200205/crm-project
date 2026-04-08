@@ -34,14 +34,13 @@ export const leaveAPI = {
 
     // Get employee leave details
     getEmployeeLeave: async (userId) => {
-        // user provided specific path with double slash: {{URL}}/leaves//user/:userId
-        const response = await axiosInstance.get(`/leaves//user/${userId}`);
+        const response = await axiosInstance.get(`/leaves/user/${userId}`);
         return response.data;
     },
 
     // Approve leave request
     approveLeave: async (id) => {
-        const response = await axiosInstance.patch(`/leaves/${id}/approve`);
+        const response = await axiosInstance.patch(`/leaves/${id}/approve`, {});
         return response.data;
     },
 
