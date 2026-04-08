@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-    ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, 
+import {
+    ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar,
     CreditCard, ShieldCheck, FileText, Download, Edit2,
     BarChart3, Clock, CheckCircle2, AlertCircle, Save, X,
     ChevronDown, Upload, Cloud, Eye
@@ -19,7 +19,7 @@ export default function EmployeeDetails() {
                 <AlertCircle className="w-12 h-12 text-slate-300 mb-4" />
                 <h2 className="text-xl font-bold text-slate-800">No Employee Selected</h2>
                 <p className="text-slate-500 mt-2">Please go back to the Employee Master and select an employee.</p>
-                <button 
+                <button
                     onClick={() => setActiveModule('employee-master')}
                     className="mt-6 btn-primary flex items-center gap-2"
                 >
@@ -39,14 +39,14 @@ export default function EmployeeDetails() {
         const basic = parseFloat(editData.basic || 0);
         const gross = parseFloat(editData.gross || (basic * 1.5));
         const net = gross - (basic * 0.12) - (gross * 0.05) - 200; // Simplified sync calculation
-        
+
         const finalData = {
             ...editData,
             basic,
             gross,
             net
         };
-        
+
         updateEmployee(finalData);
         setIsEditing(false);
     };
@@ -58,7 +58,7 @@ export default function EmployeeDetails() {
             {/* Header & Actions */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <button 
+                    <button
                         onClick={() => setActiveModule('employee-master')}
                         className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-slate-200"
                     >
@@ -115,19 +115,19 @@ export default function EmployeeDetails() {
                                 </div>
                                 <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#9ae66e] border-2 border-white rounded-full"></div>
                             </div>
-                            
+
                             {isEditing ? (
                                 <div className="mt-4 space-y-3">
-                                    <input 
-                                        className="input text-center font-bold text-lg" 
-                                        value={editData.name} 
-                                        onChange={e => setEditData({...editData, name: e.target.value})}
+                                    <input
+                                        className="input text-center font-bold text-lg"
+                                        value={editData.name}
+                                        onChange={e => setEditData({ ...editData, name: e.target.value })}
                                         placeholder="Full Name"
                                     />
-                                    <input 
-                                        className="input text-center text-sm" 
-                                        value={editData.designation} 
-                                        onChange={e => setEditData({...editData, designation: e.target.value})}
+                                    <input
+                                        className="input text-center text-sm"
+                                        value={editData.designation}
+                                        onChange={e => setEditData({ ...editData, designation: e.target.value })}
                                         placeholder="Designation"
                                     />
                                 </div>
@@ -137,12 +137,12 @@ export default function EmployeeDetails() {
                                     <p className="text-slate-500 font-medium">{employee.designation}</p>
                                 </>
                             )}
-                            
+
                             <div className="mt-3 flex flex-wrap justify-center gap-2">
                                 <span className="badge badge-green font-semibold">{employee.department}</span>
                                 <span className={`badge ${employee.type === 'Permanent' ? 'badge-green' : 'badge-yellow'}`}>{employee.type}</span>
                             </div>
-                            
+
                             <div className="mt-6 pt-6 border-t border-slate-100 text-left space-y-4">
                                 <div className="flex items-center gap-3 text-sm text-slate-600">
                                     <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-[#2f6645]">
@@ -212,8 +212,8 @@ export default function EmployeeDetails() {
                         <div className="border-b border-slate-100 bg-[#f8f9fa]">
                             <div className="flex px-6 overflow-x-auto">
                                 {['Overview', 'Salary Breakup', 'Documents', 'Activity Log'].map((tab) => (
-                                    <button 
-                                        key={tab} 
+                                    <button
+                                        key={tab}
                                         onClick={() => setActiveTab(tab)}
                                         className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab ? 'border-[#2f6645] text-[#2f6645]' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
                                     >
@@ -247,21 +247,21 @@ export default function EmployeeDetails() {
                                                     {isEditing && !f.readonly ? (
                                                         f.isSelect ? (
                                                             <div className="relative group/select">
-                                                                <select 
-                                                                    className="select py-1 h-9 pr-8 appearance-none" 
-                                                                    value={employee[f.field]} 
-                                                                    onChange={e => setEditData({...editData, [f.field]: e.target.value})}
+                                                                <select
+                                                                    className="select py-1 h-9 pr-8 appearance-none"
+                                                                    value={employee[f.field]}
+                                                                    onChange={e => setEditData({ ...editData, [f.field]: e.target.value })}
                                                                 >
                                                                     {f.options.map(opt => <option key={opt}>{opt}</option>)}
                                                                 </select>
                                                                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645] transition-colors" />
                                                             </div>
                                                         ) : (
-                                                            <input 
+                                                            <input
                                                                 type={f.isDate ? 'date' : 'text'}
-                                                                className="input py-1 h-9" 
-                                                                value={employee[f.field] || f.value} 
-                                                                onChange={e => setEditData({...editData, [f.field]: e.target.value})}
+                                                                className="input py-1 h-9"
+                                                                value={employee[f.field] || f.value}
+                                                                onChange={e => setEditData({ ...editData, [f.field]: e.target.value })}
                                                             />
                                                         )
                                                     ) : (
@@ -288,21 +288,21 @@ export default function EmployeeDetails() {
                                                     {isEditing ? (
                                                         f.isSelect ? (
                                                             <div className="relative group/select">
-                                                                <select 
-                                                                    className="select py-1 h-9 pr-8 appearance-none" 
-                                                                    value={f.field === 'esi' ? (editData.esi ? 'Active' : 'Inactive') : editData[f.field]} 
-                                                                    onChange={e => setEditData({...editData, [f.field]: f.field === 'esi' ? e.target.value === 'Active' : e.target.value})}
+                                                                <select
+                                                                    className="select py-1 h-9 pr-8 appearance-none"
+                                                                    value={f.field === 'esi' ? (editData.esi ? 'Active' : 'Inactive') : editData[f.field]}
+                                                                    onChange={e => setEditData({ ...editData, [f.field]: f.field === 'esi' ? e.target.value === 'Active' : e.target.value })}
                                                                 >
                                                                     {f.options.map(opt => <option key={opt}>{opt}</option>)}
                                                                 </select>
                                                                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within/select:text-[#2f6645] transition-colors" />
                                                             </div>
                                                         ) : (
-                                                            <input 
+                                                            <input
                                                                 type={f.isNumber ? 'number' : 'text'}
-                                                                className="input py-1 h-9" 
-                                                                value={editData[f.field]} 
-                                                                onChange={e => setEditData({...editData, [f.field]: f.isNumber ? parseFloat(e.target.value) : e.target.value})}
+                                                                className="input py-1 h-9"
+                                                                value={editData[f.field]}
+                                                                onChange={e => setEditData({ ...editData, [f.field]: f.isNumber ? parseFloat(e.target.value) : e.target.value })}
                                                             />
                                                         )
                                                     ) : (
@@ -412,7 +412,7 @@ export default function EmployeeDetails() {
                                                     <p className="text-sm font-bold text-slate-900">Click to upload</p>
                                                     <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">PDF, JPG, PNG (Max 5MB)</p>
                                                 </div>
-                                                
+
                                                 <div className="mt-6 space-y-3">
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Document Type</span>
@@ -433,7 +433,7 @@ export default function EmployeeDetails() {
                                                     </button>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="card p-4 bg-[#1e3a34] text-white">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-lg bg-[#9ae66e]/20 flex items-center justify-center text-[#9ae66e]">
@@ -453,7 +453,7 @@ export default function EmployeeDetails() {
                                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-l-4 border-[#2f6645] pl-3">Uploaded Documents</h3>
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">5 Files Total</span>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-1 gap-3">
                                                 {[
                                                     { name: 'Aadhar Card', type: 'PDF', size: '1.2 MB', date: 'Mar 10, 2024', status: 'Verified', color: 'blue' },

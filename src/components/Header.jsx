@@ -168,42 +168,6 @@ export default function Header() {
                     )}
                 </div>
 
-                {/* Notifications */}
-                <div className="relative" ref={notificationsRef}>
-                    <button
-                        onClick={() => setShowNotifications(!showNotifications)}
-                        className="relative flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full bg-slate-50 border border-slate-100 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
-                    >
-                        <Bell className="w-4 h-4 md:w-5 md:h-5" />
-                        {unreadCount > 0 && (
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-                        )}
-                    </button>
-
-                    {showNotifications && (
-                        <div className="absolute right-0 top-14 w-72 md:w-80 card border border-slate-200 shadow-2xl shadow-slate-200/50 animate-fade-in z-50 bg-white">
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                                <span className="font-semibold text-slate-900 text-sm">Notifications</span>
-                                <div className="flex items-center gap-2">
-                                    {unreadCount > 0 && <span className="badge badge-blue">{unreadCount} new</span>}
-                                    <button onClick={markAllRead} className="text-xs text-[#2f6645] hover:underline font-medium">Mark read</button>
-                                </div>
-                            </div>
-                            <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
-                                {notifications.map(n => (
-                                    <div key={n.id} className={`px-4 py-3 hover:bg-slate-50 transition-colors ${!n.read ? 'bg-green-50/50' : ''}`}>
-                                        <p className={`text-sm ${typeColors[n.type]} font-medium leading-snug`}>{n.message}</p>
-                                        <p className="text-xs text-slate-500 mt-1">{n.time}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 rounded-b-xl text-center">
-                                <button className="text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors">View all</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
                 <div className="relative" ref={profileRef}>
                     <button 
                         onClick={() => setShowProfileDropdown(!showProfileDropdown)}

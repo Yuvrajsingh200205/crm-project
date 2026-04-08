@@ -133,6 +133,46 @@ export default function EmployeeMaster() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (!employees || employees.length === 0) {
+            toast.error('No data to export');
+            return;
+        }
+
+        const headers = ['Emp ID', 'Name', 'Email', 'Department', 'Designation', 'Type', 'DOJ', 'PAN', 'UAN', 'Basic', 'Gross', 'Net', 'PF', 'ESI', 'Status'];
+        
+        const csvContent = [
+            headers.join(','),
+            ...employees.map(emp => [
+                emp.id,
+                `"${emp.name || ''}"`,
+                `"${emp.email || ''}"`,
+                `"${emp.department || ''}"`,
+                `"${emp.designation || ''}"`,
+                `"${emp.type || ''}"`,
+                emp.doj || '',
+                `"${emp.pan || ''}"`,
+                `"${emp.uan || ''}"`,
+                emp.basic || 0,
+                emp.gross || 0,
+                emp.net || 0,
+                emp.pf || '',
+                emp.esi ? 'Yes' : 'No',
+                emp.status || ''
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'Employee_Master_Data.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Employee data exported successfully!');
+    };
+
     return (
         <div className="space-y-5 animate-fade-in relative">
             {/* Header section with Title and Add Button */}
@@ -142,8 +182,8 @@ export default function EmployeeMaster() {
                     <p className="text-slate-500 text-sm mt-1">Manage employee records, roles, and profiles</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="btn-secondary whitespace-nowrap hidden sm:flex items-center gap-1.5">
-                        <Upload className="w-4 h-4" /> Import
+                    <button onClick={handleExportCSV} className="btn-secondary whitespace-nowrap hidden sm:flex items-center gap-1.5">
+                        <Download className="w-4 h-4" /> Export
                     </button>
                     <button onClick={() => setIsModalOpen(true)} className="btn-primary whitespace-nowrap flex items-center gap-1.5">
                         <Plus className="w-4 h-4" /> Add Employee
