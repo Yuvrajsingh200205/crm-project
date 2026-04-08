@@ -86,18 +86,18 @@ export default function LeaveManagement() {
     try {
       let res;
       if (userRole === 'employee') {
-          res = await leaveAPI.getUserLeaveAllocations(userProfile?.id || userProfile?.userId || 1);
+        res = await leaveAPI.getUserLeaveAllocations(userProfile?.id || userProfile?.userId || 1);
       } else {
-          res = await leaveAPI.getAllLeaveAllocations();
+        res = await leaveAPI.getAllLeaveAllocations();
       }
       console.log('Leave allocations API response:', res);
-      
+
       let backendAllocations = res?.leaveAllocations || res?.allocations || res?.data || res?.items || res;
       if (!Array.isArray(backendAllocations)) {
-          // If the array is wrapped in some other unknown key, extract the first array found
-          backendAllocations = Object.values(res || {}).find(Array.isArray) || [];
+        // If the array is wrapped in some other unknown key, extract the first array found
+        backendAllocations = Object.values(res || {}).find(Array.isArray) || [];
       }
-      
+
       setAllocations(Array.isArray(backendAllocations) ? backendAllocations : []);
     } catch (error) {
       console.error(error);
@@ -437,7 +437,7 @@ export default function LeaveManagement() {
             {/* List of Allocations */}
             <div className="mt-12 pt-8 border-t border-slate-200">
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-6">Current Leave Allocations</h3>
-              
+
               <div className="card overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/50 bg-white rounded-2xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -460,7 +460,7 @@ export default function LeaveManagement() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-slate-50 text-emerald-600 flex items-center justify-center font-bold text-[10px] transition-colors border border-slate-100 group-hover:border-emerald-100 group-hover:bg-emerald-50">
-                                  {(empName).substring(0,2).toUpperCase()}
+                                  {(empName).substring(0, 2).toUpperCase()}
                                 </div>
                                 <p className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{empName}</p>
                               </div>
