@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown, Trash2, Loader2, AlertOctagon } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { employeeAPI } from '../../api/employee';
 import toast from 'react-hot-toast';
@@ -14,6 +14,7 @@ export default function EmployeeMaster() {
     const [formData, setFormData] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null, name: '' });
 
     useEffect(() => {
         loadEmployees();
@@ -164,23 +165,34 @@ export default function EmployeeMaster() {
         toast.success('Employee data exported successfully!');
     };
 
-    const handleDeleteEmployee = async (e, id) => {
+    const handleDeleteEmployee = (e, employee) => {
         e.stopPropagation();
-        
+        setDeleteConfirm({ show: true, id: employee.id, name: employee.name });
+    };
+
+    const confirmDelete = async () => {
+        const { id } = deleteConfirm;
+        setIsLoading(true);
         try {
             await employeeAPI.deleteEmployee(id);
             setEmployees(prev => prev.filter(emp => emp.id !== id));
             toast.success("Employee deleted successfully");
         } catch(error) {
             console.error('Delete error', error);
-            // Even if the API fails, we could conditionally remove it from the state if needed locally
-            // But let's trust the API first. If it's a dummy ID, maybe fallback manually
-            if (error.response?.status === 404) {
+            const status = error.response?.status;
+            const message = error.response?.data?.message || error.message;
+
+            if (status === 404) {
                setEmployees(prev => prev.filter(emp => emp.id !== id));
-               toast.success("Employee deleted locally (API 404).");
+               toast.success("Employee removed from view.");
+            } else if (status === 500) {
+               toast.error(`Server Error (500): Could not delete. This employee has linked Leave Allocations that must be settled first.`);
             } else {
-               toast.error("Failed to delete employee: " + (error.response?.data?.message || error.message));
+               toast.error("Deletion failed: " + message);
             }
+        } finally {
+            setIsLoading(false);
+            setDeleteConfirm({ show: false, id: null, name: '' });
         }
     };
 
@@ -311,7 +323,7 @@ export default function EmployeeMaster() {
                                                         <Eye className="w-3.5 h-3.5" /> View
                                                     </button>
                                                     <button 
-                                                        onClick={(ev) => handleDeleteEmployee(ev, e.id)}
+                                                        onClick={(ev) => handleDeleteEmployee(ev, e)}
                                                         className="btn-secondary text-xs py-1 px-2 border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 rounded flex items-center justify-center transition-colors"
                                                         title="Delete Employee"
                                                     >
@@ -458,6 +470,43 @@ export default function EmployeeMaster() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal - PROFESSIONAL CRM STYLE */}
+            {deleteConfirm.show && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-fade-in" onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-slide-up relative" onClick={e => e.stopPropagation()}>
+                        <div className="p-8">
+                            <div className="flex items-start gap-5">
+                                <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 flex-shrink-0 animate-pulse">
+                                    <Trash2 className="w-7 h-7" />
+                                </div>
+                                <div className="flex-1">
+                                    <h2 className="text-lg font-black text-slate-800 tracking-tight leading-none mb-2">Delete Employee?</h2>
+                                    <p className="text-slate-500 text-xs font-medium leading-relaxed">
+                                        Are you sure you want to remove <span className="text-slate-900 font-black underline decoration-red-200">{deleteConfirm.name}</span>? This record will be permanently purged from the database.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-8 flex items-center gap-3">
+                                <button 
+                                    onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}
+                                    className="flex-1 h-12 rounded-xl border border-slate-200 text-slate-500 font-black uppercase tracking-widest text-[9px] hover:bg-slate-50 transition-all active:scale-95"
+                                >
+                                    No, Keep it
+                                </button>
+                                <button 
+                                    onClick={confirmDelete}
+                                    disabled={isLoading}
+                                    className={`flex-1 h-12 rounded-xl bg-red-600 text-white font-black uppercase tracking-widest text-[9px] shadow-lg shadow-red-900/20 hover:bg-red-700 transition-all active:scale-95 flex items-center justify-center gap-2 ${isLoading ? 'opacity-50' : ''}`}
+                                >
+                                    {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Confirm Delete"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -49,5 +49,17 @@ export const leaveAPI = {
         // payload: { rejectionReason: string }
         const response = await axiosInstance.patch(`/leaves/${id}/reject`, { rejectionReason: reason || "No reason provided" });
         return response.data;
+    },
+
+    // Delete a leave allocation
+    deleteLeaveAllocation: async (id) => {
+        const response = await axiosInstance.delete(`/leave-allocations/${id}`);
+        return response.data;
+    },
+
+    // Delete a leave request
+    deleteLeave: async (id) => {
+        const response = await axiosInstance.delete(`/leaves/${id}`);
+        return response.data;
     }
 };
