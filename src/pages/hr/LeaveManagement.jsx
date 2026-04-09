@@ -25,7 +25,7 @@ export default function LeaveManagement() {
   const [activeTab, setActiveTab] = useState('All');
   const [currentView, setCurrentView] = useState('leave'); // 'leave' or 'allot'
   const [search, setSearch] = useState('');
-  const [formData, setFormData] = useState({ name: '', type: 'Casual', start: '', end: '', days: '1', reason: '', title: '', userId: '' });
+  const [formData, setFormData] = useState({ name: '', type: 'Casual', start: '', end: '', days: 1, reason: '', title: '', userId: '' });
 
   const [allotData, setAllotData] = useState({ userId: '', sick: '0', annual: '0', other: '0', casual: '0', company: '0' });
 
@@ -163,14 +163,17 @@ export default function LeaveManagement() {
         userId: Number(currentUserId),
         type: formData.type.toLowerCase(),
         title: formData.title,
-        reason: formData.reason
+        reason: formData.reason,
+        days: Number(formData.days),
+        from: formData.start,
+        to: formData.end
       };
 
       await leaveAPI.createLeave(payload);
       toast.success(`Leave request for "${payload.title}" submitted!`);
       fetchRequests();
       setShowApplyModal(false);
-      setFormData({ name: '', type: 'Casual', days: '1', reason: '', title: '', userId: '' });
+      setFormData({ name: '', type: 'Casual', start: '', end: '', days: 1, reason: '', title: '', userId: '' });
     } catch (error) {
       console.error(error);
       toast.error(error.response?.data?.message || 'Failed to submit leave request');
@@ -336,7 +339,15 @@ export default function LeaveManagement() {
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-slate-900 font-black truncate max-w-[150px]">{req.title || 'Leave Request'}</p>
-                          <p className="text-slate-400 text-[10px] uppercase font-bold mt-0.5">1 Day</p>
+                          <p className="text-slate-400 text-[10px] uppercase font-bold mt-0.5">
+                            {req.days || 1} {Number(req.days) === 1 ? 'Day' : 'Days'}
+                            {req.from && (
+                              <span className="ml-1 opacity-70">
+                                ({new Date(req.from).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} 
+                                {req.to && ` - ${new Date(req.to).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`})
+                              </span>
+                            )}
+                          </p>
                         </td>
                         <td className="px-6 py-4 text-slate-500 text-xs max-w-[180px] font-medium truncate italic" title={req.reason}>"{req.reason || 'No reason'}"</td>
                         <td className="px-6 py-4 text-slate-400 text-[10px] font-bold uppercase">{appliedDate}</td>
@@ -510,17 +521,32 @@ export default function LeaveManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Title</label>
-                  <input required className="input h-14 bg-slate-50" value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Start Date</label>
+                  <input required type="date" className="input h-14 bg-slate-50" value={formData.start} onChange={e => setFormData({ ...formData, start: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Type</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">End Date</label>
+                  <input required type="date" className="input h-14 bg-slate-50" value={formData.end} onChange={e => setFormData({ ...formData, end: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Total Days</label>
+                  <input required type="number" step="0.5" min="0.5" className="input h-14 bg-slate-50 font-bold" value={formData.days} onChange={e => setFormData({ ...formData, days: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Leave Type</label>
                   <select className="input h-14 bg-slate-50" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                    <option>Casual</option>
-                    <option>Sick</option>
-                    <option>Annual</option>
+                    <option value="casual">Casual</option>
+                    <option value="sick">Sick</option>
+                    <option value="annual">Annual</option>
+                    <option value="company">Company</option>
                   </select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Title / Brief Reason</label>
+                <input required className="input h-14 bg-slate-50" placeholder="e.g. Family Function, Medical..." value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Reason</label>
