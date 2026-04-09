@@ -86,21 +86,27 @@ export default function LeaveManagement() {
     try {
       let res;
       if (userRole === 'employee') {
-        res = await leaveAPI.getUserLeaveAllocations(userProfile?.id || userProfile?.userId || 1);
+        const id = userProfile?.id || userProfile?.userId || userProfile?._id;
+        if (!id) return;
+        console.log('Fetching personal allocations for employee ID:', id);
+        res = await leaveAPI.getUserLeaveAllocations(id);
       } else {
         res = await leaveAPI.getAllLeaveAllocations();
       }
-      console.log('Leave allocations API response:', res);
+      console.log('Raw Allocations Response:', res);
 
-      let backendAllocations = res?.leaveAllocations || res?.allocations || res?.data || res?.items || res;
+      let backendAllocations = res?.leaveAllocation || res?.leaveAllocations || res?.allocations || res?.data || res?.items || res;
       if (!Array.isArray(backendAllocations)) {
-        // If the array is wrapped in some other unknown key, extract the first array found
-        backendAllocations = Object.values(res || {}).find(Array.isArray) || [];
+        if (backendAllocations && (backendAllocations.casual !== undefined || backendAllocations.sick !== undefined)) {
+          backendAllocations = [backendAllocations];
+        } else {
+          backendAllocations = Object.values(res || {}).find(Array.isArray) || [];
+        }
       }
 
       setAllocations(Array.isArray(backendAllocations) ? backendAllocations : []);
     } catch (error) {
-      console.error(error);
+      console.error('Failed to fetch allocations:', error);
     }
   };
 
@@ -199,11 +205,73 @@ export default function LeaveManagement() {
     return (activeTab === 'All' || displayStatus === activeTab) && matchSearch;
   });
 
-  const stats = [
-    { label: 'Total Requests', value: requests.length, color: 'text-blue-500' },
-    { label: 'Pending Approvals', value: requests.filter(r => r.status?.toLowerCase() === 'pending').length, color: 'text-purple-500' },
-    { label: 'Leaves Approved', value: requests.filter(r => r.status?.toLowerCase() === 'approved').length, color: 'text-green-500' },
-    { label: 'Leaves Rejected', value: requests.filter(r => r.status?.toLowerCase() === 'rejected').length, color: 'text-red-500' },
+  const totalAlloc = (Array.isArray(allocations) ? allocations : []).reduce((acc, a) => {
+    acc.casual = (acc.casual || 0) + Number(a.casual || 0);
+    acc.sick = (acc.sick || 0) + Number(a.sick || 0);
+    acc.annual = (acc.annual || 0) + Number(a.annual || 0);
+    acc.company = (acc.company || 0) + Number(a.company || 0);
+    acc.other = (acc.other || 0) + Number(a.other || 0);
+    return acc;
+  }, { casual: 0, sick: 0, annual: 0, company: 0, other: 0 });
+
+  const usedCount = requests
+    .filter(r => r.status?.toLowerCase() === 'approved')
+    .reduce((acc, r) => {
+      const type = r.type?.toLowerCase() || 'casual';
+      const days = Number(r.days || 0);
+      acc[type] = (acc[type] || 0) + days;
+      acc.total = (acc.total || 0) + days;
+      return acc;
+    }, { total: 0 });
+
+  const stats = userRole === 'employee' ? [
+    { 
+      label: 'Casual Balance', 
+      value: `${(totalAlloc.casual || 0) - (usedCount.casual || 0)}`, 
+      sub: `/ ${totalAlloc.casual || 0} Total`,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50'
+    },
+    { 
+      label: 'Sick Balance', 
+      value: `${(totalAlloc.sick || 0) - (usedCount.sick || 0)}`, 
+      sub: `/ ${totalAlloc.sick || 0} Total`,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50'
+    },
+    { 
+      label: 'Annual Balance', 
+      value: `${(totalAlloc.annual || 0) - (usedCount.annual || 0)}`, 
+      sub: `/ ${totalAlloc.annual || 0} Total`,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50'
+    },
+    { 
+      label: 'Company Balance', 
+      value: `${(totalAlloc.company || 0) - (usedCount.company || 0)}`, 
+      sub: `/ ${totalAlloc.company || 0} Total`,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50'
+    },
+    { 
+      label: 'Other Balance', 
+      value: `${(totalAlloc.other || 0) - (usedCount.other || 0)}`, 
+      sub: `/ ${totalAlloc.other || 0} Total`,
+      color: 'text-slate-600',
+      bg: 'bg-slate-50'
+    },
+    { 
+      label: 'Leaves Used', 
+      value: `${usedCount.total || 0}`, 
+      sub: 'Days total',
+      color: 'text-rose-600',
+      bg: 'bg-rose-50'
+    },
+  ] : [
+    { label: 'Total Requests', value: requests.length, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Pending Approvals', value: requests.filter(r => r.status?.toLowerCase() === 'pending').length, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Leaves Approved', value: usedCount.total, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Leaves Rejected', value: requests.filter(r => r.status?.toLowerCase() === 'rejected').length, color: 'text-red-600', bg: 'bg-red-50' },
   ];
 
   return (
@@ -253,12 +321,22 @@ export default function LeaveManagement() {
 
       {currentView === 'leave' ? (
         <>
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
             {stats.map((s, i) => (
-              <div key={i} className="card p-4 hover:shadow-lg transition-all border border-slate-100 bg-white rounded-2xl">
-                {isLoading ? <Skeleton variant="badge" className="h-8 w-16 mb-0" /> : <p className={`text-2xl font-black ${s.color} tracking-tight`}>{s.value}</p>}
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">{s.label}</p>
+              <div key={i} className={`card p-5 hover:shadow-xl transition-all border-none ${s.bg} rounded-3xl relative overflow-hidden group`}>
+                <div className="absolute -right-2 -top-2 w-16 h-16 bg-white/20 rounded-full blur-2xl group-hover:blur-xl transition-all" />
+                {isLoading ? (
+                  <Skeleton variant="badge" className="h-8 w-16 mb-0" />
+                ) : (
+                  <div className="flex items-baseline gap-1">
+                    <p className={`text-3xl font-black ${s.color} tracking-tighter`}>{s.value}</p>
+                    {s.sub && <span className={`text-[10px] font-bold ${s.color} opacity-60 uppercase tracking-wider`}>{s.sub}</span>}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <p className={`text-[10px] font-black uppercase tracking-widest opacity-70 ${s.color}`}>{s.label}</p>
+                  {Number(s.value) < 0 && <span className="text-[7px] bg-red-100 text-red-600 px-1 py-0.5 rounded-full font-black animate-pulse">OVERDRAWN</span>}
+                </div>
               </div>
             ))}
           </div>
