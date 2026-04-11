@@ -38,8 +38,6 @@ const navItems = [
             { id: 'gst-management', label: 'GST Management' },
             { id: 'tds-management', label: 'TDS Management' },
             { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
-            { id: 'job-costing', label: 'Job Costing (P&L)' },
-            { id: 'statutory-compliance', label: 'Statutory Compliance' },
         ]
     },
     {
