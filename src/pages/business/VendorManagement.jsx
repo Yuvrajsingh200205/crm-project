@@ -4,16 +4,23 @@ import {
   CreditCard, Briefcase, MapPin, Search,
   Plus, Download, CheckCircle2, AlertTriangle, 
   X, Loader2, Save, MoreVertical, ExternalLink,
-  ShieldCheck, ArrowRight, TrendingUp, History, Filter
+  ShieldCheck, ArrowRight, TrendingUp, History, Filter, Trash2, Edit3,
+  ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
+
+import { vendorAPI } from '../../api/vendor';
 
 const statusBadge = {
   'Active': 'bg-emerald-50 text-emerald-600 border-emerald-100',
   'On Hold': 'bg-amber-50 text-amber-600 border-amber-100',
   'Blacklisted': 'bg-red-50 text-red-600 border-red-100',
   'Pending KYC': 'bg-blue-50 text-blue-600 border-blue-100',
+  'Pending': 'bg-blue-50 text-blue-600 border-blue-100',
+  'active': 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  'pending': 'bg-blue-50 text-blue-600 border-blue-100',
+  'approved': 'bg-emerald-50 text-emerald-600 border-emerald-100',
 };
 
 export default function VendorManagement() {
@@ -23,49 +30,151 @@ export default function VendorManagement() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null, name: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentVendorId, setCurrentVendorId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', category: 'Electrical', contact: '', email: '', 
-    status: 'Active', location: 'Bihar'
+    name: '', category: '', headquater: '', complianceTax: '', 
+    panOrgstin: '', status: 'Pending', value: ''
   });
 
+  const fetchVendors = async () => {
+    setIsLoading(true);
+    try {
+        const res = await vendorAPI.getAllVendors();
+        // The endpoint returns { vendors: [...] }
+        const vendorData = res?.vendors || [];
+        
+        const normalized = vendorData.map(v => ({
+            id: v.id,
+            name: v.name || 'Unknown',
+            category: v.category || 'N/A',
+            rating: 4.0, // Defaulting rating as it's not in the response yet
+            value: v.value || 'N/A', // Using the 'value' field from response
+            status: v.status || 'pending',
+            location: v.headquater || 'N/A',
+            panOrgstin: v.panOrgstin || '',
+            createdAt: v.createdAt
+        }));
+        
+        // Sorting to show newest first
+        setVendors(normalized.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    } catch (error) {
+        console.error("Failed to fetch vendors:", error);
+        toast.error("Failed to load vendors.");
+    } finally {
+        setIsLoading(true); // Wait, should be false
+        setTimeout(() => setIsLoading(false), 500); // Smooth transition
+    }
+  };
+
   useEffect(() => {
-    // Simulated fetch
-    setTimeout(() => {
-      setVendors([
-        { id: 1, name: 'Aditya Electricals', category: 'Cables & Conductors', rating: 4.8, billed: 1250000, status: 'Active', location: 'Patna' },
-        { id: 2, name: 'Mehta Transformers', category: 'Heavy Machinery', rating: 4.5, billed: 8850000, status: 'Active', location: 'Gaya' },
-        { id: 3, name: 'Sanjay & Sons', category: 'Civil Works', rating: 3.9, billed: 425000, status: 'On Hold', location: 'Banka' },
-        { id: 4, name: 'Gupta Steel', category: 'Hardware', rating: 4.2, billed: 154000, status: 'Active', location: 'Munger' },
-        { id: 5, name: 'Rapid Logistics', category: 'Transport', rating: 4.9, billed: 2250000, status: 'Active', location: 'Purnia' },
-      ]);
-      setIsLoading(false);
-    }, 800);
+    fetchVendors();
   }, []);
 
   const filtered = vendors.filter(v => 
-    v.name.toLowerCase().includes(search.toLowerCase()) ||
-    v.category.toLowerCase().includes(search.toLowerCase()) ||
-    v.location.toLowerCase().includes(search.toLowerCase())
+    v.name?.toLowerCase().includes(search.toLowerCase()) ||
+    v.category?.toLowerCase().includes(search.toLowerCase()) ||
+    v.location?.toLowerCase().includes(search.toLowerCase()) ||
+    v.panOrgstin?.toLowerCase().includes(search.toLowerCase())
   );
 
   const stats = [
-    { label: 'Total Vendors', value: vendors.length, icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { label: 'Active Rate', value: '94%', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { label: 'Avg Rating', value: '4.4', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Verified', value: '18', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { label: 'Registered Vendors', value: vendors.length, icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { label: 'Approved', value: vendors.filter(v => v.status === 'approved').length, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { label: 'Pending Docs', value: vendors.filter(v => v.status === 'pending').length, icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { label: 'Tax Verified', value: vendors.filter(v => v.panOrgstin).length, icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    // ALIGNING WITH THE PROVIDED API SCHEMA
+    const payload = {
+        name: formData.name.trim(),
+        category: formData.category.trim(),
+        headquater: formData.headquater.trim(),
+        city: formData.headquater.trim(),
+        complianceTax: formData.complianceTax.trim(),
+        panOrgstin: formData.panOrgstin.trim(), // Use the new key provided
+        status: formData.status.toLowerCase(),
+        value: Number(formData.value) || 0
+    };
+
+    console.log('DEBUG: Sending Vendor Payload ->', payload);
+
+    if (!payload.name || !payload.category || !payload.headquater || !payload.panOrgstin) {
+        toast.error('Please fill all required fields');
+        return;
+    }
+
     setIsSaving(true);
-    setTimeout(() => {
-      const newVendor = { ...formData, id: Date.now(), rating: 0, billed: 0 };
-      setVendors([newVendor, ...vendors]);
-      setIsSaving(false);
-      setIsModalOpen(false);
-      toast.success('Vendor onboarded successfully');
-      setFormData({ name: '', category: 'Electrical', contact: '', email: '', status: 'Active', location: 'Bihar' });
-    }, 1000);
+    try {
+        if (isEditing) {
+            await vendorAPI.updateVendor(currentVendorId, payload);
+            toast.success('Vendor updated successfully');
+        } else {
+            const res = await vendorAPI.createVendor(payload);
+            console.log('DEBUG: API Response ->', res);
+            toast.success('Vendor onboarded successfully');
+        }
+        
+        await fetchVendors();
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setFormData({ name: '', category: '', headquater: '', complianceTax: '', panOrgstin: '', status: 'Pending', value: '' });
+    } catch (error) {
+        console.error('API Error Details:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            headers: error.response?.headers
+        });
+        
+        let errorMsg = 'Internal Server Error (500)';
+        if (error.response?.data) {
+            if (Array.isArray(error.response.data.errors)) {
+                errorMsg = error.response.data.errors.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+            } else if (error.response.data.message) {
+                errorMsg = error.response.data.message;
+            } else {
+                errorMsg = JSON.stringify(error.response.data);
+            }
+        }
+        
+        toast.error(`Server Error: ${errorMsg}`, { duration: 8000 });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const openEditModal = (vendor) => {
+    setFormData({
+        name: vendor.name,
+        category: vendor.category,
+        headquater: vendor.location,
+        complianceTax: vendor.complianceTax || '',
+        panOrgstin: vendor.gstinOrPan || vendor.panOrgstin || '',
+        status: vendor.status,
+        value: vendor.value || vendor.billed || ''
+    });
+    setCurrentVendorId(vendor.id);
+    setIsEditing(true);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    setIsSaving(true);
+    try {
+        await vendorAPI.deleteVendor(id);
+        toast.success('Vendor removed from system');
+        await fetchVendors();
+        setDeleteConfirm({ show: false, id: null, name: '' });
+    } catch (error) {
+        console.error('Delete error:', error);
+        toast.error('Failed to delete vendor');
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   return (
@@ -125,8 +234,8 @@ export default function VendorManagement() {
               <tr>
                 <th className="table-header py-5">Vendor Entity</th>
                 <th className="table-header">Category</th>
-                <th className="table-header">Performance</th>
-                <th className="table-header text-right">Lifetime Billed</th>
+                <th className="table-header">PAN / GSTIN</th>
+                <th className="table-header text-right">Classification</th>
                 <th className="table-header text-center whitespace-nowrap">Status</th>
                 <th className="table-header text-center">Action</th>
               </tr>
@@ -156,17 +265,12 @@ export default function VendorManagement() {
                   <td className="table-cell">
                     <span className="text-[9px] font-black uppercase px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg border border-slate-200 tracking-tighter">{vendor.category}</span>
                   </td>
-                  <td className="table-cell">
-                    <div className="flex items-center gap-1.5">
-                        <div className="flex">
-                            {[1,2,3,4,5].map(star => (
-                                <Star key={star} className={`w-3 h-3 ${star <= Math.floor(vendor.rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
-                            ))}
-                        </div>
-                        <span className="text-[11px] font-black text-slate-700 ml-1">{vendor.rating}</span>
-                    </div>
+                  <td className="table-cell font-mono font-bold text-blue-500">
+                    {vendor.panOrgstin}
                   </td>
-                  <td className="table-cell text-right font-black text-slate-900 tracking-tight">₹{vendor.billed.toLocaleString()}</td>
+                  <td className="table-cell text-right font-black text-slate-900 tracking-tight">
+                    <span className="px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[10px]">{vendor.value}</span>
+                  </td>
                   <td className="table-cell text-center">
                     <span className={`badge ${statusBadge[vendor.status]} px-3 font-black text-[9px] uppercase`}>
                       {vendor.status}
@@ -178,13 +282,19 @@ export default function VendorManagement() {
                             onClick={() => setSelectedVendor(vendor)}
                             className="p-2 bg-white text-slate-300 rounded-xl hover:text-emerald-600 transition-all border border-slate-100 group-hover:border-emerald-100 group-hover:bg-emerald-50/50"
                         >
-                        <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                         </button>
                         <button 
-                            onClick={() => setSelectedVendor(vendor)}
-                            className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[9px] font-black hover:bg-slate-800 transition-all uppercase tracking-widest shadow-lg shadow-slate-900/10"
+                            onClick={() => openEditModal(vendor)}
+                            className="p-2 bg-white text-slate-300 rounded-xl hover:text-blue-600 transition-all border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50/50"
                         >
-                        History
+                            <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setDeleteConfirm({ show: true, id: vendor.id, name: vendor.name })}
+                            className="p-2 bg-white text-slate-300 rounded-xl hover:text-red-600 transition-all border border-slate-100 group-hover:border-red-100 group-hover:bg-red-50/50"
+                        >
+                            <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
                   </td>
@@ -215,12 +325,26 @@ export default function VendorManagement() {
             <div className="flex-1 overflow-y-auto p-8 space-y-10">
                 <div className="grid grid-cols-2 gap-5">
                     <div className="p-5 bg-emerald-50 rounded-3xl border border-emerald-100">
-                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 leading-none">Total Invoiced</p>
-                        <p className="text-2xl font-black text-emerald-800 tracking-tighter leading-none">₹{(selectedVendor.billed / 100000).toFixed(1)}L</p>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 leading-none">Credit Value/Cat</p>
+                        <p className="text-xl font-black text-emerald-800 tracking-tighter leading-none">{selectedVendor.value}</p>
                     </div>
                     <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Active POs</p>
-                        <p className="text-2xl font-black text-slate-800 tracking-tighter leading-none">04</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Category</p>
+                        <p className="text-xl font-black text-slate-800 tracking-tighter leading-none uppercase text-[12px]">{selectedVendor.category}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <h3 className="section-title flex items-center gap-2 uppercase tracking-tighter font-black text-slate-800"><Briefcase className="w-4 h-4" /> Company Identity</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PAN / GSTIN</span>
+                             <span className="text-xs font-black text-slate-800 font-mono">{selectedVendor.panOrgstin}</span>
+                         </div>
+                         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Headquarters</span>
+                             <span className="text-xs font-black text-slate-800 uppercase">{selectedVendor.location}</span>
+                         </div>
                     </div>
                 </div>
 
@@ -279,9 +403,10 @@ export default function VendorManagement() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-[#2f6645]" /> Vendor Onboarding
+                {isEditing ? <Edit3 className="w-5 h-5 text-blue-600" /> : <UserCheck className="w-5 h-5 text-[#2f6645]" />}
+                {isEditing ? 'Update Vendor Details' : 'Vendor Onboarding'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors">
+              <button onClick={() => { setIsModalOpen(false); setIsEditing(false); }} className="text-slate-400 hover:text-slate-700 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -297,18 +422,12 @@ export default function VendorManagement() {
                   
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700">Primary Category <span className="text-red-500">*</span></label>
-                    <select className="input w-full" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                      <option>Electrical</option>
-                      <option>Heavy Machinery</option>
-                      <option>Cables & Conductors</option>
-                      <option>Civil Works</option>
-                      <option>Hardware</option>
-                    </select>
+                    <input required className="input w-full" placeholder="e.g. cat-01 or Electrical" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700">Headquarters City <span className="text-red-500">*</span></label>
-                    <input required className="input w-full" placeholder="Location Name" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
+                    <input required className="input w-full" placeholder="e.g. Delhi" value={formData.headquater} onChange={e => setFormData({...formData, headquater: e.target.value})} />
                   </div>
                 </div>
               </div>
@@ -317,29 +436,77 @@ export default function VendorManagement() {
                 <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Compliance & Tax</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">GSTIN / PAN <span className="text-red-500">*</span></label>
-                    <input required className="input w-full font-bold uppercase" placeholder="Enter identification" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} />
+                    <label className="text-xs font-semibold text-slate-700">GSTIN / PAN / PAN-OR-GSTIN <span className="text-red-500">*</span></label>
+                    <input required className="input w-full font-bold uppercase" placeholder="Enter identification" value={formData.panOrgstin} onChange={e => setFormData({...formData, panOrgstin: e.target.value.toUpperCase()})} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Initial Status <span className="text-red-500">*</span></label>
-                    <select className="input w-full" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                      <option>Active</option>
-                      <option>Pending KYC</option>
-                      <option>On Hold</option>
-                    </select>
+                    <label className="text-xs font-semibold text-slate-700">Compliance Tax <span className="text-red-500">*</span></label>
+                    <input required className="input w-full font-bold uppercase" placeholder="e.g. TAX-001" value={formData.complianceTax} onChange={e => setFormData({...formData, complianceTax: e.target.value.toUpperCase()})} />
+                  </div>
+
+                  <div className="space-y-1.5 leading-none">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Vendor Total Value <span className="text-red-500">*</span></label>
+                    <input required type="number" className="input w-full h-11 font-black" placeholder="e.g. 50000" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} />
+                  </div>
+
+                  <div className="space-y-1.5 leading-none">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Lifecycle Status <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                        <select className="input w-full h-11 px-3 appearance-none bg-white pr-10 font-bold" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                        <option value="Approved">Approved</option>
+                        <option value="Pending">Pending</option>
+                        <option value="On Hold">On Hold</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-slate-500 font-bold hover:text-slate-800 transition-colors uppercase text-[10px] tracking-widest">Cancel</button>
-                <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2 px-8">
+                <button type="button" onClick={() => { setIsModalOpen(false); setIsEditing(false); }} className="px-6 py-2.5 text-slate-500 font-bold hover:text-slate-800 transition-colors uppercase text-[10px] tracking-widest">Cancel</button>
+                <button type="submit" disabled={isSaving} className={`btn-primary flex items-center gap-2 px-8 ${isEditing ? 'bg-blue-600 hover:bg-blue-700' : ''}`}>
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {isSaving ? 'Processing...' : 'Complete Onboarding'}
+                  {isSaving ? 'Processing...' : (isEditing ? 'Update Vendor' : 'Complete Onboarding')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8">
+            <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
+                    <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight">Remove Vendor?</h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Permanent Action</p>
+                </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed mb-8">
+                Are you sure you want to remove <span className="font-black text-slate-900 underline decoration-red-200">{deleteConfirm.name}</span> from your registry? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+                <button 
+                    onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}
+                    className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={() => handleDelete(deleteConfirm.id)}
+                    disabled={isSaving}
+                    className="flex-1 py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-900/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center"
+                >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Delete"}
+                </button>
+            </div>
           </div>
         </div>
       )}

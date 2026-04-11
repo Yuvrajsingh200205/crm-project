@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../api/auth';
+import { projectAPI } from '../api/project';
 
 const initialProjects = [];
 
@@ -114,11 +115,22 @@ export function AppProvider({ children }) {
         console.debug('Profile fetch not available: /users/me returns 404. Using login data.');
     };
 
+    const fetchGlobalProjects = async () => {
+        try {
+            const res = await projectAPI.getAllProjects();
+            const data = Array.isArray(res.data) ? res.data : (res.data?.projects || res.data?.data || []);
+            setProjects(data);
+        } catch (error) {
+            console.error("Global Project Fetch Error:", error);
+        }
+    };
+
     useEffect(() => {
         if (localStorage.getItem('accessToken')) {
             fetchProfile();
+            fetchGlobalProjects();
         }
-    }, []);
+    }, [isLoggedIn]);
 
     const login = (role, profile = null) => {
         localStorage.setItem('userRole', role);
