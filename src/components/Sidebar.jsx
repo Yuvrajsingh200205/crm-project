@@ -102,7 +102,7 @@ const navItems = [
     },
 ];
 
-function NavItem({ item, depth = 0, role }) {
+function NavItem({ item, depth = 0, role, hasMultipleSections = false }) {
     const { activeModule, setActiveModule } = useApp();
     const [expanded, setExpanded] = useState(
         item.children?.some(c => c.id === activeModule || (c.id === 'employee-master' && activeModule === 'employee-details')) || item.id === activeModule
@@ -111,8 +111,8 @@ function NavItem({ item, depth = 0, role }) {
     const isActive = activeModule === item.id || (item.id === 'employee-master' && activeModule === 'employee-details');
     const hasChildren = item.children?.length > 0;
 
-    // Non-admin roles have categories always expanded and no chevrons
-    const isAlwaysExpanded = role !== 'admin' && depth === 0 && hasChildren;
+    // Non-admin roles have categories always expanded and no chevrons ONLY if there is a single section
+    const isAlwaysExpanded = role !== 'admin' && depth === 0 && hasChildren && !hasMultipleSections;
     const effectivelyExpanded = isAlwaysExpanded || expanded;
 
     const handleClick = () => {
@@ -145,7 +145,7 @@ function NavItem({ item, depth = 0, role }) {
             {hasChildren && effectivelyExpanded && (
                 <div className="ml-7 mt-1 mb-2 space-y-0.5 border-l-2 border-slate-100 pl-3">
                     {item.children.map(child => (
-                        <NavItem key={child.id} item={child} depth={depth + 1} role={role} />
+                        <NavItem key={child.id} item={child} depth={depth + 1} role={role} hasMultipleSections={hasMultipleSections} />
                     ))}
                 </div>
             )}
@@ -178,7 +178,7 @@ export default function Sidebar({ role }) {
         }
 
         if (role === 'marketing') {
-            const marketingModules = ['dashboard', 'business-dev'];
+            const marketingModules = ['dashboard', 'business-dev', 'operations'];
             if (!marketingModules.includes(newItem.id)) return null;
             return newItem;
         }
@@ -200,6 +200,7 @@ export default function Sidebar({ role }) {
     }).filter(Boolean);
 
     const filteredNavItems = [...baseFiltered];
+    const hasMultipleSections = filteredNavItems.filter(item => item.children?.length > 0).length > 1;
 
     return (
         <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-white border-r border-[#e9ecef] transition-all duration-300
@@ -215,7 +216,7 @@ export default function Sidebar({ role }) {
             {sidebarOpen && (
                 <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
                     {filteredNavItems.map(item => (
-                        <NavItem key={item.id} item={item} role={role} />
+                        <NavItem key={item.id} item={item} role={role} hasMultipleSections={hasMultipleSections} />
                     ))}
                 </nav>
             )}
