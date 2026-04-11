@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Package, Search, Plus, Filter, Download, 
   ArrowUpRight, ArrowDownLeft, AlertCircle, 
   Layers, Warehouse, History, MoreVertical,
-  ChevronRight, X, Loader2, Save
+  ChevronRight, X, Loader2, Save,
+  Trash2, Edit3, Eye, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
+import { inventoryAPI } from '../../api/inventory';
 
 const statusBadge = {
   'In Stock': 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -22,59 +24,117 @@ export default function InventoryStore() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null, name: '' });
   const [selectedItem, setSelectedItem] = useState(null);
+  
   const [formData, setFormData] = useState({
-    name: '', category: 'Electrical', quantity: '', unit: 'Nos', 
-    reorderLevel: '', warehouse: 'Main Warehouse', rate: ''
+    materialName: '', 
+    category: 'Construction', 
+    warehouseLocation: 'Main Store', 
+    quantity: '', 
+    quantityType: 'Nos', 
+    avgPurchaseRate: ''
   });
 
+  const fetchMaterials = async () => {
+    setIsLoading(true);
+    try {
+        const res = await inventoryAPI.getAllMaterials();
+        const data = res?.materials || res?.data?.materials || res?.data || res || [];
+        setItems(Array.isArray(data) ? data : []);
+    } catch (error) {
+        console.error("Fetch error:", error);
+        toast.error("Failed to load inventory.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Simulated fetch for now, will connect to API later
-    setTimeout(() => {
-      setItems([
-        { id: 1, name: 'PSC Pole 9M 400Kg', category: 'Structures', quantity: 45, unit: 'Nos', reorderLevel: 20, warehouse: 'Patna Yard', rate: 10500, status: 'In Stock' },
-        { id: 2, name: 'ABC Cable 3X95+1X70', category: 'Cables', quantity: 1.2, unit: 'CKM', reorderLevel: 5, warehouse: 'Main Store', rate: 245000, status: 'Low Stock' },
-        { id: 3, name: 'Stay Set Complete', category: 'Hardware', quantity: 0, unit: 'Sets', reorderLevel: 25, warehouse: 'Patna Yard', rate: 1250, status: 'Out of Stock' },
-        { id: 4, name: 'Transformer 100KVA', category: 'Equipments', quantity: 4, unit: 'Nos', reorderLevel: 2, warehouse: 'Main Store', rate: 185000, status: 'In Stock' },
-        { id: 5, name: 'HG Fuse Set', category: 'Hardware', quantity: 110, unit: 'Nos', reorderLevel: 50, warehouse: 'Gaya Branch', rate: 4225, status: 'In Stock' },
-      ]);
-      setIsLoading(false);
-    }, 800);
+    fetchMaterials();
   }, []);
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleOpenEdit = (item) => {
+    setCurrentId(item.id);
+    setFormData({
+        materialName: item.materialName || item.name || '',
+        category: item.category || 'Construction',
+        warehouseLocation: item.warehouseLocation || item.warehouse || 'Main Store',
+        quantity: item.quantity || '',
+        quantityType: item.quantityType || item.unit || 'Nos',
+        avgPurchaseRate: item.avgPurchaseRate || item.rate || ''
+    });
+    setIsEditing(true);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (item) => {
+    setDeleteConfirm({ show: true, id: item.id, name: item.materialName || item.name });
+  };
+
+  const confirmDelete = async () => {
+    setIsSaving(true);
+    try {
+        await inventoryAPI.deleteMaterial(deleteConfirm.id);
+        toast.success('Record removed from store');
+        fetchMaterials();
+        setDeleteConfirm({ show: false, id: null, name: '' });
+    } catch (error) {
+        console.error("Delete error:", error);
+        toast.error('Failed to remove record');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const payload = {
+        ...formData,
+        quantity: Number(formData.quantity),
+        avgPurchaseRate: Number(formData.avgPurchaseRate)
+    };
+    try {
+        if (isEditing) {
+            await inventoryAPI.updateMaterial(currentId, payload);
+            toast.success('Inventory updated');
+        } else {
+            await inventoryAPI.createMaterial(payload);
+            toast.success('Material registered in store');
+        }
+        fetchMaterials();
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setFormData({ materialName: '', category: 'Construction', warehouseLocation: 'Main Store', quantity: '', quantityType: 'Nos', avgPurchaseRate: '' });
+    } catch (error) {
+        console.error("Save error:", error);
+        toast.error('Failed to save material details');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
   const filtered = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.category.toLowerCase().includes(search.toLowerCase());
-    const matchesTab = activeTab === 'all' || item.category.toLowerCase() === activeTab.toLowerCase();
+    const matchesSearch = (item.materialName || item.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.category || '').toLowerCase().includes(search.toLowerCase());
+    const matchesTab = activeTab === 'all' || (item.category || '').toLowerCase() === activeTab.toLowerCase();
     return matchesSearch && matchesTab;
   });
 
   const stats = [
     { label: 'Total Items', value: items.length, icon: Layers, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Total Value', value: `₹${(items.reduce((a, b) => a + (b.quantity * b.rate), 0) / 100000).toFixed(1)}L`, icon: Warehouse, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { label: 'Low Stock', value: items.filter(i => i.status === 'Low Stock').length, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Out of Stock', value: items.filter(i => i.status === 'Out of Stock').length, icon: X, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'Stock Value', value: `₹${(items.reduce((a, b) => a + (Number(b.quantity || 0) * Number(b.avgPurchaseRate || b.rate || 0)), 0) / 100000).toFixed(1)}L`, icon: Warehouse, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { label: 'In Stock', value: items.filter(i => (Number(i.quantity) > 0)).length, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { label: 'Registry', value: 'Live', icon: History, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      const newItem = {
-        ...formData,
-        id: Date.now(),
-        quantity: Number(formData.quantity),
-        rate: Number(formData.rate),
-        status: Number(formData.quantity) > Number(formData.reorderLevel) ? 'In Stock' : 'Low Stock'
-      };
-      setItems([newItem, ...items]);
-      setIsSaving(false);
-      setIsModalOpen(false);
-      toast.success('Inventory item added successfully');
-      setFormData({ name: '', category: 'Electrical', quantity: '', unit: 'Nos', reorderLevel: '', warehouse: 'Main Warehouse', rate: '' });
-    }, 1000);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in dashboard-container">
@@ -151,7 +211,7 @@ export default function InventoryStore() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-100">
+                   <tr key={i} className="border-b border-slate-100">
                     {Array.from({ length: 7 }).map((__, j) => (
                       <td key={j} className="px-6 py-4"><Skeleton className="w-full h-4" /></td>
                     ))}
@@ -161,10 +221,10 @@ export default function InventoryStore() {
                 <tr key={item.id} className="table-row hover:bg-slate-50 transition-colors">
                   <td className="table-cell">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-500 transition-colors uppercase text-[10px] font-black">{item.name[0]}</div>
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-500 transition-colors uppercase text-[10px] font-black">{(item.materialName || item.name || '?')[0]}</div>
                       <div>
-                        <p className="text-slate-900 font-bold">{item.name}</p>
-                        <p className="text-[9px] font-mono text-blue-500 uppercase mt-0.5 tracking-wider">SKU-{item.name.replace(/\s+/g, '').slice(0, 6).toUpperCase()}</p>
+                        <p className="text-slate-900 font-bold">{item.materialName || item.name}</p>
+                        <p className="text-[9px] font-mono text-blue-500 uppercase mt-0.5 tracking-wider">SKU-{ (item.materialName || item.name || '').replace(/\s+/g, '').slice(0, 6).toUpperCase()}</p>
                       </div>
                     </div>
                   </td>
@@ -174,36 +234,42 @@ export default function InventoryStore() {
                   <td className="table-cell">
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm font-bold text-slate-700">{item.quantity}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">{item.quantityType || item.unit}</span>
                     </div>
                   </td>
                   <td className="table-cell text-right">
-                    <p className="font-bold text-emerald-600 tracking-tighter">₹{item.rate.toLocaleString()}</p>
+                    <p className="font-bold text-emerald-600 tracking-tighter">₹{(item.avgPurchaseRate || item.rate || 0).toLocaleString()}</p>
                   </td>
                   <td className="table-cell">
                     <div className="flex items-center gap-1.5 text-slate-500">
                       <Warehouse className="w-3.5 h-3.5" />
-                      <span className="font-medium">{item.warehouse}</span>
+                      <span className="font-medium">{item.warehouseLocation || item.warehouse}</span>
                     </div>
                   </td>
                   <td className="table-cell text-center">
-                    <span className={`badge ${item.status === 'In Stock' ? 'badge-green' : item.status === 'Low Stock' ? 'badge-yellow' : 'badge-red'}`}>
-                      {item.status}
+                    <span className={`badge ${Number(item.quantity) > 10 ? 'badge-green' : Number(item.quantity) > 0 ? 'badge-yellow' : 'badge-red'} px-3 font-bold`}>
+                      {Number(item.quantity) > 10 ? 'In Stock' : Number(item.quantity) > 0 ? 'Low Stock' : 'Out of Stock'}
                     </span>
                   </td>
                   <td className="table-cell text-center">
                     <div className="flex items-center justify-center gap-2">
                         <button 
                             onClick={() => setSelectedItem(item)}
-                            className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors uppercase border border-slate-100"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
-                        Audit
+                        <Eye className="w-4 h-4" />
                         </button>
                         <button 
-                            onClick={() => setSelectedItem(item)}
-                            className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-colors uppercase border border-blue-100"
+                            onClick={() => handleOpenEdit(item)}
+                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                         >
-                        Stock +/-
+                        <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => handleDelete(item)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                        <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
                   </td>
@@ -227,67 +293,78 @@ export default function InventoryStore() {
               </button>
             </div>
             
-            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-8 space-y-8">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Material Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-semibold text-slate-700">Material Name <span className="text-red-500">*</span></label>
-                    <input required className="input w-full" placeholder="e.g. Copper Wire 1.5mm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <h3 className="text-[10px] font-black tracking-[0.2em] text-emerald-600 mb-6 uppercase">Inventory Identification</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Material Name <span className="text-red-500">*</span></label>
+                    <input name="materialName" required className="input w-full h-12 font-bold" placeholder="e.g. Copper Wire 1.5mm" value={formData.materialName} onChange={handleInputChange} />
                   </div>
                   
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Category <span className="text-red-500">*</span></label>
-                    <select className="input w-full" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                      <option>Electrical</option>
-                      <option>Structures</option>
-                      <option>Cables</option>
-                      <option>Hardware</option>
-                      <option>Civil</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Warehouse Location <span className="text-red-500">*</span></label>
-                    <select className="input w-full" value={formData.warehouse} onChange={e => setFormData({...formData, warehouse: e.target.value})}>
-                      <option>Main Store</option>
-                      <option>Patna Yard</option>
-                      <option>Gaya Branch</option>
-                      <option>Site Store - Alpha</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Stock & Valuation</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Initial Quantity <span className="text-red-500">*</span></label>
-                    <div className="flex gap-2">
-                      <input required type="number" className="input flex-1" placeholder="Quantity" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
-                      <select className="input w-24" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}>
-                        <option>Nos</option>
-                        <option>Sets</option>
-                        <option>CKM</option>
-                        <option>Mtrs</option>
-                        <option>Kg</option>
-                      </select>
+                  <div className="space-y-2 leading-none">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Category <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                        <select name="category" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.category} onChange={handleInputChange}>
+                            <option>Construction</option>
+                            <option>Electrical</option>
+                            <option>Structures</option>
+                            <option>Cables</option>
+                            <option>Hardware</option>
+                            <option>Civil</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Avg Purchase Rate (₹) <span className="text-red-500">*</span></label>
-                    <input required type="number" className="input w-full" placeholder="0.00" value={formData.rate} onChange={e => setFormData({...formData, rate: e.target.value})} />
+                  <div className="space-y-2 leading-none">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Warehouse Location <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                        <select name="warehouseLocation" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.warehouseLocation} onChange={handleInputChange}>
+                            <option>Main Store</option>
+                            <option>Patna Yard</option>
+                            <option>Gaya Branch</option>
+                            <option>Site Store - Alpha</option>
+                            <option>Warehouse A - Sector 12</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary px-6">Cancel</button>
-                <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2 px-6">
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {isSaving ? 'Processing...' : 'Register Material'}
+              <div>
+                <h3 className="text-[10px] font-black tracking-[0.2em] text-emerald-600 mb-6 uppercase">Stock & Valuation</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Quantity <span className="text-red-500">*</span></label>
+                    <div className="flex gap-2">
+                      <input name="quantity" required type="number" className="input flex-1 h-12 font-bold" placeholder="Qty" value={formData.quantity} onChange={handleInputChange} />
+                      <div className="relative w-28">
+                        <select name="quantityType" className="input w-full h-12 appearance-none bg-white pr-8 font-black text-[10px]" value={formData.quantityType} onChange={handleInputChange}>
+                            <option>Nos</option>
+                            <option>Sets</option>
+                            <option>CKM</option>
+                            <option>Mtrs</option>
+                            <option>Kg</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Avg Purchase Rate (₹) <span className="text-red-500">*</span></label>
+                    <input name="avgPurchaseRate" required type="number" className="input w-full h-12 font-black text-emerald-600" placeholder="0.00" value={formData.avgPurchaseRate} onChange={handleInputChange} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 flex justify-end gap-4 sticky bottom-0 bg-white">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Discard</button>
+                <button type="submit" disabled={isSaving} className="btn-primary min-w-[180px] h-14 text-[11px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700">
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                  {isEditing ? 'Update Material' : 'Register Material'}
                 </button>
               </div>
             </form>
@@ -300,13 +377,15 @@ export default function InventoryStore() {
           <div className="bg-white w-full max-w-lg h-full shadow-2xl animate-slide-left flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black">{selectedItem.name[0]}</div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-lg shadow-emerald-200">
+                        <Package className="w-5 h-5" />
+                    </div>
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">{selectedItem.name}</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category} • {selectedItem.warehouse}</p>
+                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">{selectedItem.materialName || selectedItem.name}</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category} • {selectedItem.warehouseLocation || selectedItem.warehouse}</p>
                     </div>
                 </div>
-                <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-white rounded-xl text-slate-400 transition-all shadow-sm shadow-transparent hover:shadow-slate-200"><X className="w-5 h-5" /></button>
+                <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-white rounded-xl text-slate-400 transition-all"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -314,11 +393,11 @@ export default function InventoryStore() {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Stock</p>
-                        <p className="text-2xl font-black text-slate-800">{selectedItem.quantity} <span className="text-xs font-bold text-slate-400 uppercase">{selectedItem.unit}</span></p>
+                        <p className="text-2xl font-black text-slate-800">{selectedItem.quantity} <span className="text-xs font-bold text-slate-400 uppercase">{selectedItem.quantityType || selectedItem.unit}</span></p>
                     </div>
                     <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Value</p>
-                        <p className="text-2xl font-black text-emerald-600">₹{(selectedItem.quantity * selectedItem.rate).toLocaleString()}</p>
+                        <p className="text-2xl font-black text-emerald-600">₹{(Number(selectedItem.quantity) * Number(selectedItem.avgPurchaseRate || selectedItem.rate || 0)).toLocaleString()}</p>
                     </div>
                 </div>
 
@@ -361,6 +440,40 @@ export default function InventoryStore() {
                         <button className="w-full py-4 bg-[#2f6645] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-900/10 hover:bg-[#244f35] transition-all active:scale-95">Save Transaction</button>
                     </div>
                 </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8">
+            <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
+                    <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight">Remove Material?</h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Permanent Action</p>
+                </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed mb-8">
+                Are you sure you want to remove <span className="font-black text-slate-900 underline decoration-red-200">{deleteConfirm.name}</span> from the inventory store registry?
+            </p>
+            <div className="flex gap-3">
+                <button 
+                    onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}
+                    className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={confirmDelete}
+                    disabled={isSaving}
+                    className="flex-1 py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-900/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center"
+                >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Delete"}
+                </button>
             </div>
           </div>
         </div>
