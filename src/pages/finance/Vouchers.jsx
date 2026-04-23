@@ -12,12 +12,12 @@ import Skeleton from '../../components/common/Skeleton';
 import { voucherAPI } from '../../api/voucher';
 
 const VOUCHER_TYPES = [
-    { key: 'Payment Voucher', shortcut: 'F5', label: 'Payment', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
-    { key: 'Receipt Voucher', shortcut: 'F6', label: 'Receipt', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-    { key: 'Journal Voucher', shortcut: 'F7', label: 'Journal', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
-    { key: 'Sales Voucher', shortcut: 'F8', label: 'Sales', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-    { key: 'Purchase Voucher', shortcut: 'F9', label: 'Purchase', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-    { key: 'Contra Voucher', shortcut: 'F4', label: 'Contra', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
+    { key: 'Payment Voucher', label: 'Payment', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
+    { key: 'Receipt Voucher', label: 'Receipt', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+    { key: 'Journal Voucher', label: 'Journal', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
+    { key: 'Sales Voucher', label: 'Sales', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+    { key: 'Purchase Voucher', label: 'Purchase', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+    { key: 'Contra Voucher', label: 'Contra', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
 ];
 
 export default function Vouchers() {
@@ -32,6 +32,7 @@ export default function Vouchers() {
     const [viewMode, setViewMode] = useState('table');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isTypeLocked, setIsTypeLocked] = useState(false);
 
     const [formData, setFormData] = useState({
         type: 'Journal Voucher',
@@ -76,6 +77,7 @@ export default function Vouchers() {
             narrationRemarks: voucher.narrationRemarks || ''
         });
         setIsEditing(true);
+        setIsTypeLocked(true);
         setIsModalOpen(true);
     };
 
@@ -126,8 +128,9 @@ export default function Vouchers() {
         }
     };
 
-    const handleQuickEntry = (type = 'Journal Voucher') => {
+    const handleQuickEntry = (type = 'Journal Voucher', lock = false) => {
         setIsEditing(false);
+        setIsTypeLocked(lock);
         setFormData({
             type: type,
             date: new Date().toISOString().split('T')[0],
@@ -165,7 +168,7 @@ export default function Vouchers() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <button onClick={() => handleQuickEntry()} className="btn-primary flex items-center gap-1.5">
+                    <button onClick={() => handleQuickEntry('Journal Voucher', false)} className="btn-primary flex items-center gap-1.5">
                         <Plus className="w-4 h-4" /> Quick Voucher
                     </button>
                 </div>
@@ -184,11 +187,10 @@ export default function Vouchers() {
                     {VOUCHER_TYPES.map(vt => (
                         <button
                             key={vt.key}
-                            onClick={() => handleQuickEntry(vt.key)}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md ${vt.bg} ${vt.border}`}
+                            onClick={() => handleQuickEntry(vt.key, true)}
+                            className={`flex flex-col items-center justify-center gap-2 p-3 min-h-[80px] rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md ${vt.bg} ${vt.border}`}
                         >
-                            <span className={`text-xs font-bold ${vt.color} bg-white/80 rounded px-1.5 py-0.5 shadow-sm`}>{vt.shortcut}</span>
-                            <span className={`text-xs font-semibold text-slate-700`}>{vt.label}</span>
+                            <span className={`text-xs font-bold text-slate-700`}>{vt.label}</span>
                         </button>
                     ))}
                 </div>
@@ -314,7 +316,13 @@ export default function Vouchers() {
                                     <div className="space-y-2 leading-none">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Type <span className="text-red-500">*</span></label>
                                         <div className="relative">
-                                            <select name="type" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.type} onChange={handleInputChange}>
+                                            <select 
+                                                name="type" 
+                                                className={`input w-full h-12 appearance-none bg-white pr-10 font-bold ${isTypeLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`} 
+                                                value={formData.type} 
+                                                onChange={handleInputChange}
+                                                disabled={isTypeLocked}
+                                            >
                                                 {VOUCHER_TYPES.map(vt => <option key={vt.key} value={vt.key}>{vt.label}</option>)}
                                             </select>
                                             <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
