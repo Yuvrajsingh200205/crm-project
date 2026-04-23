@@ -12,6 +12,7 @@ const moduleTitles = {
     'site-management': 'Site Management',
     'progress-tracking': 'Progress Tracking',
     'chart-of-accounts': 'Chart of Accounts',
+    'bank-management': 'Bank Management',
     'vouchers': 'Voucher Management',
     'invoicing': 'Invoicing & Billing',
     'accounts-payable': 'Accounts Payable',

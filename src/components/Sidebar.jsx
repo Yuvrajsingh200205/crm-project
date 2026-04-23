@@ -38,6 +38,7 @@ const navItems = [
             { id: 'gst-management', label: 'GST Management' },
             { id: 'tds-management', label: 'TDS Management' },
             { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
+            { id: 'bank-management', label: 'Bank Management' },
         ]
     },
     {

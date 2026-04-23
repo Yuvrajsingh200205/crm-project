@@ -50,6 +50,8 @@ import {
   Briefcase, FileBarChart, Target, Activity
 } from 'lucide-react';
 
+import BankManagement from './pages/finance/BankManagement';
+
 const pageMap = {
   'dashboard': <Dashboard />,
 
@@ -62,6 +64,7 @@ const pageMap = {
 
   // Finance
   'chart-of-accounts': <ChartOfAccounts />,
+  'bank-management': <BankManagement />,
   'vouchers': <Vouchers />,
   'invoicing': <Invoicing />,
   'accounts-payable': <AccountsPayable />,
