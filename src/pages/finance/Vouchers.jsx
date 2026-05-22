@@ -9,7 +9,40 @@ import {
 import toast from 'react-hot-toast';
 import { useApp } from '../../context/AppContext';
 import Skeleton from '../../components/common/Skeleton';
+import SearchableSelect from '../../components/common/SearchableSelect';
 import { voucherAPI } from '../../api/voucher';
+import { inventoryAPI } from '../../api/inventory';
+import { equipmentAPI } from '../../api/equipment';
+import { vendorAPI } from '../../api/vendor';
+import { tenderAPI } from '../../api/tender';
+
+const EMPTY_REF_DATA = { materials: [], equipments: [], vendors: [], tenders: [] };
+const EMPTY_REF_LOADING = { materials: false, equipments: false, vendors: false, tenders: false };
+
+const INITIAL_FORM = {
+    type: 'Journal Voucher',
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    tdsDeductions: 0,
+    secondaryPartyAccount: '',
+    narrationRemarks: '',
+    materialId: '',
+    materialName: '',
+    equipmentId: '',
+    equipmentName: '',
+    vendorId: '',
+    vendorName: '',
+    tenderId: '',
+    tenderName: '',
+};
+
+const parseList = (res, key) => {
+    const raw = res?.data ?? res;
+    const nested = raw?.[key];
+    if (Array.isArray(nested)) return nested;
+    if (Array.isArray(raw)) return raw;
+    return [];
+};
 
 const VOUCHER_TYPES = [
     { key: 'Payment Voucher', label: 'Payment', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
@@ -34,14 +67,9 @@ export default function Vouchers() {
     const [isSaving, setIsSaving] = useState(false);
     const [isTypeLocked, setIsTypeLocked] = useState(false);
 
-    const [formData, setFormData] = useState({
-        type: 'Journal Voucher',
-        date: new Date().toISOString().split('T')[0],
-        amount: '',
-        tdsDeductions: 0,
-        secondaryPartyAccount: '',
-        narrationRemarks: ''
-    });
+    const [formData, setFormData] = useState(INITIAL_FORM);
+    const [refData, setRefData] = useState(EMPTY_REF_DATA);
+    const [refLoading, setRefLoading] = useState(EMPTY_REF_LOADING);
 
     const fetchVouchers = async () => {
         setIsLoading(true);
@@ -61,6 +89,60 @@ export default function Vouchers() {
         fetchVouchers();
     }, []);
 
+    const fetchRefData = async () => {
+        setRefLoading({ materials: true, equipments: true, vendors: true, tenders: true });
+        const setKey = (key, items) => setRefData((prev) => ({ ...prev, [key]: items }));
+        const setLoaded = (key) => setRefLoading((prev) => ({ ...prev, [key]: false }));
+
+        try {
+            const res = await inventoryAPI.getAllMaterials();
+            setKey('materials', parseList(res, 'materials'));
+        } catch {
+            setKey('materials', []);
+        } finally {
+            setLoaded('materials');
+        }
+
+        try {
+            const res = await equipmentAPI.getAllEquipments();
+            setKey('equipments', parseList(res, 'equipments'));
+        } catch {
+            setKey('equipments', []);
+        } finally {
+            setLoaded('equipments');
+        }
+
+        try {
+            const res = await vendorAPI.getAllVendors();
+            setKey('vendors', parseList(res, 'vendors'));
+        } catch {
+            setKey('vendors', []);
+        } finally {
+            setLoaded('vendors');
+        }
+
+        try {
+            const res = await tenderAPI.getAllTenders();
+            setKey('tenders', parseList(res, 'tenders'));
+        } catch {
+            setKey('tenders', []);
+        } finally {
+            setLoaded('tenders');
+        }
+    };
+
+    useEffect(() => {
+        if (isModalOpen) fetchRefData();
+    }, [isModalOpen]);
+
+    const handleRefSelect = (fieldPrefix) => ({ id, label }) => {
+        setFormData((prev) => ({
+            ...prev,
+            [`${fieldPrefix}Id`]: id !== '' && id != null ? id : '',
+            [`${fieldPrefix}Name`]: label || '',
+        }));
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -69,12 +151,21 @@ export default function Vouchers() {
     const handleOpenEdit = (voucher) => {
         setCurrentId(voucher.id);
         setFormData({
+            ...INITIAL_FORM,
             type: voucher.type || 'Journal Voucher',
             date: voucher.date || new Date().toISOString().split('T')[0],
             amount: voucher.amount || '',
             tdsDeductions: voucher.tdsDeductions || 0,
             secondaryPartyAccount: voucher.secondaryPartyAccount || '',
-            narrationRemarks: voucher.narrationRemarks || ''
+            narrationRemarks: voucher.narrationRemarks || '',
+            materialId: voucher.materialId ?? '',
+            materialName: voucher.materialName || '',
+            equipmentId: voucher.equipmentId ?? '',
+            equipmentName: voucher.equipmentName || '',
+            vendorId: voucher.vendorId ?? '',
+            vendorName: voucher.vendorName || '',
+            tenderId: voucher.tenderId ?? '',
+            tenderName: voucher.tenderName || '',
         });
         setIsEditing(true);
         setIsTypeLocked(true);
@@ -106,7 +197,11 @@ export default function Vouchers() {
         const payload = {
             ...formData,
             amount: Number(formData.amount),
-            tdsDeductions: Number(formData.tdsDeductions)
+            tdsDeductions: Number(formData.tdsDeductions),
+            materialId: formData.materialId !== '' ? formData.materialId : null,
+            equipmentId: formData.equipmentId !== '' ? formData.equipmentId : null,
+            vendorId: formData.vendorId !== '' ? formData.vendorId : null,
+            tenderId: formData.tenderId !== '' ? formData.tenderId : null,
         };
         try {
             if (isEditing) {
@@ -119,7 +214,7 @@ export default function Vouchers() {
             fetchVouchers();
             setIsModalOpen(false);
             setIsEditing(false);
-            setFormData({ type: 'Journal Voucher', date: new Date().toISOString().split('T')[0], amount: '', tdsDeductions: 0, secondaryPartyAccount: '', narrationRemarks: '' });
+            setFormData(freshForm());
         } catch (error) {
             console.error("Save error:", error);
             toast.error('Failed to post voucher');
@@ -128,17 +223,16 @@ export default function Vouchers() {
         }
     };
 
+    const freshForm = (overrides = {}) => ({
+        ...INITIAL_FORM,
+        date: new Date().toISOString().split('T')[0],
+        ...overrides,
+    });
+
     const handleQuickEntry = (type = 'Journal Voucher', lock = false) => {
         setIsEditing(false);
         setIsTypeLocked(lock);
-        setFormData({
-            type: type,
-            date: new Date().toISOString().split('T')[0],
-            amount: '',
-            tdsDeductions: 0,
-            secondaryPartyAccount: '',
-            narrationRemarks: ''
-        });
+        setFormData(freshForm({ type }));
         setIsModalOpen(true);
     };
 
@@ -360,6 +454,56 @@ export default function Vouchers() {
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
                                         <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">4. Project Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <SearchableSelect
+                                        label="Material"
+                                        placeholder="Search materials..."
+                                        options={refData.materials}
+                                        value={formData.materialId}
+                                        displayLabel={formData.materialName}
+                                        isLoading={refLoading.materials}
+                                        getOptionValue={(o) => o.id}
+                                        getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
+                                        onChange={handleRefSelect('material')}
+                                    />
+                                    <SearchableSelect
+                                        label="Equipment"
+                                        placeholder="Search equipment..."
+                                        options={refData.equipments}
+                                        value={formData.equipmentId}
+                                        displayLabel={formData.equipmentName}
+                                        isLoading={refLoading.equipments}
+                                        getOptionValue={(o) => o.id}
+                                        getOptionLabel={(o) => o.equipmentName || o.name || `Equipment #${o.id}`}
+                                        onChange={handleRefSelect('equipment')}
+                                    />
+                                    <SearchableSelect
+                                        label="Vendor"
+                                        placeholder="Search vendors..."
+                                        options={refData.vendors}
+                                        value={formData.vendorId}
+                                        displayLabel={formData.vendorName}
+                                        isLoading={refLoading.vendors}
+                                        getOptionValue={(o) => o.id}
+                                        getOptionLabel={(o) => o.name || o.vendorName || `Vendor #${o.id}`}
+                                        onChange={handleRefSelect('vendor')}
+                                    />
+                                    <SearchableSelect
+                                        label="Tender"
+                                        placeholder="Search tenders..."
+                                        options={refData.tenders}
+                                        value={formData.tenderId}
+                                        displayLabel={formData.tenderName}
+                                        isLoading={refLoading.tenders}
+                                        getOptionValue={(o) => o.id}
+                                        getOptionLabel={(o) => o.name || o.nameOfWork || o.Name || `Tender #${o.id}`}
+                                        onChange={handleRefSelect('tender')}
+                                    />
                                 </div>
                             </div>
 
