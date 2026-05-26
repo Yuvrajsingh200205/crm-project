@@ -71,6 +71,50 @@ export default function Vouchers() {
     const [refData, setRefData] = useState(EMPTY_REF_DATA);
     const [refLoading, setRefLoading] = useState(EMPTY_REF_LOADING);
 
+    const [secondaryPartyKind, setSecondaryPartyKind] = useState('');
+
+    const secondaryPartyMeta = useMemo(
+        () => ({
+            material: {
+                label: 'Material',
+                dataKey: 'materials',
+                idField: 'materialId',
+                nameField: 'materialName',
+                getOptionLabel: (o) => o.materialName || o.name || `Material #${o.id}`,
+            },
+            equipment: {
+                label: 'Equipment',
+                dataKey: 'equipments',
+                idField: 'equipmentId',
+                nameField: 'equipmentName',
+                getOptionLabel: (o) => o.equipmentName || o.name || `Equipment #${o.id}`,
+            },
+            vendor: {
+                label: 'Vendor',
+                dataKey: 'vendors',
+                idField: 'vendorId',
+                nameField: 'vendorName',
+                getOptionLabel: (o) => o.name || o.vendorName || `Vendor #${o.id}`,
+            },
+            tender: {
+                label: 'Tender',
+                dataKey: 'tenders',
+                idField: 'tenderId',
+                nameField: 'tenderName',
+                getOptionLabel: (o) => o.name || o.nameOfWork || o.Name || `Tender #${o.id}`,
+            },
+        }),
+        []
+    );
+
+    const deriveSecondaryPartyKind = (voucherLike) => {
+        if (voucherLike?.materialId != null && String(voucherLike.materialId) !== '') return 'material';
+        if (voucherLike?.equipmentId != null && String(voucherLike.equipmentId) !== '') return 'equipment';
+        if (voucherLike?.vendorId != null && String(voucherLike.vendorId) !== '') return 'vendor';
+        if (voucherLike?.tenderId != null && String(voucherLike.tenderId) !== '') return 'tender';
+        return '';
+    };
+
     const fetchVouchers = async () => {
         setIsLoading(true);
         try {
@@ -150,6 +194,7 @@ export default function Vouchers() {
 
     const handleOpenEdit = (voucher) => {
         setCurrentId(voucher.id);
+        setSecondaryPartyKind(deriveSecondaryPartyKind(voucher));
         setFormData({
             ...INITIAL_FORM,
             type: voucher.type || 'Journal Voucher',
@@ -232,8 +277,52 @@ export default function Vouchers() {
     const handleQuickEntry = (type = 'Journal Voucher', lock = false) => {
         setIsEditing(false);
         setIsTypeLocked(lock);
+        setSecondaryPartyKind('');
         setFormData(freshForm({ type }));
         setIsModalOpen(true);
+    };
+
+    const clearSecondaryPartyRefs = (next = {}) => ({
+        ...next,
+        materialId: '',
+        materialName: '',
+        equipmentId: '',
+        equipmentName: '',
+        vendorId: '',
+        vendorName: '',
+        tenderId: '',
+        tenderName: '',
+    });
+
+    const handleSecondaryPartyKindChange = (e) => {
+        const nextKind = e.target.value;
+        setSecondaryPartyKind(nextKind);
+        setFormData((prev) => clearSecondaryPartyRefs({
+            ...prev,
+            secondaryPartyAccount: '',
+        }));
+    };
+
+    const handleSecondaryPartySelect = ({ id, label }) => {
+        if (!secondaryPartyKind) return;
+        const meta = secondaryPartyMeta[secondaryPartyKind];
+        if (!meta) return;
+
+        setFormData((prev) => {
+            const cleared = clearSecondaryPartyRefs(prev);
+            if (id === '' || id == null) {
+                return {
+                    ...cleared,
+                    secondaryPartyAccount: '',
+                };
+            }
+            return {
+                ...cleared,
+                secondaryPartyAccount: label || '',
+                [meta.idField]: id,
+                [meta.nameField]: label || '',
+            };
+        });
     };
 
     const filteredVouchers = vouchers.filter(v => 
@@ -448,62 +537,43 @@ export default function Vouchers() {
                                 <div className="grid grid-cols-1 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Party / Ledger Account <span className="text-red-500">*</span></label>
-                                        <input name="secondaryPartyAccount" className="input h-12 font-bold" placeholder="e.g. Janki Enterprises • Main Office Exp" value={formData.secondaryPartyAccount} onChange={handleInputChange} />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Type <span className="text-red-500">*</span></label>
+                                                <div className="relative">
+                                                    <select
+                                                        className="input w-full h-12 appearance-none bg-white pr-10 font-bold"
+                                                        value={secondaryPartyKind}
+                                                        onChange={handleSecondaryPartyKindChange}
+                                                    >
+                                                        <option value="">Select type...</option>
+                                                        <option value="material">Material</option>
+                                                        <option value="equipment">Equipment</option>
+                                                        <option value="vendor">Vendor</option>
+                                                        <option value="tender">Tender</option>
+                                                    </select>
+                                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                </div>
+                                            </div>
+                                            <SearchableSelect
+                                                label={secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.label : 'Select'}
+                                                required
+                                                placeholder={secondaryPartyKind ? `Search ${secondaryPartyMeta[secondaryPartyKind]?.label?.toLowerCase()}...` : 'Select type first...'}
+                                                options={secondaryPartyKind ? (refData[secondaryPartyMeta[secondaryPartyKind]?.dataKey] || []) : []}
+                                                value={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.idField] : ''}
+                                                displayLabel={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.nameField] : ''}
+                                                isLoading={secondaryPartyKind ? refLoading[secondaryPartyMeta[secondaryPartyKind]?.dataKey] : false}
+                                                disabled={!secondaryPartyKind}
+                                                getOptionValue={(o) => o.id}
+                                                getOptionLabel={(o) => secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.getOptionLabel(o) : ''}
+                                                onChange={handleSecondaryPartySelect}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
                                         <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">4. Project Details</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <SearchableSelect
-                                        label="Material"
-                                        placeholder="Search materials..."
-                                        options={refData.materials}
-                                        value={formData.materialId}
-                                        displayLabel={formData.materialName}
-                                        isLoading={refLoading.materials}
-                                        getOptionValue={(o) => o.id}
-                                        getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
-                                        onChange={handleRefSelect('material')}
-                                    />
-                                    <SearchableSelect
-                                        label="Equipment"
-                                        placeholder="Search equipment..."
-                                        options={refData.equipments}
-                                        value={formData.equipmentId}
-                                        displayLabel={formData.equipmentName}
-                                        isLoading={refLoading.equipments}
-                                        getOptionValue={(o) => o.id}
-                                        getOptionLabel={(o) => o.equipmentName || o.name || `Equipment #${o.id}`}
-                                        onChange={handleRefSelect('equipment')}
-                                    />
-                                    <SearchableSelect
-                                        label="Vendor"
-                                        placeholder="Search vendors..."
-                                        options={refData.vendors}
-                                        value={formData.vendorId}
-                                        displayLabel={formData.vendorName}
-                                        isLoading={refLoading.vendors}
-                                        getOptionValue={(o) => o.id}
-                                        getOptionLabel={(o) => o.name || o.vendorName || `Vendor #${o.id}`}
-                                        onChange={handleRefSelect('vendor')}
-                                    />
-                                    <SearchableSelect
-                                        label="Tender"
-                                        placeholder="Search tenders..."
-                                        options={refData.tenders}
-                                        value={formData.tenderId}
-                                        displayLabel={formData.tenderName}
-                                        isLoading={refLoading.tenders}
-                                        getOptionValue={(o) => o.id}
-                                        getOptionLabel={(o) => o.name || o.nameOfWork || o.Name || `Tender #${o.id}`}
-                                        onChange={handleRefSelect('tender')}
-                                    />
                                 </div>
                             </div>
 
