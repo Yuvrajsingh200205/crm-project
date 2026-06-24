@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
-import { 
-    FileText, Search, Plus, Filter, Download, MoreVertical, 
-    ArrowRightLeft, CheckCircle2, AlertCircle, Clock, 
+import { useState, useMemo, useEffect, useRef } from 'react';
+import {
+    FileText, Search, Plus, Filter, Download, MoreVertical,
+    ArrowRightLeft, CheckCircle2, AlertCircle, Clock,
     Calendar, Building2, Wallet, CreditCard, ChevronRight,
     TrendingUp, ArrowUpRight, X, LayoutGrid, List,
-    Trash2, Edit3, Eye, ChevronDown, Save, Loader2
+    Trash2, Edit3, Eye, ChevronDown, Save, Loader2, UserPlus, Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../../context/AppContext';
@@ -15,9 +15,11 @@ import { inventoryAPI } from '../../api/inventory';
 import { equipmentAPI } from '../../api/equipment';
 import { vendorAPI } from '../../api/vendor';
 import { tenderAPI } from '../../api/tender';
+import { bankAPI } from '../../api/bank';
+import { partyAPI } from '../../api/party';
 
-const EMPTY_REF_DATA = { materials: [], equipments: [], vendors: [], tenders: [] };
-const EMPTY_REF_LOADING = { materials: false, equipments: false, vendors: false, tenders: false };
+const EMPTY_REF_DATA = { materials: [], equipments: [], vendors: [], tenders: [], banks: [], parties: [] };
+const EMPTY_REF_LOADING = { materials: false, equipments: false, vendors: false, tenders: false, banks: false, parties: false };
 
 const INITIAL_FORM = {
     type: 'Journal Voucher',
@@ -34,6 +36,36 @@ const INITIAL_FORM = {
     vendorName: '',
     tenderId: '',
     tenderName: '',
+    accountId: '',
+    // Sales Voucher specific
+    partyId: '',
+    partyName: '',
+    quantity: '',
+    rate: '',
+    hsn: '',
+    sgstRate: 9,
+    cgstRate: 9,
+};
+
+const INITIAL_PARTY_FORM = {
+    partyName: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    gstin: '',
+};
+
+const INITIAL_MATERIAL_FORM = {
+    materialName: '',
+    category: '',
+    quantity: 100,
+    quantityType: 'bags',
+    avgPurchaseRate: 0,
+    type: 'owned',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    sgstRate: 9,
+    cgstRate: 9,
 };
 
 const parseList = (res, key) => {
@@ -53,6 +85,399 @@ const VOUCHER_TYPES = [
     { key: 'Contra Voucher', label: 'Contra', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
 ];
 
+// ------------------------------------------------------------
+// Invoice HTML Generator
+// ------------------------------------------------------------
+function generateInvoiceHTML(formData, party, material, invoiceNo) {
+    const taxableValue = Number(formData.amount) || 0;
+    const cgstRate = Number(formData.cgstRate) || 9;
+    const sgstRate = Number(formData.sgstRate) || 9;
+    const cgstAmt = parseFloat(((taxableValue * cgstRate) / 100).toFixed(2));
+    const sgstAmt = parseFloat(((taxableValue * sgstRate) / 100).toFixed(2));
+    const totalTax = parseFloat((cgstAmt + sgstAmt).toFixed(2));
+    const grandTotal = parseFloat((taxableValue + totalTax).toFixed(2));
+    const dateStr = new Date(formData.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+    const hsn = formData.hsn || '998519';
+    const qty = formData.quantity || 1;
+    const rate = formData.rate || (qty ? (taxableValue / qty).toFixed(2) : taxableValue);
+    const materialDesc = formData.materialName || 'Service';
+
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+        'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    function numToWords(n) {
+        n = Math.round(n);
+        if (n === 0) return 'Zero';
+        if (n < 20) return ones[n];
+        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+        if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + numToWords(n % 100) : '');
+        if (n < 100000) return numToWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + numToWords(n % 1000) : '');
+        if (n < 10000000) return numToWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + numToWords(n % 100000) : '');
+        return numToWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + numToWords(n % 10000000) : '');
+    }
+    const paise = Math.round((grandTotal % 1) * 100);
+    const grandWords = 'INR ' + numToWords(Math.floor(grandTotal)) + ' and ' + (paise ? numToWords(paise) + ' paise' : 'Zero paise') + ' Only';
+    const taxPaise = Math.round((totalTax % 1) * 100);
+    const taxWords = 'INR ' + numToWords(Math.floor(totalTax)) + ' and ' + (taxPaise ? numToWords(taxPaise) + ' paise' : 'Zero paise') + ' Only';
+
+    const partyName = party?.partyName || formData.partyName || 'Party Name';
+    const partyAddr = [party?.address, party?.city, party?.state, party?.pincode].filter(Boolean).join(', ');
+    const partyGSTIN = party?.gstin || '';
+
+    const emptyRows = Array(6).fill(0).map(() =>
+        '<tr>' + Array(8).fill('<td style="height:22px;"></td>').join('') + '</tr>'
+    ).join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tax Invoice - ${invoiceNo}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
+  .page { width: 800px; margin: 0 auto; padding: 20px; }
+  h1.title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 8px; border: 2px solid #000; padding: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { border: 1px solid #555; padding: 5px 7px; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: bold; text-align: center; }
+  .bold { font-weight: bold; }
+  .right { text-align: right; }
+  .center { text-align: center; }
+  .italic-bold { font-style: italic; font-weight: bold; }
+  .grand-total { font-size: 13px; font-weight: bold; }
+  .amount-words { font-style: italic; font-size: 10px; }
+  .declaration { font-size: 9.5px; color: #333; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 class="title">Tax Invoice</h1>
+  <table>
+    <tr>
+      <td rowspan="9" style="width:48%;">
+        <div class="bold" style="font-size:12px;">Morlatis Engineering And Construction Pvt Ltd</div>
+        <div>01, Ramanad Nagar, Keshonaryanpur, Gram</div>
+        <div>Panchayat Office, Keshonaryanpur, Bond Dih</div>
+        <div>Dakhli, Samastipur, Bihar, 848504</div>
+        <div><span class="bold">GSTIN/UIN:</span> 10AAMCM1665L2ZC</div>
+        <div><span class="bold">State Name:</span> Bihar, Code: 10</div>
+        <br/>
+        <div class="bold">Consignee (Ship to)</div>
+        <div class="bold" style="font-size:11px;">${partyName}</div>
+        <div>${partyAddr}</div>
+        ${partyGSTIN ? `<div><span class="bold">GSTIN/UIN</span> : ${partyGSTIN}</div>` : ''}
+        <br/>
+        <div class="bold">Buyer (Bill to)</div>
+        <div class="bold" style="font-size:11px;">${partyName}</div>
+        <div>${partyAddr}</div>
+        ${partyGSTIN ? `<div><span class="bold">GSTIN/UIN</span> : ${partyGSTIN}</div>` : ''}
+      </td>
+      <td style="width:26%;"><div>Invoice No.</div><div class="bold">${invoiceNo}</div></td>
+      <td style="width:26%;"><div>Dated</div><div class="bold">${dateStr}</div></td>
+    </tr>
+    <tr><td>Delivery Note</td><td>Mode/Terms of Payment</td></tr>
+    <tr><td>Reference No. &amp; Date.</td><td>Other References</td></tr>
+    <tr><td><div>Buyer's Order No.</div><div class="bold">PI/2026-27/07</div></td><td><div>Dated</div><div class="bold">${dateStr}</div></td></tr>
+    <tr><td><div>Dispatch Doc No.</div><div class="bold">${invoiceNo}</div></td><td>Delivery Note Date</td></tr>
+    <tr><td>Dispatched through</td><td>Destination</td></tr>
+    <tr><td><div>Bill of Lading/LR-RR No.</div><div class="bold">dt. ${dateStr}</div></td><td>Motor Vehicle No.</td></tr>
+    <tr><td colspan="2">Terms of Delivery</td></tr>
+  </table>
+
+  <table style="margin-top:8px;">
+    <thead>
+      <tr>
+        <th style="width:5%;">Sl No.</th>
+        <th>Description of Services</th>
+        <th style="width:10%;">HSN/SAC</th>
+        <th style="width:8%;">Quantity</th>
+        <th style="width:9%;">Rate</th>
+        <th style="width:5%;">per</th>
+        <th style="width:7%;">Disc. %</th>
+        <th style="width:12%;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="center">1</td>
+        <td class="bold">${materialDesc}</td>
+        <td class="center">${hsn}</td>
+        <td class="center">${qty}</td>
+        <td class="right">${Number(rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td></td><td></td>
+        <td class="right">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td class="right italic-bold">CGST OUTPUT<br/>SGST OUTPUT</td>
+        <td></td><td></td><td></td><td></td><td></td>
+        <td class="right">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}<br/>${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+      ${emptyRows}
+      <tr>
+        <td colspan="7" class="right bold">Total</td>
+        <td class="right grand-total">&#8377; ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table style="margin-top:4px;">
+    <tr>
+      <td colspan="2" class="amount-words"><span class="bold">Amount Chargeable (in words)</span><br/>${grandWords}</td>
+      <td class="right" style="font-size:10px;">E. &amp; O.E</td>
+    </tr>
+  </table>
+
+  <table style="margin-top:4px;">
+    <thead>
+      <tr>
+        <th rowspan="2">HSN/SAC</th>
+        <th rowspan="2">Taxable Value</th>
+        <th colspan="2">CGST</th>
+        <th colspan="2">SGST/UTGST</th>
+        <th rowspan="2">Total Tax Amount</th>
+      </tr>
+      <tr><th>Rate</th><th>Amount</th><th>Rate</th><th>Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="center">${hsn}</td>
+        <td class="right">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="center">${cgstRate}%</td>
+        <td class="right">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="center">${sgstRate}%</td>
+        <td class="right">${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="right">${totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+      <tr>
+        <td class="bold">Total</td>
+        <td class="right bold">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td></td>
+        <td class="right bold">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td></td>
+        <td class="right bold">${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="right bold">${totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table style="margin-top:4px;">
+    <tr>
+      <td colspan="2" class="amount-words"><span class="bold">Tax Amount (in words) :</span> ${taxWords}</td>
+    </tr>
+    <tr>
+      <td style="width:60%;">
+        <div class="bold">Declaration</div>
+        <div class="declaration">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
+      </td>
+      <td class="right bold">for Morlatis Engineering And Construction Pvt Ltd</td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>`;
+}
+
+function downloadInvoice(formData, party, material) {
+    const year = new Date(formData.date).getFullYear();
+    const nextShortYear = String(year + 1).slice(2);
+    const invoiceNo = `RK/${year}-${nextShortYear}/01`;
+    const html = generateInvoiceHTML(formData, party, material, invoiceNo);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${invoiceNo.replace(/\//g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ------------------------------------------------------------
+// Sub-modal: Create Party
+// ------------------------------------------------------------
+function AddPartyModal({ onClose, onCreated }) {
+    const [form, setForm] = useState(INITIAL_PARTY_FORM);
+    const [saving, setSaving] = useState(false);
+
+    const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const res = await partyAPI.createParty(form);
+            const created = res?.data?.party || res?.data || res;
+            toast.success(`Party "${form.partyName}" created!`);
+            onCreated(created);
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to create party');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-700 to-blue-500 text-white">
+                    <div className="flex items-center gap-2">
+                        <UserPlus className="w-5 h-5" />
+                        <h2 className="text-base font-semibold">Add New Party</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Party Name <span className="text-red-500">*</span></label>
+                        <input required name="partyName" className="input h-11 w-full" placeholder="e.g. Ramkrishna Enterprises" value={form.partyName} onChange={handleChange} />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Address <span className="text-red-500">*</span></label>
+                        <input required name="address" className="input h-11 w-full" placeholder="Street address" value={form.address} onChange={handleChange} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">City</label>
+                            <input name="city" className="input h-11 w-full" placeholder="City" value={form.city} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">State</label>
+                            <input name="state" className="input h-11 w-full" placeholder="State" value={form.state} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Pincode</label>
+                            <input name="pincode" className="input h-11 w-full" placeholder="110043" value={form.pincode} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">GSTIN</label>
+                            <input name="gstin" className="input h-11 w-full" placeholder="10ASDFG1234F3DD" value={form.gstin} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
+                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                            Create Party
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ------------------------------------------------------------
+// Sub-modal: Create Material
+// ------------------------------------------------------------
+function AddMaterialModal({ onClose, onCreated }) {
+    const [form, setForm] = useState(INITIAL_MATERIAL_FORM);
+    const [saving, setSaving] = useState(false);
+
+    const handleChange = (e) => {
+        const { name, value, type } = e.target;
+        setForm(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const res = await inventoryAPI.createMaterial(form);
+            const created = res?.data?.material || res?.data || res;
+            toast.success(`Material "${form.materialName}" created!`);
+            onCreated(created);
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to create material');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-emerald-700 to-emerald-500 text-white">
+                    <div className="flex items-center gap-2">
+                        <Package className="w-5 h-5" />
+                        <h2 className="text-base font-semibold">Add New Material</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Material Name <span className="text-red-500">*</span></label>
+                            <input required name="materialName" className="input h-11 w-full" placeholder="e.g. Cement" value={form.materialName} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Category</label>
+                            <input name="category" className="input h-11 w-full" placeholder="e.g. Building" value={form.category} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Quantity</label>
+                            <input type="number" name="quantity" className="input h-11 w-full" placeholder="100" value={form.quantity} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Unit</label>
+                            <input name="quantityType" className="input h-11 w-full" placeholder="bags" value={form.quantityType} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Avg. Rate</label>
+                            <input type="number" name="avgPurchaseRate" className="input h-11 w-full" placeholder="350" value={form.avgPurchaseRate} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                            <div className="relative">
+                                <select name="type" className="input h-11 w-full appearance-none" value={form.type} onChange={handleChange}>
+                                    <option value="owned">Owned</option>
+                                    <option value="rented">Rented</option>
+                                    <option value="leased">Leased</option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Purchase Date</label>
+                            <input type="date" name="purchaseDate" className="input h-11 w-full" value={form.purchaseDate} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">SGST Rate (%)</label>
+                            <input type="number" name="sgstRate" className="input h-11 w-full" placeholder="9" value={form.sgstRate} onChange={handleChange} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">CGST Rate (%)</label>
+                            <input type="number" name="cgstRate" className="input h-11 w-full" placeholder="9" value={form.cgstRate} onChange={handleChange} />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
+                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+                            Create Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ------------------------------------------------------------
+// Main Component
+// ------------------------------------------------------------
 export default function Vouchers() {
     const { setActiveModule } = useApp();
     const [vouchers, setVouchers] = useState([]);
@@ -73,39 +498,37 @@ export default function Vouchers() {
 
     const [secondaryPartyKind, setSecondaryPartyKind] = useState('');
 
-    const secondaryPartyMeta = useMemo(
-        () => ({
-            material: {
-                label: 'Material',
-                dataKey: 'materials',
-                idField: 'materialId',
-                nameField: 'materialName',
-                getOptionLabel: (o) => o.materialName || o.name || `Material #${o.id}`,
-            },
-            equipment: {
-                label: 'Equipment',
-                dataKey: 'equipments',
-                idField: 'equipmentId',
-                nameField: 'equipmentName',
-                getOptionLabel: (o) => o.equipmentName || o.name || `Equipment #${o.id}`,
-            },
-            vendor: {
-                label: 'Vendor',
-                dataKey: 'vendors',
-                idField: 'vendorId',
-                nameField: 'vendorName',
-                getOptionLabel: (o) => o.name || o.vendorName || `Vendor #${o.id}`,
-            },
-            tender: {
-                label: 'Tender',
-                dataKey: 'tenders',
-                idField: 'tenderId',
-                nameField: 'tenderName',
-                getOptionLabel: (o) => o.name || o.nameOfWork || o.Name || `Tender #${o.id}`,
-            },
-        }),
-        []
+    const [showAddParty, setShowAddParty] = useState(false);
+    const [showAddMaterial, setShowAddMaterial] = useState(false);
+
+    const [selectedPartyObj, setSelectedPartyObj] = useState(null);
+    const [selectedMaterialObj, setSelectedMaterialObj] = useState(null);
+
+    const isSalesVoucher = formData.type === 'Sales Voucher';
+
+    const currentVoucherType = useMemo(
+        () => VOUCHER_TYPES.find(vt => vt.key === formData.type),
+        [formData.type]
     );
+
+    const secondaryPartyMeta = useMemo(() => ({
+        material: {
+            label: 'Material', dataKey: 'materials', idField: 'materialId', nameField: 'materialName',
+            getOptionLabel: (o) => o.materialName || o.name || `Material #${o.id}`,
+        },
+        equipment: {
+            label: 'Equipment', dataKey: 'equipments', idField: 'equipmentId', nameField: 'equipmentName',
+            getOptionLabel: (o) => o.equipmentName || o.name || `Equipment #${o.id}`,
+        },
+        vendor: {
+            label: 'Vendor', dataKey: 'vendors', idField: 'vendorId', nameField: 'vendorName',
+            getOptionLabel: (o) => o.name || o.vendorName || `Vendor #${o.id}`,
+        },
+        tender: {
+            label: 'Tender', dataKey: 'tenders', idField: 'tenderId', nameField: 'tenderName',
+            getOptionLabel: (o) => o.name || o.nameOfWork || o.Name || `Tender #${o.id}`,
+        },
+    }), []);
 
     const deriveSecondaryPartyKind = (voucherLike) => {
         if (voucherLike?.materialId != null && String(voucherLike.materialId) !== '') return 'material';
@@ -129,63 +552,31 @@ export default function Vouchers() {
         }
     };
 
-    useEffect(() => {
-        fetchVouchers();
-    }, []);
+    useEffect(() => { fetchVouchers(); }, []);
 
     const fetchRefData = async () => {
-        setRefLoading({ materials: true, equipments: true, vendors: true, tenders: true });
+        setRefLoading({ materials: true, equipments: true, vendors: true, tenders: true, banks: true, parties: true });
         const setKey = (key, items) => setRefData((prev) => ({ ...prev, [key]: items }));
         const setLoaded = (key) => setRefLoading((prev) => ({ ...prev, [key]: false }));
 
-        try {
-            const res = await inventoryAPI.getAllMaterials();
-            setKey('materials', parseList(res, 'materials'));
-        } catch {
-            setKey('materials', []);
-        } finally {
-            setLoaded('materials');
-        }
+        const fetchers = [
+            { fn: () => inventoryAPI.getAllMaterials(), key: 'materials', listKey: 'materials' },
+            { fn: () => equipmentAPI.getAllEquipments(), key: 'equipments', listKey: 'equipments' },
+            { fn: () => vendorAPI.getAllVendors(), key: 'vendors', listKey: 'vendors' },
+            { fn: () => tenderAPI.getAllTenders(), key: 'tenders', listKey: 'tenders' },
+            { fn: () => bankAPI.getAllBanks(), key: 'banks', listKey: 'banks' },
+            { fn: () => partyAPI.getAllParties(), key: 'parties', listKey: 'parties' },
+        ];
 
-        try {
-            const res = await equipmentAPI.getAllEquipments();
-            setKey('equipments', parseList(res, 'equipments'));
-        } catch {
-            setKey('equipments', []);
-        } finally {
-            setLoaded('equipments');
-        }
-
-        try {
-            const res = await vendorAPI.getAllVendors();
-            setKey('vendors', parseList(res, 'vendors'));
-        } catch {
-            setKey('vendors', []);
-        } finally {
-            setLoaded('vendors');
-        }
-
-        try {
-            const res = await tenderAPI.getAllTenders();
-            setKey('tenders', parseList(res, 'tenders'));
-        } catch {
-            setKey('tenders', []);
-        } finally {
-            setLoaded('tenders');
+        for (const { fn, key, listKey } of fetchers) {
+            try {
+                const res = await fn();
+                setKey(key, parseList(res, listKey));
+            } catch { setKey(key, []); } finally { setLoaded(key); }
         }
     };
 
-    useEffect(() => {
-        if (isModalOpen) fetchRefData();
-    }, [isModalOpen]);
-
-    const handleRefSelect = (fieldPrefix) => ({ id, label }) => {
-        setFormData((prev) => ({
-            ...prev,
-            [`${fieldPrefix}Id`]: id !== '' && id != null ? id : '',
-            [`${fieldPrefix}Name`]: label || '',
-        }));
-    };
+    useEffect(() => { if (isModalOpen) fetchRefData(); }, [isModalOpen]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -211,6 +602,14 @@ export default function Vouchers() {
             vendorName: voucher.vendorName || '',
             tenderId: voucher.tenderId ?? '',
             tenderName: voucher.tenderName || '',
+            accountId: voucher.accountId ?? '',
+            partyId: voucher.partyId ?? '',
+            partyName: voucher.partyName || '',
+            quantity: voucher.quantity || '',
+            rate: voucher.rate || '',
+            hsn: voucher.hsn || '',
+            sgstRate: voucher.sgstRate ?? 9,
+            cgstRate: voucher.cgstRate ?? 9,
         });
         setIsEditing(true);
         setIsTypeLocked(true);
@@ -247,6 +646,13 @@ export default function Vouchers() {
             equipmentId: formData.equipmentId !== '' ? formData.equipmentId : null,
             vendorId: formData.vendorId !== '' ? formData.vendorId : null,
             tenderId: formData.tenderId !== '' ? formData.tenderId : null,
+            accountId: formData.accountId !== '' ? Number(formData.accountId) : null,
+            bankAccountId: formData.accountId !== '' ? Number(formData.accountId) : null,
+            partyId: formData.partyId !== '' ? formData.partyId : null,
+            quantity: formData.quantity !== '' ? Number(formData.quantity) : null,
+            rate: formData.rate !== '' ? Number(formData.rate) : null,
+            sgstRate: Number(formData.sgstRate),
+            cgstRate: Number(formData.cgstRate),
         };
         try {
             if (isEditing) {
@@ -255,11 +661,17 @@ export default function Vouchers() {
             } else {
                 await voucherAPI.createVoucher(payload);
                 toast.success('Voucher posted to ledger');
+                if (isSalesVoucher) {
+                    downloadInvoice(formData, selectedPartyObj, selectedMaterialObj);
+                    toast.success('Invoice downloaded!', { icon: '📄' });
+                }
             }
             fetchVouchers();
             setIsModalOpen(false);
             setIsEditing(false);
             setFormData(freshForm());
+            setSelectedPartyObj(null);
+            setSelectedMaterialObj(null);
         } catch (error) {
             console.error("Save error:", error);
             toast.error('Failed to post voucher');
@@ -279,58 +691,97 @@ export default function Vouchers() {
         setIsTypeLocked(lock);
         setSecondaryPartyKind('');
         setFormData(freshForm({ type }));
+        setSelectedPartyObj(null);
+        setSelectedMaterialObj(null);
         setIsModalOpen(true);
     };
 
     const clearSecondaryPartyRefs = (next = {}) => ({
         ...next,
-        materialId: '',
-        materialName: '',
-        equipmentId: '',
-        equipmentName: '',
-        vendorId: '',
-        vendorName: '',
-        tenderId: '',
-        tenderName: '',
+        materialId: '', materialName: '',
+        equipmentId: '', equipmentName: '',
+        vendorId: '', vendorName: '',
+        tenderId: '', tenderName: '',
     });
 
     const handleSecondaryPartyKindChange = (e) => {
         const nextKind = e.target.value;
         setSecondaryPartyKind(nextKind);
-        setFormData((prev) => clearSecondaryPartyRefs({
-            ...prev,
-            secondaryPartyAccount: '',
-        }));
+        setFormData((prev) => clearSecondaryPartyRefs({ ...prev, secondaryPartyAccount: '' }));
     };
 
     const handleSecondaryPartySelect = ({ id, label }) => {
         if (!secondaryPartyKind) return;
         const meta = secondaryPartyMeta[secondaryPartyKind];
         if (!meta) return;
-
         setFormData((prev) => {
             const cleared = clearSecondaryPartyRefs(prev);
-            if (id === '' || id == null) {
-                return {
-                    ...cleared,
-                    secondaryPartyAccount: '',
-                };
-            }
-            return {
-                ...cleared,
-                secondaryPartyAccount: label || '',
-                [meta.idField]: id,
-                [meta.nameField]: label || '',
-            };
+            if (id === '' || id == null) return { ...cleared, secondaryPartyAccount: '' };
+            return { ...cleared, secondaryPartyAccount: label || '', [meta.idField]: id, [meta.nameField]: label || '' };
         });
+        if (secondaryPartyKind === 'material') {
+            const mat = refData.materials.find(m => String(m.id) === String(id));
+            setSelectedMaterialObj(mat || null);
+        }
     };
 
-    const filteredVouchers = vouchers.filter(v => 
-        ( (v.secondaryPartyAccount || '').toLowerCase().includes(search.toLowerCase()) || 
-          (v.id || '').toString().includes(search.toLowerCase()) || 
-          (v.narrationRemarks || '').toLowerCase().includes(search.toLowerCase()) ) &&
+    const handlePartySelect = ({ id, label }) => {
+        setFormData(prev => ({ ...prev, partyId: id || '', partyName: label || '' }));
+        const party = refData.parties.find(p => String(p.id) === String(id) || String(p._id) === String(id));
+        setSelectedPartyObj(party || null);
+    };
+
+    const handleSalesMaterialSelect = ({ id, label }) => {
+        const mat = refData.materials.find(m => String(m.id) === String(id) || String(m._id) === String(id));
+        setSelectedMaterialObj(mat || null);
+        setFormData(prev => ({
+            ...prev,
+            materialId: id || '',
+            materialName: label || '',
+            hsn: mat?.hsn || prev.hsn,
+            sgstRate: mat?.sgstRate ?? prev.sgstRate,
+            cgstRate: mat?.cgstRate ?? prev.cgstRate,
+            rate: mat?.avgPurchaseRate ? String(mat.avgPurchaseRate) : prev.rate,
+        }));
+    };
+
+    const handlePartyCreated = (newParty) => {
+        setRefData(prev => ({ ...prev, parties: [...prev.parties, newParty] }));
+        setFormData(prev => ({
+            ...prev,
+            partyId: newParty.id || newParty._id || '',
+            partyName: newParty.partyName || '',
+        }));
+        setSelectedPartyObj(newParty);
+        setShowAddParty(false);
+    };
+
+    const handleMaterialCreated = (newMaterial) => {
+        setRefData(prev => ({ ...prev, materials: [...prev.materials, newMaterial] }));
+        setFormData(prev => ({
+            ...prev,
+            materialId: newMaterial.id || newMaterial._id || '',
+            materialName: newMaterial.materialName || '',
+            hsn: newMaterial.hsn || prev.hsn,
+            sgstRate: newMaterial.sgstRate ?? prev.sgstRate,
+            cgstRate: newMaterial.cgstRate ?? prev.cgstRate,
+            rate: newMaterial.avgPurchaseRate ? String(newMaterial.avgPurchaseRate) : prev.rate,
+        }));
+        setSelectedMaterialObj(newMaterial);
+        setShowAddMaterial(false);
+    };
+
+    const filteredVouchers = vouchers.filter(v =>
+        ((v.secondaryPartyAccount || '').toLowerCase().includes(search.toLowerCase()) ||
+            (v.id || '').toString().includes(search.toLowerCase()) ||
+            (v.narrationRemarks || '').toLowerCase().includes(search.toLowerCase())) &&
         (filter === 'All' || (v.type || '').includes(filter))
     );
+
+    const salesTaxable = Number(formData.amount) || 0;
+    const salesCGST = parseFloat(((salesTaxable * (Number(formData.cgstRate) || 0)) / 100).toFixed(2));
+    const salesSGST = parseFloat(((salesTaxable * (Number(formData.sgstRate) || 0)) / 100).toFixed(2));
+    const salesGrandTotal = salesTaxable + salesCGST + salesSGST;
 
     return (
         <div className="space-y-5 animate-fade-in pb-12 relative">
@@ -343,13 +794,7 @@ export default function Vouchers() {
                 <div className="flex items-center gap-2">
                     <div className="relative hidden sm:block w-56">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search vouchers..."
-                            className="input pl-9"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+                        <input type="text" placeholder="Search vouchers..." className="input pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
                     <button onClick={() => handleQuickEntry('Journal Voucher', false)} className="btn-primary flex items-center gap-1.5">
                         <Plus className="w-4 h-4" /> Quick Voucher
@@ -357,7 +802,7 @@ export default function Vouchers() {
                 </div>
             </div>
 
-            {/* Quick Entry Type Buttons */}
+            {/* Quick Entry Console */}
             <div className="card overflow-hidden">
                 <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <h3 className="font-semibold text-slate-800 text-sm">Quick Entry Console</h3>
@@ -368,12 +813,9 @@ export default function Vouchers() {
                 </div>
                 <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {VOUCHER_TYPES.map(vt => (
-                        <button
-                            key={vt.key}
-                            onClick={() => handleQuickEntry(vt.key, true)}
-                            className={`flex flex-col items-center justify-center gap-2 p-3 min-h-[80px] rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md ${vt.bg} ${vt.border}`}
-                        >
-                            <span className={`text-xs font-bold text-slate-700`}>{vt.label}</span>
+                        <button key={vt.key} onClick={() => handleQuickEntry(vt.key, true)}
+                            className={`flex flex-col items-center justify-center gap-2 p-3 min-h-[80px] rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md ${vt.bg} ${vt.border}`}>
+                            <span className="text-xs font-bold text-slate-700">{vt.label}</span>
                         </button>
                     ))}
                 </div>
@@ -386,20 +828,14 @@ export default function Vouchers() {
                         <h3 className="font-semibold text-slate-800 text-sm">Voucher Registry</h3>
                         <div className="flex gap-1">
                             {['All', 'Payment', 'Receipt', 'Journal'].map(t => (
-                                <button
-                                    key={t}
-                                    onClick={() => setFilter(t)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                                        filter === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'
-                                    }`}
-                                >
+                                <button key={t} onClick={() => setFilter(t)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${filter === t ? 'bg-[#2f6645] text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
                                     {t}
                                 </button>
                             ))}
                         </div>
                     </div>
                 </div>
-
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50 border-b border-slate-200">
@@ -423,17 +859,10 @@ export default function Vouchers() {
                                     </tr>
                                 ))
                             ) : filteredVouchers.map(v => (
-                                <tr
-                                    key={v.id}
-                                    className="table-row hover:bg-slate-50 transition-colors group"
-                                >
+                                <tr key={v.id} className="table-row hover:bg-slate-50 transition-colors group">
                                     <td className="table-cell">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                                                v.type?.includes('Payment') ? 'bg-rose-50 text-rose-500' :
-                                                v.type?.includes('Receipt') ? 'bg-emerald-50 text-emerald-500' :
-                                                'bg-blue-50 text-blue-500'
-                                            }`}>
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${v.type?.includes('Payment') ? 'bg-rose-50 text-rose-500' : v.type?.includes('Receipt') ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500'}`}>
                                                 <ArrowRightLeft className={`w-4 h-4 ${v.type?.includes('Receipt') ? 'rotate-90' : (v.type?.includes('Payment') ? '-rotate-90' : '')}`} />
                                             </div>
                                             <div>
@@ -443,7 +872,7 @@ export default function Vouchers() {
                                         </div>
                                     </td>
                                     <td className="table-cell">
-                                        <p className="text-slate-800 font-bold">{v.secondaryPartyAccount || 'Internal Account'}</p>
+                                        <p className="text-slate-800 font-bold">{v.secondaryPartyAccount || v.partyName || 'Internal Account'}</p>
                                         <p className="text-slate-400 text-xs line-clamp-1 max-w-[220px] font-medium">{v.narrationRemarks || 'No narrative provided'}</p>
                                     </td>
                                     <td className="table-cell">
@@ -458,10 +887,8 @@ export default function Vouchers() {
                                         </div>
                                     </td>
                                     <td className="table-cell text-right">
-                                        <p className={`font-black text-sm tabular-nums ${
-                                            v.type?.includes('Receipt') ? 'text-emerald-600' : 'text-slate-800'
-                                        }`}>
-                                            {v.type?.includes('Receipt') ? '+' : '-'}₹{(Number(v.amount) || 0).toLocaleString()}
+                                        <p className={`font-black text-sm tabular-nums ${v.type?.includes('Receipt') ? 'text-emerald-600' : 'text-slate-800'}`}>
+                                            {v.type?.includes('Receipt') ? '+' : '-'}&#8377;{(Number(v.amount) || 0).toLocaleString()}
                                         </p>
                                     </td>
                                     <td className="table-cell">
@@ -478,34 +905,36 @@ export default function Vouchers() {
                 </div>
             </div>
 
-            {/* Voucher Entry Modal */}
+            {/* ── Voucher Entry Modal ── */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
-                            <div>
-                                <h2 className="text-base font-semibold">Journal Entry</h2>
-                                <p className="text-xs text-white/60 mt-0.5">Entry Terminal</p>
+                            <div className="flex items-center gap-3">
+                                {isSalesVoucher && <FileText className="w-5 h-5 text-blue-300" />}
+                                <h2 className="text-base font-semibold">
+                                    {currentVoucherType ? `${currentVoucherType.label} Entry` : 'Journal Entry'}
+                                </h2>
+                                {isSalesVoucher && (
+                                    <span className="text-[10px] bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">+ Invoice Download</span>
+                                )}
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        
-                        <form onSubmit={handleSave} className="p-8 space-y-8 max-h-[75vh] overflow-y-auto">
+
+                        <form onSubmit={handleSave} className="p-8 space-y-8 max-h-[78vh] overflow-y-auto">
+                            {/* Section 1: Basic Parameters */}
                             <div>
                                 <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">1. Basic Parameters</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2 leading-none">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Type <span className="text-red-500">*</span></label>
                                         <div className="relative">
-                                            <select 
-                                                name="type" 
-                                                className={`input w-full h-12 appearance-none bg-white pr-10 font-bold ${isTypeLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`} 
-                                                value={formData.type} 
-                                                onChange={handleInputChange}
-                                                disabled={isTypeLocked}
-                                            >
+                                            <select name="type"
+                                                className={`input w-full h-12 appearance-none bg-white pr-10 font-bold ${isTypeLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                                                value={formData.type} onChange={handleInputChange} disabled={isTypeLocked}>
                                                 {VOUCHER_TYPES.map(vt => <option key={vt.key} value={vt.key}>{vt.label}</option>)}
                                             </select>
                                             <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -518,76 +947,222 @@ export default function Vouchers() {
                                 </div>
                             </div>
 
+                            {/* Section 2: Financial Matrix */}
                             <div>
                                 <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Financial Matrix</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (₹) <span className="text-red-500">*</span></label>
+                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
                                         <input name="amount" type="number" className="input h-12 font-black text-slate-800" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (₹)</label>
+                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (&#8377;)</label>
                                         <input name="tdsDeductions" type="number" className="input h-12 font-black text-rose-500 bg-rose-50/30 border-rose-100" placeholder="0.00" value={formData.tdsDeductions} onChange={handleInputChange} />
                                     </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">3. Party & Intent</h3>
-                                <div className="grid grid-cols-1 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Party / Ledger Account <span className="text-red-500">*</span></label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Type <span className="text-red-500">*</span></label>
-                                                <div className="relative">
-                                                    <select
-                                                        className="input w-full h-12 appearance-none bg-white pr-10 font-bold"
-                                                        value={secondaryPartyKind}
-                                                        onChange={handleSecondaryPartyKindChange}
-                                                    >
-                                                        <option value="">Select type...</option>
-                                                        <option value="material">Material</option>
-                                                        <option value="equipment">Equipment</option>
-                                                        <option value="vendor">Vendor</option>
-                                                        <option value="tender">Tender</option>
-                                                    </select>
-                                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                                </div>
-                                            </div>
-                                            <SearchableSelect
-                                                label={secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.label : 'Select'}
-                                                required
-                                                placeholder={secondaryPartyKind ? `Search ${secondaryPartyMeta[secondaryPartyKind]?.label?.toLowerCase()}...` : 'Select type first...'}
-                                                options={secondaryPartyKind ? (refData[secondaryPartyMeta[secondaryPartyKind]?.dataKey] || []) : []}
-                                                value={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.idField] : ''}
-                                                displayLabel={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.nameField] : ''}
-                                                isLoading={secondaryPartyKind ? refLoading[secondaryPartyMeta[secondaryPartyKind]?.dataKey] : false}
-                                                disabled={!secondaryPartyKind}
-                                                getOptionValue={(o) => o.id}
-                                                getOptionLabel={(o) => secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.getOptionLabel(o) : ''}
-                                                onChange={handleSecondaryPartySelect}
-                                            />
+                                {(formData.type === 'Sales Voucher' || formData.type === 'Purchase Voucher') && (
+                                    <div className="space-y-2 mt-6">
+                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Account <span className="text-red-500">*</span></label>
+                                        <div className="relative">
+                                            <select required name="accountId" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.accountId} onChange={handleInputChange}>
+                                                <option value="">Select Bank Account...</option>
+                                                {(refData.banks || []).map(bank => (
+                                                    <option key={bank.id} value={bank.id}>
+                                                        {bank.bankName} - {bank.accountNo} (Balance: &#8377;{Number(bank.balance).toLocaleString()})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
-                                        <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
+                            {/* Section 3: Sales Invoice Details */}
+                            {isSalesVoucher && (
+                                <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 p-6 space-y-6">
+                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-blue-700 uppercase flex items-center gap-2">
+                                        <FileText className="w-3.5 h-3.5" /> 3. Sales Invoice Details
+                                    </h3>
+
+                                    {/* Party Name with Add Button */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                                                Party Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <button type="button" onClick={() => setShowAddParty(true)}
+                                                className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
+                                                <Plus className="w-3 h-3" /> Add Party
+                                            </button>
+                                        </div>
+                                        <SearchableSelect
+                                            label="Party"
+                                            placeholder="Search parties..."
+                                            options={refData.parties || []}
+                                            value={formData.partyId}
+                                            displayLabel={formData.partyName}
+                                            isLoading={refLoading.parties}
+                                            getOptionValue={(o) => o.id || o._id}
+                                            getOptionLabel={(o) => o.partyName || o.name || `Party #${o.id}`}
+                                            onChange={handlePartySelect}
+                                        />
+                                        {formData.partyName && (
+                                            <p className="text-xs text-blue-600 font-semibold ml-1">&#10003; {formData.partyName}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Material Name with Add Button */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                                                Material / Service <span className="text-red-500">*</span>
+                                            </label>
+                                            <button type="button" onClick={() => setShowAddMaterial(true)}
+                                                className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
+                                                <Plus className="w-3 h-3" /> Add Material
+                                            </button>
+                                        </div>
+                                        <SearchableSelect
+                                            label="Material"
+                                            placeholder="Search materials..."
+                                            options={refData.materials || []}
+                                            value={formData.materialId}
+                                            displayLabel={formData.materialName}
+                                            isLoading={refLoading.materials}
+                                            getOptionValue={(o) => o.id || o._id}
+                                            getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
+                                            onChange={handleSalesMaterialSelect}
+                                        />
+                                        {formData.materialName && (
+                                            <p className="text-xs text-emerald-600 font-semibold ml-1">&#10003; {formData.materialName}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Quantity / Rate / HSN */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity <span className="text-red-500">*</span></label>
+                                            <input name="quantity" type="number" className="input h-12 font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Rate (&#8377;)</label>
+                                            <input name="rate" type="number" className="input h-12 font-bold" placeholder="0.00" value={formData.rate} onChange={handleInputChange} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">HSN/SAC</label>
+                                            <input name="hsn" type="text" className="input h-12 font-bold" placeholder="998519" value={formData.hsn} onChange={handleInputChange} />
+                                        </div>
+                                    </div>
+
+                                    {/* GST Rates */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">CGST Rate (%)</label>
+                                            <input name="cgstRate" type="number" className="input h-12 font-bold" placeholder="9" value={formData.cgstRate} onChange={handleInputChange} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST Rate (%)</label>
+                                            <input name="sgstRate" type="number" className="input h-12 font-bold" placeholder="9" value={formData.sgstRate} onChange={handleInputChange} />
+                                        </div>
+                                    </div>
+
+                                    {/* Live Tax Preview */}
+                                    {salesTaxable > 0 && (
+                                        <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-2">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Live Invoice Preview</p>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Taxable Amount</span>
+                                                <span className="font-bold text-slate-800">&#8377;{salesTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">CGST @ {formData.cgstRate}%</span>
+                                                <span className="font-bold text-slate-600">+ &#8377;{salesCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">SGST @ {formData.sgstRate}%</span>
+                                                <span className="font-bold text-slate-600">+ &#8377;{salesSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between text-base pt-2 border-t border-blue-100">
+                                                <span className="font-black text-slate-800">Grand Total</span>
+                                                <span className="font-black text-blue-700">&#8377;{salesGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Section 3: Party & Intent (non-Sales) */}
+                            {!isSalesVoucher && (
+                                <div>
+                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">3. Party & Intent</h3>
+                                    <div className="grid grid-cols-1 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Party / Ledger Account <span className="text-red-500">*</span></label>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Type <span className="text-red-500">*</span></label>
+                                                    <div className="relative">
+                                                        <select className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={secondaryPartyKind} onChange={handleSecondaryPartyKindChange}>
+                                                            <option value="">Select type...</option>
+                                                            <option value="material">Material</option>
+                                                            <option value="equipment">Equipment</option>
+                                                            <option value="vendor">Vendor</option>
+                                                            <option value="tender">Tender</option>
+                                                        </select>
+                                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <SearchableSelect
+                                                    label={secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.label : 'Select'}
+                                                    required
+                                                    placeholder={secondaryPartyKind ? `Search ${secondaryPartyMeta[secondaryPartyKind]?.label?.toLowerCase()}...` : 'Select type first...'}
+                                                    options={secondaryPartyKind ? (refData[secondaryPartyMeta[secondaryPartyKind]?.dataKey] || []) : []}
+                                                    value={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.idField] : ''}
+                                                    displayLabel={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.nameField] : ''}
+                                                    isLoading={secondaryPartyKind ? refLoading[secondaryPartyMeta[secondaryPartyKind]?.dataKey] : false}
+                                                    disabled={!secondaryPartyKind}
+                                                    getOptionValue={(o) => o.id}
+                                                    getOptionLabel={(o) => secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.getOptionLabel(o) : ''}
+                                                    onChange={handleSecondaryPartySelect}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
+                                            <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Narration for Sales */}
+                            {isSalesVoucher && (
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Remarks</label>
+                                    <textarea name="narrationRemarks" rows="2" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
+                                </div>
+                            )}
+
+                            {/* Submit Buttons */}
                             <div className="flex gap-4 pt-6 sticky bottom-0 bg-white">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Discard</button>
-                                <button type="submit" disabled={isSaving} className="btn-primary flex-1 h-14 text-[11px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 bg-[#1e3a34] hover:bg-[#152a26]">
-                                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                    {isEditing ? 'Update Journal' : 'Post to Ledger'}
+                                <button type="submit" disabled={isSaving}
+                                    className={`btn-primary flex-1 h-14 text-[11px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all ${isSalesVoucher ? 'bg-blue-700 hover:bg-blue-800 shadow-blue-900/10' : 'bg-[#1e3a34] hover:bg-[#152a26] shadow-emerald-900/10'}`}>
+                                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : isSalesVoucher ? <Download className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                                    {isEditing
+                                        ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
+                                        : isSalesVoucher
+                                            ? 'Create Voucher & Download Invoice'
+                                            : 'Post to Ledger'
+                                    }
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+
             {/* Delete Confirmation Modal */}
             {deleteConfirm.show && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 animate-fade-in">
@@ -605,22 +1180,27 @@ export default function Vouchers() {
                             Are you sure you want to void <span className="font-black text-slate-900 underline decoration-red-200">{deleteConfirm.name}</span>? This action cannot be undone once reconciled.
                         </p>
                         <div className="flex gap-3">
-                            <button 
-                                onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}
-                                className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
-                            >
+                            <button onClick={() => setDeleteConfirm({ show: false, id: null, name: '' })}
+                                className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">
                                 Cancel
                             </button>
-                            <button 
-                                onClick={confirmDelete}
-                                disabled={isSaving}
-                                className="flex-1 py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-900/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center"
-                            >
+                            <button onClick={confirmDelete} disabled={isSaving}
+                                className="flex-1 py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-900/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center">
                                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Void Voucher"}
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Add Party Sub-modal */}
+            {showAddParty && (
+                <AddPartyModal onClose={() => setShowAddParty(false)} onCreated={handlePartyCreated} />
+            )}
+
+            {/* Add Material Sub-modal */}
+            {showAddMaterial && (
+                <AddMaterialModal onClose={() => setShowAddMaterial(false)} onCreated={handleMaterialCreated} />
             )}
         </div>
     );
