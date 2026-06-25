@@ -44,8 +44,8 @@ const INITIAL_FORM = {
     quantity: '',
     rate: '',
     hsn: '',
-    sgstRate: 9,
-    cgstRate: 9,
+    sgstRate: 5,
+    cgstRate: 5,
 };
 
 const INITIAL_PARTY_FORM = {
@@ -59,14 +59,14 @@ const INITIAL_PARTY_FORM = {
 
 const INITIAL_MATERIAL_FORM = {
     materialName: '',
-    category: '',
+    category: 'good',
     quantity: 100,
     quantityType: 'bags',
     avgPurchaseRate: 0,
     type: 'owned',
     purchaseDate: new Date().toISOString().split('T')[0],
-    sgstRate: 9,
-    cgstRate: 9,
+    sgstRate: 5,
+    cgstRate: 5,
 };
 
 const parseList = (res, key) => {
@@ -118,7 +118,7 @@ function AddPartyModal({ onClose, onCreated }) {
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-700 to-blue-500 text-white">
+                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
                     <div className="flex items-center gap-2">
                         <UserPlus className="w-5 h-5" />
                         <h2 className="text-base font-semibold">Add New Party</h2>
@@ -156,7 +156,7 @@ function AddPartyModal({ onClose, onCreated }) {
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
-                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-[#2f6645] hover:bg-[#1e3a34] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                             Create Party
                         </button>
@@ -198,7 +198,7 @@ function AddMaterialModal({ onClose, onCreated }) {
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-emerald-700 to-emerald-500 text-white">
+                <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
                     <div className="flex items-center gap-2">
                         <Package className="w-5 h-5" />
                         <h2 className="text-base font-semibold">Add New Material</h2>
@@ -213,7 +213,14 @@ function AddMaterialModal({ onClose, onCreated }) {
                         </div>
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Category</label>
-                            <input name="category" className="input h-11 w-full" placeholder="e.g. Building" value={form.category} onChange={handleChange} />
+                            <div className="relative">
+                                <select name="category" className="input h-11 w-full appearance-none" value={form.category} onChange={handleChange}>
+                                    <option value="good">Good</option>
+                                    <option value="services">Services</option>
+                                    <option value="capital good">Capital Good</option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
@@ -250,16 +257,16 @@ function AddMaterialModal({ onClose, onCreated }) {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">SGST Rate (%)</label>
-                            <input type="number" name="sgstRate" className="input h-11 w-full" placeholder="9" value={form.sgstRate} onChange={handleChange} />
+                            <input type="number" name="sgstRate" className="input h-11 w-full" placeholder="5" value={form.sgstRate} onChange={handleChange} />
                         </div>
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">CGST Rate (%)</label>
-                            <input type="number" name="cgstRate" className="input h-11 w-full" placeholder="9" value={form.cgstRate} onChange={handleChange} />
+                            <input type="number" name="cgstRate" className="input h-11 w-full" placeholder="5" value={form.cgstRate} onChange={handleChange} />
                         </div>
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
-                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-[#2f6645] hover:bg-[#1e3a34] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
                             Create Material
                         </button>
@@ -786,7 +793,7 @@ export default function Vouchers() {
                                             onChange={handlePartySelect}
                                             actionElement={
                                                 <button type="button" onClick={() => setShowAddParty(true)}
-                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
                                                     <Plus className="w-3.5 h-3.5" /> Add New Party
                                                 </button>
                                             }
@@ -806,7 +813,7 @@ export default function Vouchers() {
                                             onChange={handleSalesMaterialSelect}
                                             actionElement={
                                                 <button type="button" onClick={() => setShowAddMaterial(true)}
-                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
                                                     <Plus className="w-3.5 h-3.5" /> Add New Material
                                                 </button>
                                             }
@@ -868,15 +875,15 @@ export default function Vouchers() {
 
 
                             {/* Submit Buttons */}
-                            <div className="flex gap-4 pt-6 sticky bottom-0 bg-white">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Discard</button>
+                            <div className="flex gap-4 pt-4 mt-6 border-t border-slate-100 sticky bottom-0 bg-white z-40 pb-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">Discard</button>
                                 <button type="submit" disabled={isSaving}
-                                    className={`btn-primary flex-1 h-14 text-[11px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all ${isSalesVoucher ? 'bg-blue-700 hover:bg-blue-800 shadow-blue-900/10' : 'bg-[#1e3a34] hover:bg-[#152a26] shadow-emerald-900/10'}`}>
-                                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : isSalesVoucher ? <Download className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                                    className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20">
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                                     {isEditing
                                         ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
                                         : isSalesVoucher
-                                            ? 'Create Voucher & Download Invoice'
+                                            ? 'Download Invoice'
                                             : 'Post to Ledger'
                                     }
                                 </button>

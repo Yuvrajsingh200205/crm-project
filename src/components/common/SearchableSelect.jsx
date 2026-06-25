@@ -117,7 +117,7 @@ export default function SearchableSelect({
                     )}
                 </div>
                 {isOpen && !disabled && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden flex flex-col">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col">
                         <ul className="max-h-48 overflow-y-auto py-1">
                             {isLoading ? (
                                 <li className="px-4 py-3 text-xs text-slate-400 font-medium flex items-center gap-2">
@@ -135,11 +135,12 @@ export default function SearchableSelect({
                                         <li key={optValue ?? getOptionLabel(option)}>
                                             <button
                                                 type="button"
-                                                className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50 ${
-                                                    isSelected ? 'bg-emerald-50 text-[#1e3a34]' : 'text-slate-700'
+                                                className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50 truncate ${
+                                                    isSelected ? 'bg-[#2f6645]/10 text-[#1e3a34]' : 'text-slate-700'
                                                 }`}
                                                 onMouseDown={(e) => e.preventDefault()}
                                                 onClick={() => handleSelect(option)}
+                                                title={getOptionLabel(option)}
                                             >
                                                 {getOptionLabel(option)}
                                             </button>
