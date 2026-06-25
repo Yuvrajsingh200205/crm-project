@@ -185,6 +185,7 @@ export function AppProvider({ children }) {
     const [sites, setSites] = useState(initialSites);
     const [progressTasks, setProgressTasks] = useState(initialProgressTasks);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [selectedVoucher, setSelectedVoucher] = useState(null);
 
     const updateEmployee = (updatedEmp) => {
         setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
@@ -236,6 +237,7 @@ export function AppProvider({ children }) {
             sites, setSites, updateSite,
             progressTasks, setProgressTasks, updateProgressTask,
             selectedInvoice, setSelectedInvoice,
+            selectedVoucher, setSelectedVoucher,
             isLoggedIn, userRole, userProfile, login, logout
         }}>
             {children}

@@ -1,206 +1,199 @@
-import { 
-    ArrowLeft, Printer, Download, Share2, 
-    CheckCircle2, Building2, User, Calendar,
-    FileText, Calculator, Landmark, ShieldCheck,
-    ArrowRightLeft, ArrowRight, Save, Receipt, CreditCard
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Download, Loader2, Building2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { calculateInvoiceData, downloadInvoice } from '../../utils/invoice';
+import { partyAPI } from '../../api/party';
+import { inventoryAPI } from '../../api/inventory';
 
 export default function VoucherDetail() {
-    const { setActiveModule } = useApp();
+    const { setActiveModule, selectedVoucher } = useApp();
+    const [party, setParty] = useState(null);
+    const [material, setMaterial] = useState(null);
+    const [invoiceData, setInvoiceData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const voucher = {
-        id: 'PV-1001',
-        type: 'Payment',
-        date: '2025-03-15',
-        party: 'Janki Enterprises',
-        amount: 184500,
-        amountInWords: 'One Lakh Eighty Four Thousand Five Hundred Rupees Only',
-        narration: 'RA-05 Payment for PSC Pole works for SWPL-BRGF Phase 1 Project. Amount adjusted against pending retention.',
-        status: 'Posted',
-        bank: 'SBI Main A/C',
-        refNo: 'CHQ-982122 / NEFT',
-        createdBy: 'Admin (Yuvraj Singh)',
-        approvedBy: 'Finance Head (Rajesh Kumar)',
-        ledgerEntries: [
-            { account: 'Janki Enterprises (Vendor)', dr: 184500, cr: 0, code: '2110' },
-            { account: 'SBI Main Operation A/C', dr: 0, cr: 184500, code: '1211' },
-        ]
+    useEffect(() => {
+        if (!selectedVoucher) {
+            setActiveModule('vouchers');
+            return;
+        }
+
+        const loadDetails = async () => {
+            setIsLoading(true);
+            try {
+                let p = null, m = null;
+                if (selectedVoucher.partyId) {
+                    const pRes = await partyAPI.getAllParties();
+                    let pList = Array.isArray(pRes) ? pRes : pRes?.data?.parties || pRes?.parties || pRes?.data?.vendors || pRes?.vendors || pRes?.data || [];
+                    if (!Array.isArray(pList)) pList = [];
+                    p = pList.find(x => String(x.id) === String(selectedVoucher.partyId) || String(x._id) === String(selectedVoucher.partyId)) || null;
+                }
+                if (selectedVoucher.materialId) {
+                    const mRes = await inventoryAPI.getAllMaterials();
+                    let mList = Array.isArray(mRes) ? mRes : mRes?.data?.materials || mRes?.materials || mRes?.data || [];
+                    if (!Array.isArray(mList)) mList = [];
+                    m = mList.find(x => String(x.id) === String(selectedVoucher.materialId) || String(x._id) === String(selectedVoucher.materialId)) || null;
+                }
+                setParty(p);
+                setMaterial(m);
+
+                const year = new Date(selectedVoucher.date).getFullYear();
+                const nextShortYear = String(year + 1).slice(2);
+                const invoiceNo = `RK/${year}-${nextShortYear}/${String(selectedVoucher.id).padStart(4, '0')}`;
+                
+                const data = calculateInvoiceData(selectedVoucher, p, m, invoiceNo);
+                setInvoiceData(data);
+            } catch (error) {
+                console.error("Failed to load details", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadDetails();
+    }, [selectedVoucher, setActiveModule]);
+
+    const handleDownload = () => {
+        if (!selectedVoucher) return;
+        downloadInvoice(selectedVoucher, party, material);
     };
 
-    return (
-        <div className="space-y-6 animate-fade-in pb-20 relative">
-            <div className="absolute inset-x-0 top-0 -z-20 h-full w-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
+    if (!selectedVoucher) return null;
 
+    return (
+        <div className="space-y-6 animate-fade-in pb-20 relative min-h-screen flex flex-col">
             {/* Top Bar Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 shrink-0">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => setActiveModule('vouchers')}
-                        className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-800 transition-all shadow-sm group hover:border-[#2f6645]"
+                        className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-800 transition-all shadow-sm group hover:border-blue-400"
                     >
                         <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <h1 className="text-xl font-bold text-slate-900 leading-none">{voucher.id}</h1>
-                            <span className="badge badge-green text-[9px] px-2 py-0.5">{voucher.status}</span>
+                            <h1 className="text-xl font-bold text-slate-900 leading-none">Voucher #{selectedVoucher.id}</h1>
+                            <span className="badge badge-blue text-[9px] px-2 py-0.5">{selectedVoucher.type}</span>
                         </div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                             System Audit Registry · Detailed Entry
+                             Invoice Detail View
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-800 transition-all shadow-sm">
-                        <Printer className="w-4 h-4" />
-                    </button>
-                    <button className="btn-primary h-11 px-6 text-xs flex items-center gap-2">
-                        <Download className="w-4 h-4" /> Print Voucher
+                    <button onClick={handleDownload} disabled={isLoading} className="btn-primary bg-blue-600 hover:bg-blue-700 h-11 px-6 text-xs flex items-center gap-2">
+                        <Download className="w-4 h-4" /> Download HTML Invoice
                     </button>
                 </div>
             </div>
 
-            {/* Voucher Paper */}
-            <div className="max-w-4xl mx-auto">
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
-                    {/* Header Strip */}
-                    <div className="h-2 bg-[#2f6645] w-full" />
-                    
-                    {/* Voucher Header Header */}
-                    <div className="p-10 border-b border-slate-100 bg-slate-50/20 flex flex-col md:flex-row justify-between items-start gap-8">
-                        <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
-                                <Receipt className="w-7 h-7 text-white/90" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase">Payment Voucher</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Official Financial Record</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Voucher Number</p>
-                            <p className="text-xl font-bold text-slate-900 tabular-nums tracking-tighter">{voucher.id}</p>
-                            <div className="mt-3 flex items-center justify-end gap-3 font-mono text-[10px] font-bold text-[#2f6645]">
-                                {voucher.date}
-                            </div>
-                        </div>
+            {/* Native Invoice UI */}
+            <div className="flex-1 rounded-2xl border border-slate-200 shadow-xl bg-white p-8 md:p-12 max-w-4xl mx-auto w-full relative">
+                {isLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-2xl">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                     </div>
-
-                    {/* Main Content */}
-                    <div className="p-10 space-y-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div className="space-y-6">
+                ) : invoiceData && (
+                    <div className="space-y-8 text-sm text-slate-800">
+                        {/* Header */}
+                        <div className="flex items-start justify-between border-b border-slate-200 pb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                    <Building2 className="w-8 h-8 text-blue-600" />
+                                </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-3">Party / Account Details</p>
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-dotted border-slate-200">
-                                        <p className="font-bold text-slate-800 flex items-center gap-2"><User className="w-4 h-4 text-[#2f6645]"/> {voucher.party}</p>
-                                        <div className="mt-2 text-[10px] font-semibold text-slate-500 bg-white inline-block px-2 py-1 rounded-md border border-slate-100 shadow-sm">UID: VND-2021-004</div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2">Transaction Mode</p>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                            <Landmark className="w-4 h-4 text-slate-400" />
-                                            {voucher.bank}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2">Reference No</p>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                            <CreditCard className="w-4 h-4 text-slate-400" />
-                                            {voucher.refNo}
-                                        </div>
-                                    </div>
+                                    <h2 className="text-xl font-bold text-slate-900">Morlatis Engineering And Construction Pvt Ltd</h2>
+                                    <p className="text-slate-500 text-xs mt-1">01, Ramanad Nagar, Keshonaryanpur, Gram<br />Panchayat Office, Keshonaryanpur, Bond Dih<br />Dakhli, Samastipur, Bihar, 848504</p>
+                                    <p className="text-slate-500 text-xs mt-1"><span className="font-semibold text-slate-700">GSTIN/UIN:</span> 10AAMCM1665L2ZC</p>
                                 </div>
                             </div>
+                            <div className="text-right">
+                                <h1 className="text-3xl font-black text-slate-200 uppercase tracking-widest">TAX INVOICE</h1>
+                                <div className="mt-4 space-y-1 text-sm">
+                                    <p><span className="text-slate-400 font-medium">Invoice No:</span> <span className="font-bold">{invoiceData.invoiceNo}</span></p>
+                                    <p><span className="text-slate-400 font-medium">Date:</span> <span className="font-bold">{invoiceData.dateStr}</span></p>
+                                </div>
+                            </div>
+                        </div>
 
+                        {/* Parties */}
+                        <div className="grid grid-cols-2 gap-8 py-4 border-b border-slate-200">
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-3 text-right">Settlement Amount</p>
-                                <div className="p-8 bg-[#2f6645] rounded-3xl text-white shadow-xl shadow-emerald-900/10 text-right">
-                                    <p className="text-4xl font-bold tracking-tighter tabular-nums mb-2">₹{voucher.amount.toLocaleString()}</p>
-                                    <div className="h-px bg-white/20 my-3" />
-                                    <p className="text-[10px] font-bold text-white/60 leading-relaxed italic">{voucher.amountInWords}</p>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Consignee (Ship To)</h3>
+                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="font-bold text-slate-900 text-base">{invoiceData.partyName}</p>
+                                    <p className="text-slate-500 mt-1 whitespace-pre-wrap">{invoiceData.partyAddr}</p>
+                                    {invoiceData.partyGSTIN && <p className="text-slate-500 mt-2 text-xs"><span className="font-semibold">GSTIN:</span> {invoiceData.partyGSTIN}</p>}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Buyer (Bill To)</h3>
+                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="font-bold text-slate-900 text-base">{invoiceData.partyName}</p>
+                                    <p className="text-slate-500 mt-1 whitespace-pre-wrap">{invoiceData.partyAddr}</p>
+                                    {invoiceData.partyGSTIN && <p className="text-slate-500 mt-2 text-xs"><span className="font-semibold">GSTIN:</span> {invoiceData.partyGSTIN}</p>}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Accounting Entries */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Double Entry Ledger</p>
-                                <p className="text-[10px] font-bold text-[#2f6645] uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded">Reconciled</p>
-                            </div>
-                            <div className="overflow-hidden border border-slate-100 rounded-2xl">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="bg-slate-50/50">
-                                            <th className="px-5 py-3 text-[10px] font-bold uppercase text-slate-400 tracking-widest">Description</th>
-                                            <th className="px-5 py-3 text-[10px] font-bold uppercase text-slate-400 tracking-widest text-center">Code</th>
-                                            <th className="px-5 py-3 text-[10px] font-bold uppercase text-slate-400 tracking-widest text-right">Debit (₹)</th>
-                                            <th className="px-5 py-3 text-[10px] font-bold uppercase text-slate-400 tracking-widest text-right">Credit (₹)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {voucher.ledgerEntries.map((entry, idx) => (
-                                            <tr key={idx}>
-                                                <td className="px-5 py-3 text-xs font-bold text-slate-700">{entry.account}</td>
-                                                <td className="px-5 py-3 text-center text-[10px] font-mono font-bold text-slate-400">{entry.code}</td>
-                                                <td className="px-5 py-3 text-right text-xs font-bold text-slate-900">{entry.dr > 0 ? entry.dr.toLocaleString() : '—'}</td>
-                                                <td className="px-5 py-3 text-right text-xs font-bold text-slate-900">{entry.cr > 0 ? entry.cr.toLocaleString() : '—'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="bg-slate-50/50 border-t border-slate-100">
-                                        <tr>
-                                            <td colSpan={2} className="px-5 py-3 text-[10px] font-bold uppercase text-slate-400 tracking-widest">Running Totals</td>
-                                            <td className="px-5 py-3 text-right text-xs font-bold text-slate-900">{voucher.amount.toLocaleString()}</td>
-                                            <td className="px-5 py-3 text-right text-xs font-bold text-slate-900">{voucher.amount.toLocaleString()}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
+                        {/* Items Table */}
+                        <div>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b-2 border-slate-200">
+                                        <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                                        <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">HSN/SAC</th>
+                                        <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Qty</th>
+                                        <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Rate</th>
+                                        <th className="py-3 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b border-slate-100 group hover:bg-slate-50">
+                                        <td className="py-4 px-4 font-bold text-slate-900">{invoiceData.materialDesc}</td>
+                                        <td className="py-4 px-4 text-center text-slate-500">{invoiceData.hsn}</td>
+                                        <td className="py-4 px-4 text-right font-medium">{invoiceData.qty} Nos</td>
+                                        <td className="py-4 px-4 text-right font-medium text-slate-600">₹{invoiceData.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="py-4 px-4 text-right font-bold text-slate-900">₹{invoiceData.baseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                    {/* Taxes */}
+                                    <tr className="border-b border-slate-50">
+                                        <td className="py-3 px-4 text-right text-slate-500 italic" colSpan={4}>CGST @ {invoiceData.cgstRate}%</td>
+                                        <td className="py-3 px-4 text-right font-medium text-slate-700">₹{invoiceData.cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <td className="py-3 px-4 text-right text-slate-500 italic" colSpan={4}>SGST @ {invoiceData.sgstRate}%</td>
+                                        <td className="py-3 px-4 text-right font-medium text-slate-700">₹{invoiceData.sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                    {/* Total */}
+                                    <tr className="bg-slate-50">
+                                        <td className="py-4 px-4 text-right font-black text-slate-900 uppercase tracking-widest" colSpan={4}>Grand Total</td>
+                                        <td className="py-4 px-4 text-right font-black text-xl text-blue-600">₹{invoiceData.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        {/* Narration */}
-                        <div className="p-5 bg-slate-50 rounded-2xl border-l-4 border-[#2f6645]">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Official Narrative</p>
-                             <p className="text-xs font-medium text-slate-600 leading-relaxed">{voucher.narration}</p>
+                        {/* Words */}
+                        <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Amount Chargeable (in words)</p>
+                            <p className="font-bold text-blue-900 italic">{invoiceData.grandWords}</p>
                         </div>
 
                         {/* Signatures */}
-                        <div className="pt-8 grid grid-cols-2 lg:grid-cols-4 gap-8">
-                            <div className="text-center">
-                                <div className="h-10 border-b border-slate-200 mb-2" />
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Prepared By</p>
-                                <p className="text-[10px] font-bold text-slate-800 mt-1 truncate px-2">{voucher.createdBy}</p>
+                        <div className="flex justify-between items-end pt-12 pb-4">
+                            <div className="text-center w-64">
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200 pt-2">Customer Signature</p>
                             </div>
-                            <div className="text-center">
-                                <div className="h-10 border-b border-slate-200 mb-2 flex items-center justify-center">
-                                     <span className="text-[9px] font-black text-emerald-500 uppercase border border-emerald-500 px-2 py-0.5 rounded rotate-[-10deg]">Verified</span>
-                                </div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Audited By</p>
-                                <p className="text-[10px] font-bold text-slate-800 mt-1 truncate px-2">Finance Team</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="h-10 border-b border-slate-200 mb-2" />
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Receiver Sign</p>
-                                <p className="text-[10px] font-bold text-slate-800 mt-1 truncate px-2">Authorized Sign</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="h-10 border-b border-slate-200 mb-2" />
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Approved By</p>
-                                <p className="text-[10px] font-bold text-slate-800 mt-1 truncate px-2">{voucher.approvedBy}</p>
+                            <div className="text-center w-64">
+                                <p className="font-bold text-slate-800 text-xs mb-8">for Morlatis Engineering And Construction Pvt Ltd</p>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-200 pt-2">Authorised Signatory</p>
                             </div>
                         </div>
                     </div>
-
-                    <div className="p-6 bg-slate-50 border-t border-slate-100 text-slate-400 text-[8px] font-bold uppercase tracking-[0.2em] text-center">
-                        Secure Transaction Identifier: TXN-88291-0029-VCH · System Timestamp: {new Date().toLocaleString()}
-                    </div>
-                </div>
+                )}
             </div>
         </div>
     );

@@ -13,6 +13,7 @@ export default function SearchableSelect({
     disabled = false,
     getOptionLabel = (o) => o.label ?? String(o.id ?? ''),
     getOptionValue = (o) => o.id,
+    actionElement = null,
 }) {
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
@@ -116,36 +117,43 @@ export default function SearchableSelect({
                     )}
                 </div>
                 {isOpen && !disabled && (
-                    <ul className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1">
-                        {isLoading ? (
-                            <li className="px-4 py-3 text-xs text-slate-400 font-medium flex items-center gap-2">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
-                            </li>
-                        ) : filtered.length === 0 ? (
-                            <li className="px-4 py-3 text-xs text-slate-400 font-medium">
-                                {options.length === 0 ? 'No records available' : 'No matches found'}
-                            </li>
-                        ) : (
-                            filtered.map((option) => {
-                                const optValue = getOptionValue(option);
-                                const isSelected = String(optValue) === String(value);
-                                return (
-                                    <li key={optValue ?? getOptionLabel(option)}>
-                                        <button
-                                            type="button"
-                                            className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50 ${
-                                                isSelected ? 'bg-emerald-50 text-[#1e3a34]' : 'text-slate-700'
-                                            }`}
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            onClick={() => handleSelect(option)}
-                                        >
-                                            {getOptionLabel(option)}
-                                        </button>
-                                    </li>
-                                );
-                            })
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden flex flex-col">
+                        <ul className="max-h-48 overflow-y-auto py-1">
+                            {isLoading ? (
+                                <li className="px-4 py-3 text-xs text-slate-400 font-medium flex items-center gap-2">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
+                                </li>
+                            ) : filtered.length === 0 ? (
+                                <li className="px-4 py-3 text-xs text-slate-400 font-medium">
+                                    {options.length === 0 ? 'No records available' : 'No matches found'}
+                                </li>
+                            ) : (
+                                filtered.map((option) => {
+                                    const optValue = getOptionValue(option);
+                                    const isSelected = String(optValue) === String(value);
+                                    return (
+                                        <li key={optValue ?? getOptionLabel(option)}>
+                                            <button
+                                                type="button"
+                                                className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50 ${
+                                                    isSelected ? 'bg-emerald-50 text-[#1e3a34]' : 'text-slate-700'
+                                                }`}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => handleSelect(option)}
+                                            >
+                                                {getOptionLabel(option)}
+                                            </button>
+                                        </li>
+                                    );
+                                })
+                            )}
+                        </ul>
+                        {actionElement && (
+                            <div className="border-t border-slate-100 bg-slate-50 p-2" onMouseDown={(e) => e.preventDefault()}>
+                                {actionElement}
+                            </div>
                         )}
-                    </ul>
+                    </div>
                 )}
             </div>
         </div>

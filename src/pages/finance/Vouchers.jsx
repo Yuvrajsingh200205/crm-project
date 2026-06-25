@@ -17,6 +17,7 @@ import { vendorAPI } from '../../api/vendor';
 import { tenderAPI } from '../../api/tender';
 import { bankAPI } from '../../api/bank';
 import { partyAPI } from '../../api/party';
+import html2pdf from 'html2pdf.js';
 
 const EMPTY_REF_DATA = { materials: [], equipments: [], vendors: [], tenders: [], banks: [], parties: [] };
 const EMPTY_REF_LOADING = { materials: false, equipments: false, vendors: false, tenders: false, banks: false, parties: false };
@@ -85,215 +86,9 @@ const VOUCHER_TYPES = [
     { key: 'Contra Voucher', label: 'Contra', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
 ];
 
-// ------------------------------------------------------------
-// Invoice HTML Generator
-// ------------------------------------------------------------
-function generateInvoiceHTML(formData, party, material, invoiceNo) {
-    const taxableValue = Number(formData.amount) || 0;
-    const cgstRate = Number(formData.cgstRate) || 9;
-    const sgstRate = Number(formData.sgstRate) || 9;
-    const cgstAmt = parseFloat(((taxableValue * cgstRate) / 100).toFixed(2));
-    const sgstAmt = parseFloat(((taxableValue * sgstRate) / 100).toFixed(2));
-    const totalTax = parseFloat((cgstAmt + sgstAmt).toFixed(2));
-    const grandTotal = parseFloat((taxableValue + totalTax).toFixed(2));
-    const dateStr = new Date(formData.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-    const hsn = formData.hsn || '998519';
-    const qty = formData.quantity || 1;
-    const rate = formData.rate || (qty ? (taxableValue / qty).toFixed(2) : taxableValue);
-    const materialDesc = formData.materialName || 'Service';
+import { generateInvoiceHTML, downloadInvoice } from '../../utils/invoice';
 
-    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-        'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    function numToWords(n) {
-        n = Math.round(n);
-        if (n === 0) return 'Zero';
-        if (n < 20) return ones[n];
-        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
-        if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + numToWords(n % 100) : '');
-        if (n < 100000) return numToWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + numToWords(n % 1000) : '');
-        if (n < 10000000) return numToWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + numToWords(n % 100000) : '');
-        return numToWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + numToWords(n % 10000000) : '');
-    }
-    const paise = Math.round((grandTotal % 1) * 100);
-    const grandWords = 'INR ' + numToWords(Math.floor(grandTotal)) + ' and ' + (paise ? numToWords(paise) + ' paise' : 'Zero paise') + ' Only';
-    const taxPaise = Math.round((totalTax % 1) * 100);
-    const taxWords = 'INR ' + numToWords(Math.floor(totalTax)) + ' and ' + (taxPaise ? numToWords(taxPaise) + ' paise' : 'Zero paise') + ' Only';
 
-    const partyName = party?.partyName || formData.partyName || 'Party Name';
-    const partyAddr = [party?.address, party?.city, party?.state, party?.pincode].filter(Boolean).join(', ');
-    const partyGSTIN = party?.gstin || '';
-
-    const emptyRows = Array(6).fill(0).map(() =>
-        '<tr>' + Array(8).fill('<td style="height:22px;"></td>').join('') + '</tr>'
-    ).join('');
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Tax Invoice - ${invoiceNo}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
-  .page { width: 800px; margin: 0 auto; padding: 20px; }
-  h1.title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 8px; border: 2px solid #000; padding: 6px; }
-  table { width: 100%; border-collapse: collapse; }
-  td, th { border: 1px solid #555; padding: 5px 7px; vertical-align: top; }
-  th { background: #f0f0f0; font-weight: bold; text-align: center; }
-  .bold { font-weight: bold; }
-  .right { text-align: right; }
-  .center { text-align: center; }
-  .italic-bold { font-style: italic; font-weight: bold; }
-  .grand-total { font-size: 13px; font-weight: bold; }
-  .amount-words { font-style: italic; font-size: 10px; }
-  .declaration { font-size: 9.5px; color: #333; }
-</style>
-</head>
-<body>
-<div class="page">
-  <h1 class="title">Tax Invoice</h1>
-  <table>
-    <tr>
-      <td rowspan="9" style="width:48%;">
-        <div class="bold" style="font-size:12px;">Morlatis Engineering And Construction Pvt Ltd</div>
-        <div>01, Ramanad Nagar, Keshonaryanpur, Gram</div>
-        <div>Panchayat Office, Keshonaryanpur, Bond Dih</div>
-        <div>Dakhli, Samastipur, Bihar, 848504</div>
-        <div><span class="bold">GSTIN/UIN:</span> 10AAMCM1665L2ZC</div>
-        <div><span class="bold">State Name:</span> Bihar, Code: 10</div>
-        <br/>
-        <div class="bold">Consignee (Ship to)</div>
-        <div class="bold" style="font-size:11px;">${partyName}</div>
-        <div>${partyAddr}</div>
-        ${partyGSTIN ? `<div><span class="bold">GSTIN/UIN</span> : ${partyGSTIN}</div>` : ''}
-        <br/>
-        <div class="bold">Buyer (Bill to)</div>
-        <div class="bold" style="font-size:11px;">${partyName}</div>
-        <div>${partyAddr}</div>
-        ${partyGSTIN ? `<div><span class="bold">GSTIN/UIN</span> : ${partyGSTIN}</div>` : ''}
-      </td>
-      <td style="width:26%;"><div>Invoice No.</div><div class="bold">${invoiceNo}</div></td>
-      <td style="width:26%;"><div>Dated</div><div class="bold">${dateStr}</div></td>
-    </tr>
-    <tr><td>Delivery Note</td><td>Mode/Terms of Payment</td></tr>
-    <tr><td>Reference No. &amp; Date.</td><td>Other References</td></tr>
-    <tr><td><div>Buyer's Order No.</div><div class="bold">PI/2026-27/07</div></td><td><div>Dated</div><div class="bold">${dateStr}</div></td></tr>
-    <tr><td><div>Dispatch Doc No.</div><div class="bold">${invoiceNo}</div></td><td>Delivery Note Date</td></tr>
-    <tr><td>Dispatched through</td><td>Destination</td></tr>
-    <tr><td><div>Bill of Lading/LR-RR No.</div><div class="bold">dt. ${dateStr}</div></td><td>Motor Vehicle No.</td></tr>
-    <tr><td colspan="2">Terms of Delivery</td></tr>
-  </table>
-
-  <table style="margin-top:8px;">
-    <thead>
-      <tr>
-        <th style="width:5%;">Sl No.</th>
-        <th>Description of Services</th>
-        <th style="width:10%;">HSN/SAC</th>
-        <th style="width:8%;">Quantity</th>
-        <th style="width:9%;">Rate</th>
-        <th style="width:5%;">per</th>
-        <th style="width:7%;">Disc. %</th>
-        <th style="width:12%;">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="center">1</td>
-        <td class="bold">${materialDesc}</td>
-        <td class="center">${hsn}</td>
-        <td class="center">${qty}</td>
-        <td class="right">${Number(rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td></td><td></td>
-        <td class="right">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td class="right italic-bold">CGST OUTPUT<br/>SGST OUTPUT</td>
-        <td></td><td></td><td></td><td></td><td></td>
-        <td class="right">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}<br/>${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-      ${emptyRows}
-      <tr>
-        <td colspan="7" class="right bold">Total</td>
-        <td class="right grand-total">&#8377; ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <table style="margin-top:4px;">
-    <tr>
-      <td colspan="2" class="amount-words"><span class="bold">Amount Chargeable (in words)</span><br/>${grandWords}</td>
-      <td class="right" style="font-size:10px;">E. &amp; O.E</td>
-    </tr>
-  </table>
-
-  <table style="margin-top:4px;">
-    <thead>
-      <tr>
-        <th rowspan="2">HSN/SAC</th>
-        <th rowspan="2">Taxable Value</th>
-        <th colspan="2">CGST</th>
-        <th colspan="2">SGST/UTGST</th>
-        <th rowspan="2">Total Tax Amount</th>
-      </tr>
-      <tr><th>Rate</th><th>Amount</th><th>Rate</th><th>Amount</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="center">${hsn}</td>
-        <td class="right">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="center">${cgstRate}%</td>
-        <td class="right">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="center">${sgstRate}%</td>
-        <td class="right">${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="right">${totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-      <tr>
-        <td class="bold">Total</td>
-        <td class="right bold">${taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td></td>
-        <td class="right bold">${cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td></td>
-        <td class="right bold">${sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="right bold">${totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <table style="margin-top:4px;">
-    <tr>
-      <td colspan="2" class="amount-words"><span class="bold">Tax Amount (in words) :</span> ${taxWords}</td>
-    </tr>
-    <tr>
-      <td style="width:60%;">
-        <div class="bold">Declaration</div>
-        <div class="declaration">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
-      </td>
-      <td class="right bold">for Morlatis Engineering And Construction Pvt Ltd</td>
-    </tr>
-  </table>
-</div>
-</body>
-</html>`;
-}
-
-function downloadInvoice(formData, party, material) {
-    const year = new Date(formData.date).getFullYear();
-    const nextShortYear = String(year + 1).slice(2);
-    const invoiceNo = `RK/${year}-${nextShortYear}/01`;
-    const html = generateInvoiceHTML(formData, party, material, invoiceNo);
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Invoice_${invoiceNo.replace(/\//g, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
 
 // ------------------------------------------------------------
 // Sub-modal: Create Party
@@ -479,7 +274,7 @@ function AddMaterialModal({ onClose, onCreated }) {
 // Main Component
 // ------------------------------------------------------------
 export default function Vouchers() {
-    const { setActiveModule } = useApp();
+    const { setActiveModule, setSelectedVoucher } = useApp();
     const [vouchers, setVouchers] = useState([]);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('All');
@@ -552,8 +347,6 @@ export default function Vouchers() {
         }
     };
 
-    useEffect(() => { fetchVouchers(); }, []);
-
     const fetchRefData = async () => {
         setRefLoading({ materials: true, equipments: true, vendors: true, tenders: true, banks: true, parties: true });
         const setKey = (key, items) => setRefData((prev) => ({ ...prev, [key]: items }));
@@ -561,9 +354,6 @@ export default function Vouchers() {
 
         const fetchers = [
             { fn: () => inventoryAPI.getAllMaterials(), key: 'materials', listKey: 'materials' },
-            { fn: () => equipmentAPI.getAllEquipments(), key: 'equipments', listKey: 'equipments' },
-            { fn: () => vendorAPI.getAllVendors(), key: 'vendors', listKey: 'vendors' },
-            { fn: () => tenderAPI.getAllTenders(), key: 'tenders', listKey: 'tenders' },
             { fn: () => bankAPI.getAllBanks(), key: 'banks', listKey: 'banks' },
             { fn: () => partyAPI.getAllParties(), key: 'parties', listKey: 'parties' },
         ];
@@ -576,7 +366,13 @@ export default function Vouchers() {
         }
     };
 
-    useEffect(() => { if (isModalOpen) fetchRefData(); }, [isModalOpen]);
+    useEffect(() => { 
+        fetchVouchers(); 
+        fetchRefData();
+    }, []);
+
+    const getPartyName = (id) => refData.parties.find(p => String(p.id) === String(id) || String(p._id) === String(id))?.partyName;
+    const getMaterialName = (id) => refData.materials.find(m => String(m.id) === String(id) || String(m._id) === String(id))?.materialName;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -840,10 +636,10 @@ export default function Vouchers() {
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="table-header">Voucher & Date</th>
-                                <th className="table-header">Party / Particulars</th>
-                                <th className="table-header">Source / Bank</th>
-                                <th className="table-header text-right">Amount</th>
+                                <th className="table-header">Type & Date</th>
+                                <th className="table-header">Party Name</th>
+                                <th className="table-header">Material Name</th>
+                                <th className="table-header text-right">Quantity</th>
                                 <th className="table-header text-center">Action</th>
                             </tr>
                         </thead>
@@ -852,8 +648,8 @@ export default function Vouchers() {
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="table-row">
                                         <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-9 h-9" /><Skeleton variant="text" className="w-24" /></div></td>
-                                        <td className="table-cell"><Skeleton variant="text" className="w-40" /><Skeleton variant="text" className="w-32 mt-1" /></td>
-                                        <td className="table-cell"><div className="flex gap-2"><Skeleton variant="circle" className="w-7 h-7" /><Skeleton variant="text" className="w-20" /></div></td>
+                                        <td className="table-cell"><Skeleton variant="text" className="w-40" /></td>
+                                        <td className="table-cell"><Skeleton variant="text" className="w-32 mt-1" /></td>
                                         <td className="table-cell text-right"><Skeleton variant="text" className="ml-auto w-20" /></td>
                                         <td className="table-cell text-center"><Skeleton variant="badge" className="mx-auto mt-1 w-24" /></td>
                                     </tr>
@@ -866,34 +662,25 @@ export default function Vouchers() {
                                                 <ArrowRightLeft className={`w-4 h-4 ${v.type?.includes('Receipt') ? 'rotate-90' : (v.type?.includes('Payment') ? '-rotate-90' : '')}`} />
                                             </div>
                                             <div>
-                                                <p className="text-slate-800 font-semibold text-sm">#{v.id}</p>
+                                                <p className="text-slate-800 font-semibold text-sm">{v.type || 'Voucher'}</p>
                                                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" />{v.date}</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="table-cell">
-                                        <p className="text-slate-800 font-bold">{v.secondaryPartyAccount || v.partyName || 'Internal Account'}</p>
-                                        <p className="text-slate-400 text-xs line-clamp-1 max-w-[220px] font-medium">{v.narrationRemarks || 'No narrative provided'}</p>
+                                        <p className="text-slate-800 font-bold">{v.partyName || v.secondaryPartyAccount || getPartyName(v.partyId) || 'N/A'}</p>
                                     </td>
                                     <td className="table-cell">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-slate-700 font-black text-[10px] uppercase tracking-widest">{v.type?.split(' ')[0]}</p>
-                                                <p className="text-slate-400 text-[9px] font-bold mt-0.5 uppercase tracking-tighter">Debit/Credit Entry</p>
-                                            </div>
-                                        </div>
+                                        <p className="text-slate-700 font-bold">{v.materialName || getMaterialName(v.materialId) || 'N/A'}</p>
                                     </td>
                                     <td className="table-cell text-right">
-                                        <p className={`font-black text-sm tabular-nums ${v.type?.includes('Receipt') ? 'text-emerald-600' : 'text-slate-800'}`}>
-                                            {v.type?.includes('Receipt') ? '+' : '-'}&#8377;{(Number(v.amount) || 0).toLocaleString()}
+                                        <p className="font-black text-sm tabular-nums text-slate-800">
+                                            {v.quantity || 0}
                                         </p>
                                     </td>
                                     <td className="table-cell">
                                         <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => { setActiveModule('voucher-detail'); }} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-all hover:scale-110 active:scale-90" title="View Details"><Eye className="w-4 h-4" /></button>
+                                            <button onClick={() => { setSelectedVoucher(v); setActiveModule('voucher-detail'); }} className="p-2 hover:bg-blue-50 text-blue-500 rounded-xl transition-all hover:scale-110 active:scale-90" title="View Details"><Eye className="w-4 h-4" /></button>
                                             <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(v); }} className="p-2 hover:bg-amber-50 text-amber-500 rounded-xl transition-all hover:scale-110 active:scale-90" title="Edit Voucher"><Edit3 className="w-4 h-4" /></button>
                                             <button onClick={(e) => { e.stopPropagation(); handleDelete(v); }} className="p-2 hover:bg-red-50 text-red-600 rounded-xl transition-all hover:scale-110 active:scale-90" title="Void Voucher"><Trash2 className="w-4 h-4" /></button>
                                         </div>
@@ -948,56 +735,47 @@ export default function Vouchers() {
                             </div>
 
                             {/* Section 2: Financial Matrix */}
-                            <div>
-                                <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Financial Matrix</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
-                                        <input name="amount" type="number" className="input h-12 font-black text-slate-800" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (&#8377;)</label>
-                                        <input name="tdsDeductions" type="number" className="input h-12 font-black text-rose-500 bg-rose-50/30 border-rose-100" placeholder="0.00" value={formData.tdsDeductions} onChange={handleInputChange} />
-                                    </div>
-                                </div>
-                                {(formData.type === 'Sales Voucher' || formData.type === 'Purchase Voucher') && (
-                                    <div className="space-y-2 mt-6">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Account <span className="text-red-500">*</span></label>
-                                        <div className="relative">
-                                            <select required name="accountId" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.accountId} onChange={handleInputChange}>
-                                                <option value="">Select Bank Account...</option>
-                                                {(refData.banks || []).map(bank => (
-                                                    <option key={bank.id} value={bank.id}>
-                                                        {bank.bankName} - {bank.accountNo} (Balance: &#8377;{Number(bank.balance).toLocaleString()})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            {!isSalesVoucher && (
+                                <div>
+                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Financial Matrix</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
+                                            <input name="amount" type="number" className="input h-12 font-black text-slate-800" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (&#8377;)</label>
+                                            <input name="tdsDeductions" type="number" className="input h-12 font-black text-rose-500 bg-rose-50/30 border-rose-100" placeholder="0.00" value={formData.tdsDeductions} onChange={handleInputChange} />
                                         </div>
                                     </div>
-                                )}
-                            </div>
+                                    {(formData.type === 'Purchase Voucher') && (
+                                        <div className="space-y-2 mt-6">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Account <span className="text-red-500">*</span></label>
+                                            <div className="relative">
+                                                <select required name="accountId" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.accountId} onChange={handleInputChange}>
+                                                    <option value="">Select Bank Account...</option>
+                                                    {(refData.banks || []).map(bank => (
+                                                        <option key={bank.id} value={bank.id}>
+                                                            {bank.bankName} - {bank.accountNo} (Balance: &#8377;{Number(bank.balance).toLocaleString()})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Section 3: Sales Invoice Details */}
                             {isSalesVoucher && (
-                                <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/30 p-6 space-y-6">
-                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-blue-700 uppercase flex items-center gap-2">
-                                        <FileText className="w-3.5 h-3.5" /> 3. Sales Invoice Details
-                                    </h3>
-
-                                    {/* Party Name with Add Button */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                                                Party Name <span className="text-red-500">*</span>
-                                            </label>
-                                            <button type="button" onClick={() => setShowAddParty(true)}
-                                                className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
-                                                <Plus className="w-3 h-3" /> Add Party
-                                            </button>
-                                        </div>
+                                <div>
+                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Voucher Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {/* Party Name */}
                                         <SearchableSelect
-                                            label="Party"
+                                            label="Party Name"
+                                            required
                                             placeholder="Search parties..."
                                             options={refData.parties || []}
                                             value={formData.partyId}
@@ -1006,25 +784,18 @@ export default function Vouchers() {
                                             getOptionValue={(o) => o.id || o._id}
                                             getOptionLabel={(o) => o.partyName || o.name || `Party #${o.id}`}
                                             onChange={handlePartySelect}
+                                            actionElement={
+                                                <button type="button" onClick={() => setShowAddParty(true)}
+                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                    <Plus className="w-3.5 h-3.5" /> Add New Party
+                                                </button>
+                                            }
                                         />
-                                        {formData.partyName && (
-                                            <p className="text-xs text-blue-600 font-semibold ml-1">&#10003; {formData.partyName}</p>
-                                        )}
-                                    </div>
 
-                                    {/* Material Name with Add Button */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                                                Material / Service <span className="text-red-500">*</span>
-                                            </label>
-                                            <button type="button" onClick={() => setShowAddMaterial(true)}
-                                                className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
-                                                <Plus className="w-3 h-3" /> Add Material
-                                            </button>
-                                        </div>
+                                        {/* Material Name */}
                                         <SearchableSelect
-                                            label="Material"
+                                            label="Material / Service"
+                                            required
                                             placeholder="Search materials..."
                                             options={refData.materials || []}
                                             value={formData.materialId}
@@ -1033,62 +804,20 @@ export default function Vouchers() {
                                             getOptionValue={(o) => o.id || o._id}
                                             getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
                                             onChange={handleSalesMaterialSelect}
+                                            actionElement={
+                                                <button type="button" onClick={() => setShowAddMaterial(true)}
+                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                    <Plus className="w-3.5 h-3.5" /> Add New Material
+                                                </button>
+                                            }
                                         />
-                                        {formData.materialName && (
-                                            <p className="text-xs text-emerald-600 font-semibold ml-1">&#10003; {formData.materialName}</p>
-                                        )}
-                                    </div>
 
-                                    {/* Quantity / Rate / HSN */}
-                                    <div className="grid grid-cols-3 gap-4">
+                                        {/* Quantity */}
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity <span className="text-red-500">*</span></label>
-                                            <input name="quantity" type="number" className="input h-12 font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Rate (&#8377;)</label>
-                                            <input name="rate" type="number" className="input h-12 font-bold" placeholder="0.00" value={formData.rate} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">HSN/SAC</label>
-                                            <input name="hsn" type="text" className="input h-12 font-bold" placeholder="998519" value={formData.hsn} onChange={handleInputChange} />
+                                            <input name="quantity" type="number" className="input h-12 w-full font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
                                         </div>
                                     </div>
-
-                                    {/* GST Rates */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">CGST Rate (%)</label>
-                                            <input name="cgstRate" type="number" className="input h-12 font-bold" placeholder="9" value={formData.cgstRate} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST Rate (%)</label>
-                                            <input name="sgstRate" type="number" className="input h-12 font-bold" placeholder="9" value={formData.sgstRate} onChange={handleInputChange} />
-                                        </div>
-                                    </div>
-
-                                    {/* Live Tax Preview */}
-                                    {salesTaxable > 0 && (
-                                        <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-2">
-                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Live Invoice Preview</p>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Taxable Amount</span>
-                                                <span className="font-bold text-slate-800">&#8377;{salesTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">CGST @ {formData.cgstRate}%</span>
-                                                <span className="font-bold text-slate-600">+ &#8377;{salesCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">SGST @ {formData.sgstRate}%</span>
-                                                <span className="font-bold text-slate-600">+ &#8377;{salesSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between text-base pt-2 border-t border-blue-100">
-                                                <span className="font-black text-slate-800">Grand Total</span>
-                                                <span className="font-black text-blue-700">&#8377;{salesGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
@@ -1136,13 +865,7 @@ export default function Vouchers() {
                                 </div>
                             )}
 
-                            {/* Narration for Sales */}
-                            {isSalesVoucher && (
-                                <div className="space-y-2">
-                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Remarks</label>
-                                    <textarea name="narrationRemarks" rows="2" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
-                                </div>
-                            )}
+
 
                             {/* Submit Buttons */}
                             <div className="flex gap-4 pt-6 sticky bottom-0 bg-white">
