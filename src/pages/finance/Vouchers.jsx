@@ -44,8 +44,9 @@ const INITIAL_FORM = {
     quantity: '',
     rate: '',
     hsn: '',
-    sgstRate: 5,
-    cgstRate: 5,
+    sgst: 5,
+    cgst: 5,
+    invoiceNo: '',
 };
 
 const INITIAL_PARTY_FORM = {
@@ -382,7 +383,10 @@ export default function Vouchers() {
     const getMaterialName = (id) => refData.materials.find(m => String(m.id) === String(id) || String(m._id) === String(id))?.materialName;
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        let { name, value } = e.target;
+        if (name === 'invoiceNo') {
+            value = value.toUpperCase();
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -411,8 +415,9 @@ export default function Vouchers() {
             quantity: voucher.quantity || '',
             rate: voucher.rate || '',
             hsn: voucher.hsn || '',
-            sgstRate: voucher.sgstRate ?? 9,
-            cgstRate: voucher.cgstRate ?? 9,
+            sgst: voucher.sgst ?? voucher.sgstRate ?? 9,
+            cgst: voucher.cgst ?? voucher.cgstRate ?? 9,
+            invoiceNo: voucher.invoiceNo || '',
         });
         setIsEditing(true);
         setIsTypeLocked(true);
@@ -454,9 +459,18 @@ export default function Vouchers() {
             partyId: formData.partyId !== '' ? formData.partyId : null,
             quantity: formData.quantity !== '' ? Number(formData.quantity) : null,
             rate: formData.rate !== '' ? Number(formData.rate) : null,
-            sgstRate: Number(formData.sgstRate),
-            cgstRate: Number(formData.cgstRate),
+            sgst: formData.sgst !== '' ? Number(formData.sgst) : 0,
+            cgst: formData.cgst !== '' ? Number(formData.cgst) : 0,
+            invoiceNo: formData.invoiceNo || '',
         };
+
+        // Remove unnecessary properties with null or empty values
+        Object.keys(payload).forEach(key => {
+            if (payload[key] === null || payload[key] === "") {
+                delete payload[key];
+            }
+        });
+
         try {
             if (isEditing) {
                 await voucherAPI.updateVoucher(currentId, payload);
@@ -537,15 +551,19 @@ export default function Vouchers() {
     const handleSalesMaterialSelect = ({ id, label }) => {
         const mat = refData.materials.find(m => String(m.id) === String(id) || String(m._id) === String(id));
         setSelectedMaterialObj(mat || null);
-        setFormData(prev => ({
-            ...prev,
-            materialId: id || '',
-            materialName: label || '',
-            hsn: mat?.hsn || prev.hsn,
-            sgstRate: mat?.sgstRate ?? prev.sgstRate,
-            cgstRate: mat?.cgstRate ?? prev.cgstRate,
-            rate: mat?.avgPurchaseRate ? String(mat.avgPurchaseRate) : prev.rate,
-        }));
+        setFormData(prev => {
+            const rate = mat?.avgPurchaseRate ? Number(mat.avgPurchaseRate) : (Number(prev.rate) || 0);
+            return {
+                ...prev,
+                materialId: id || '',
+                materialName: label || '',
+                hsn: mat?.hsn || prev.hsn,
+                sgst: mat?.sgstRate ?? prev.sgst,
+                cgst: mat?.cgstRate ?? prev.cgst,
+                rate: rate ? String(rate) : prev.rate,
+                amount: rate ? String(rate) : prev.amount,
+            };
+        });
     };
 
     const handlePartyCreated = (newParty) => {
@@ -561,15 +579,19 @@ export default function Vouchers() {
 
     const handleMaterialCreated = (newMaterial) => {
         setRefData(prev => ({ ...prev, materials: [...prev.materials, newMaterial] }));
-        setFormData(prev => ({
-            ...prev,
-            materialId: newMaterial.id || newMaterial._id || '',
-            materialName: newMaterial.materialName || '',
-            hsn: newMaterial.hsn || prev.hsn,
-            sgstRate: newMaterial.sgstRate ?? prev.sgstRate,
-            cgstRate: newMaterial.cgstRate ?? prev.cgstRate,
-            rate: newMaterial.avgPurchaseRate ? String(newMaterial.avgPurchaseRate) : prev.rate,
-        }));
+        setFormData(prev => {
+            const rate = newMaterial.avgPurchaseRate ? Number(newMaterial.avgPurchaseRate) : (Number(prev.rate) || 0);
+            return {
+                ...prev,
+                materialId: newMaterial.id || newMaterial._id || '',
+                materialName: newMaterial.materialName || '',
+                hsn: newMaterial.hsn || prev.hsn,
+                sgst: newMaterial.sgstRate ?? prev.sgst,
+                cgst: newMaterial.cgstRate ?? prev.cgst,
+                rate: rate ? String(rate) : prev.rate,
+                amount: rate ? String(rate) : prev.amount,
+            };
+        });
         setSelectedMaterialObj(newMaterial);
         setShowAddMaterial(false);
     };
@@ -581,9 +603,9 @@ export default function Vouchers() {
         (filter === 'All' || (v.type || '').includes(filter))
     );
 
-    const salesTaxable = Number(formData.amount) || 0;
-    const salesCGST = parseFloat(((salesTaxable * (Number(formData.cgstRate) || 0)) / 100).toFixed(2));
-    const salesSGST = parseFloat(((salesTaxable * (Number(formData.sgstRate) || 0)) / 100).toFixed(2));
+    const salesTaxable = (Number(formData.amount) || 0) * (Number(formData.quantity) || 1);
+    const salesCGST = parseFloat(((salesTaxable * (Number(formData.cgst) || 0)) / 100).toFixed(2));
+    const salesSGST = parseFloat(((salesTaxable * (Number(formData.sgst) || 0)) / 100).toFixed(2));
     const salesGrandTotal = salesTaxable + salesCGST + salesSGST;
 
     return (
@@ -722,7 +744,7 @@ export default function Vouchers() {
                             {/* Section 1: Basic Parameters */}
                             <div>
                                 <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">1. Basic Parameters</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2 leading-none">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Type <span className="text-red-500">*</span></label>
                                         <div className="relative">
@@ -736,7 +758,11 @@ export default function Vouchers() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Entry Date <span className="text-red-500">*</span></label>
-                                        <input name="date" type="date" className="input h-12 font-bold" value={formData.date} onChange={handleInputChange} />
+                                        <input name="date" type="date" className="input h-12 font-bold w-full" value={formData.date} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice No</label>
+                                        <input name="invoiceNo" type="text" className="input h-12 w-full font-bold" placeholder="INV-001" value={formData.invoiceNo} onChange={handleInputChange} />
                                     </div>
                                 </div>
                             </div>
@@ -823,6 +849,24 @@ export default function Vouchers() {
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity <span className="text-red-500">*</span></label>
                                             <input name="quantity" type="number" className="input h-12 w-full font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
+                                        </div>
+
+                                        {/* Amount */}
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
+                                            <input name="amount" type="number" className="input h-12 w-full font-bold" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
+                                        </div>
+
+                                        {/* SGST */}
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST (%)</label>
+                                            <input name="sgst" type="number" className="input h-12 w-full font-bold" placeholder="5" value={formData.sgst} onChange={handleInputChange} />
+                                        </div>
+
+                                        {/* CGST */}
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">CGST (%)</label>
+                                            <input name="cgst" type="number" className="input h-12 w-full font-bold" placeholder="5" value={formData.cgst} onChange={handleInputChange} />
                                         </div>
                                     </div>
                                 </div>

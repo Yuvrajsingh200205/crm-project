@@ -39,7 +39,7 @@ export default function VoucherDetail() {
 
                 const year = new Date(selectedVoucher.date).getFullYear();
                 const nextShortYear = String(year + 1).slice(2);
-                const invoiceNo = `RK/${year}-${nextShortYear}/${String(selectedVoucher.id).padStart(4, '0')}`;
+                const invoiceNo = selectedVoucher.invoiceNo || `RK/${year}-${nextShortYear}/${String(selectedVoucher.id).padStart(4, '0')}`;
                 
                 const data = calculateInvoiceData(selectedVoucher, p, m, invoiceNo);
                 setInvoiceData(data);

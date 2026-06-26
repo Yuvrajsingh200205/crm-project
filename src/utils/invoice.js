@@ -1,20 +1,29 @@
 export function calculateInvoiceData(formData, party, material, invoiceNo) {
-    const cgstRate = Number(formData.cgstRate) || material?.cgstRate || 9;
-    const sgstRate = Number(formData.sgstRate) || material?.sgstRate || 9;
+    const getRate = (val1, val2, def) => {
+        if (val1 !== undefined && val1 !== null && val1 !== "") return Number(val1);
+        if (val2 !== undefined && val2 !== null && val2 !== "") return Number(val2);
+        return def || 9;
+    };
+    
+    const cgstRate = getRate(formData.cgst, formData.cgstRate, material?.cgstRate);
+    const sgstRate = getRate(formData.sgst, formData.sgstRate, material?.sgstRate);
+    
     const dateStr = new Date(formData.date || new Date()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
     const hsn = formData.hsn || material?.hsn || '998519';
     const qty = Number(formData.quantity) || 1;
     const matRate = material?.avgPurchaseRate || material?.rate || material?.price || 0;
-    const rate = Number(formData.rate) || (Number(formData.amount) || 0) / qty || matRate;
     
+    // formData.amount is the unit price (rate)
+    const rate = Number(formData.amount) || Number(formData.rate) || matRate || 0;
     const baseAmount = rate * qty;
+    
     const cgstAmt = parseFloat(((baseAmount * cgstRate) / 100).toFixed(2));
     const sgstAmt = parseFloat(((baseAmount * sgstRate) / 100).toFixed(2));
     const totalTax = parseFloat((cgstAmt + sgstAmt).toFixed(2));
     
     const taxableValue = baseAmount;
-    const grandTotal = parseFloat((baseAmount - totalTax).toFixed(2));
+    const grandTotal = parseFloat((baseAmount + totalTax).toFixed(2));
     const materialDesc = formData.materialName || material?.materialName || material?.name || 'Service';
 
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -212,7 +221,7 @@ export function generateInvoiceHTML(formData, party, material, invoiceNo) {
 export function downloadInvoice(formData, party, material) {
     const year = new Date(formData.date).getFullYear();
     const nextShortYear = String(year + 1).slice(2);
-    const invoiceNo = `RK/${year}-${nextShortYear}/01`;
+    const invoiceNo = formData.invoiceNo || `RK/${year}-${nextShortYear}/${String(formData.id || 1).padStart(4, '0')}`;
     const html = generateInvoiceHTML(formData, party, material, invoiceNo);
     
     const blob = new Blob([html], { type: 'text/html' });
