@@ -788,6 +788,12 @@ export default function Vouchers() {
         }
     };
 
+    // Preview modal "Download PDF" — only downloads, does NOT re-save
+    const handleDownloadFromPreview = () => {
+        downloadInvoice(formData, selectedPartyObj, selectedMaterialObj);
+        toast.success('Invoice downloaded!', { icon: '📄' });
+    };
+
     const freshForm = (overrides = {}) => ({
         ...INITIAL_FORM,
         date: new Date().toISOString().split('T')[0],
@@ -1210,20 +1216,32 @@ export default function Vouchers() {
 
 
                             {/* Submit Buttons */}
-                            <div className="flex gap-4 pt-4 mt-6 border-t border-slate-100 sticky bottom-0 bg-white z-40 pb-2">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">Discard</button>
+                            <div className="flex gap-3 pt-4 mt-6 border-t border-slate-100 sticky bottom-0 bg-white z-40 pb-2 flex-wrap">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex-shrink-0">Discard</button>
                                 {isSalesVoucher && !isEditing ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleOpenInvoicePreview}
-                                        className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20"
-                                    >
-                                        <Download className="w-4 h-4" />
-                                        Download Invoice
-                                    </button>
+                                    <>
+                                        {/* Preview Invoice — opens modal, no save */}
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenInvoicePreview}
+                                            className="flex-1 min-w-[140px] h-12 text-[11px] font-black uppercase tracking-widest border-2 border-[#2f6645] text-[#2f6645] hover:bg-[#2f6645]/10 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                            Preview Invoice
+                                        </button>
+                                        {/* Download Invoice — submits form, saves + downloads directly */}
+                                        <button
+                                            type="submit"
+                                            disabled={isSaving}
+                                            className="flex-1 min-w-[140px] h-12 text-[11px] font-black uppercase tracking-widest rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-lg shadow-[#2f6645]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                                        >
+                                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                            Download Invoice
+                                        </button>
+                                    </>
                                 ) : (
                                     <button type="submit" disabled={isSaving}
-                                        className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20">
+                                        className="flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20 disabled:opacity-60">
                                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                                         {isEditing
                                             ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
@@ -1284,9 +1302,9 @@ export default function Vouchers() {
                     partyObj={selectedPartyObj}
                     materialObj={selectedMaterialObj}
                     onClose={() => setShowInvoicePreview(false)}
-                    onDownload={handleSave}
+                    onDownload={handleDownloadFromPreview}
                     onPrint={handlePrintInvoice}
-                    isSaving={isSaving}
+                    isSaving={false}
                 />
             )}
         </div>
