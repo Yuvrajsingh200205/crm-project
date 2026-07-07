@@ -149,11 +149,11 @@ function AddPartyModal({ onClose, onCreated }) {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Pincode</label>
-                            <input name="pincode" className="input h-11 w-full" placeholder="110043" value={form.pincode} onChange={handleChange} />
+                            <input name="pincode" className="input h-11 w-full" placeholder="XXXXXXXXXXXX" value={form.pincode} onChange={handleChange} />
                         </div>
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">GSTIN</label>
-                            <input name="gstin" className="input h-11 w-full" placeholder="10ASDFG1234F3DD" value={form.gstin} onChange={handleChange} />
+                            <input name="gstin" className="input h-11 w-full" placeholder="XXXX" value={form.gstin} onChange={handleChange} />
                         </div>
                     </div>
                     <div className="flex gap-3 pt-2">
