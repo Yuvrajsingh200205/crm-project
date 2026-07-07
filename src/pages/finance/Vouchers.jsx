@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { STATE_OPTIONS, getCitiesForState } from '../../utils/cityStateData';
 import {
     FileText, Search, Plus, Filter, Download, MoreVertical,
     ArrowRightLeft, CheckCircle2, AlertCircle, Clock,
@@ -101,6 +102,19 @@ function AddPartyModal({ onClose, onCreated }) {
 
     const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+    /** Handle state selection — reset city since it may no longer be valid */
+    const handleStateChange = ({ id: stateName }) => {
+        setForm(prev => ({ ...prev, state: stateName, city: '' }));
+    };
+
+    /** Handle city selection — city is already filtered to the selected state */
+    const handleCityChange = ({ id: cityName }) => {
+        setForm(prev => ({ ...prev, city: cityName }));
+    };
+
+    /** Cities available for the current state */
+    const cityOptions = getCitiesForState(form.state);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -120,6 +134,7 @@ function AddPartyModal({ onClose, onCreated }) {
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                {/* Header */}
                 <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
                     <div className="flex items-center gap-2">
                         <UserPlus className="w-5 h-5" />
@@ -127,38 +142,111 @@ function AddPartyModal({ onClose, onCreated }) {
                     </div>
                     <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
                 </div>
+
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {/* Row 1 — Party Name */}
                     <div className="space-y-1">
-                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Party Name <span className="text-red-500">*</span></label>
-                        <input required name="partyName" className="input h-11 w-full" placeholder="e.g. Ramkrishna Enterprises" value={form.partyName} onChange={handleChange} />
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                            Party Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            required
+                            name="partyName"
+                            className="input h-11 w-full"
+                            placeholder="e.g. Ramkrishna Enterprises"
+                            value={form.partyName}
+                            onChange={handleChange}
+                        />
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Address <span className="text-red-500">*</span></label>
-                        <input required name="address" className="input h-11 w-full" placeholder="Street address" value={form.address} onChange={handleChange} />
-                    </div>
+
+                    {/* Row 2 — State | City */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">City</label>
-                            <input name="city" className="input h-11 w-full" placeholder="City" value={form.city} onChange={handleChange} />
+                        {/* State — searchable dropdown (select first) */}
+                        <div>
+                            <SearchableSelect
+                                label="State"
+                                placeholder="Search state…"
+                                options={STATE_OPTIONS}
+                                value={form.state}
+                                displayLabel={form.state}
+                                onChange={handleStateChange}
+                                getOptionLabel={(o) => o.label}
+                                getOptionValue={(o) => o.id}
+                            />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">State</label>
-                            <input name="state" className="input h-11 w-full" placeholder="State" value={form.state} onChange={handleChange} />
+                        {/* City — filtered by selected state */}
+                        <div>
+                            <SearchableSelect
+                                label="City"
+                                placeholder={form.state ? 'Search city…' : 'Select state first'}
+                                options={cityOptions}
+                                value={form.city}
+                                displayLabel={form.city}
+                                onChange={handleCityChange}
+                                disabled={!form.state}
+                                getOptionLabel={(o) => o.label}
+                                getOptionValue={(o) => o.id}
+                            />
                         </div>
                     </div>
+
+                    {/* Row 3 — Address (full width) */}
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                            Address <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            required
+                            name="address"
+                            rows={3}
+                            className="input w-full resize-none py-3 leading-relaxed"
+                            placeholder="Street address, locality, landmark…"
+                            value={form.address}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    {/* Row 4 — Pincode | GSTIN */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Pincode</label>
-                            <input name="pincode" className="input h-11 w-full" placeholder="XXXXXX" value={form.pincode} onChange={handleChange} />
+                            <input
+                                name="pincode"
+                                className="input h-11 w-full"
+                                placeholder="110043"
+                                maxLength={6}
+                                pattern="[0-9]{6}"
+                                value={form.pincode}
+                                onChange={handleChange}
+                            />
                         </div>
                         <div className="space-y-1">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">GSTIN</label>
-                            <input name="gstin" className="input h-11 w-full" placeholder="XXXXXXXXXXXX" value={form.gstin} onChange={handleChange} />
+                            <input
+                                name="gstin"
+                                className="input h-11 w-full"
+                                placeholder="10ASDFG1234F3DD"
+                                maxLength={15}
+                                value={form.gstin}
+                                onChange={handleChange}
+                            />
                         </div>
                     </div>
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
-                        <button type="submit" disabled={saving} className="flex-1 h-12 bg-[#2f6645] hover:bg-[#1e3a34] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-1">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-6 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="flex-1 h-12 bg-[#2f6645] hover:bg-[#1e3a34] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+                        >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                             Create Party
                         </button>
