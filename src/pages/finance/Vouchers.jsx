@@ -4,7 +4,7 @@ import {
     ArrowRightLeft, CheckCircle2, AlertCircle, Clock,
     Calendar, Building2, Wallet, CreditCard, ChevronRight,
     TrendingUp, ArrowUpRight, X, LayoutGrid, List,
-    Trash2, Edit3, Eye, ChevronDown, Save, Loader2, UserPlus, Package
+    Trash2, Edit3, Eye, ChevronDown, Save, Loader2, UserPlus, Package, Printer, ArrowLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../../context/AppContext';
@@ -281,6 +281,275 @@ function AddMaterialModal({ onClose, onCreated }) {
 // ------------------------------------------------------------
 // Main Component
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Invoice Preview Modal
+// ------------------------------------------------------------
+function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownload, onPrint, isSaving }) {
+    // compute invoice data inline (mirrors calculateInvoiceData from utils/invoice)
+    const getRate = (val1, val2, def) => {
+        if (val1 !== undefined && val1 !== null && val1 !== '') return Number(val1);
+        if (val2 !== undefined && val2 !== null && val2 !== '') return Number(val2);
+        return def || 9;
+    };
+    const cgstRate = getRate(formData.cgst, formData.cgstRate, materialObj?.cgstRate);
+    const sgstRate = getRate(formData.sgst, formData.sgstRate, materialObj?.sgstRate);
+    const year = new Date(formData.date).getFullYear();
+    const nextShortYear = String(year + 1).slice(2);
+    const invoiceNo = formData.invoiceNo || `RK/${year}-${nextShortYear}/0001`;
+    const dateStr = new Date(formData.date || new Date()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+    const qty = Number(formData.quantity) || 1;
+    const rate = Number(formData.amount) || Number(formData.rate) || 0;
+    const baseAmount = rate * qty;
+    const cgstAmt = parseFloat(((baseAmount * cgstRate) / 100).toFixed(2));
+    const sgstAmt = parseFloat(((baseAmount * sgstRate) / 100).toFixed(2));
+    const totalTax = parseFloat((cgstAmt + sgstAmt).toFixed(2));
+    const grandTotal = parseFloat((baseAmount + totalTax).toFixed(2));
+    const taxableValue = baseAmount;
+    const hsn = formData.hsn || materialObj?.hsn || '998519';
+    const materialDesc = formData.materialName || materialObj?.materialName || materialObj?.name || 'Service';
+    const partyName = partyObj?.partyName || partyObj?.name || partyObj?.vendorName || formData.partyName || '—';
+    const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ');
+    const partyGSTIN = partyObj?.gstin || '';
+
+    const fmt = (n) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+    const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+    function numToWords(n) {
+        n = Math.round(n);
+        if (n === 0) return 'Zero';
+        if (n < 20) return ones[n];
+        if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' '+ones[n%10] : '');
+        if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' '+numToWords(n%100) : '');
+        if (n < 100000) return numToWords(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' '+numToWords(n%1000) : '');
+        if (n < 10000000) return numToWords(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' '+numToWords(n%100000) : '');
+        return numToWords(Math.floor(n/10000000)) + ' Crore' + (n%10000000 ? ' '+numToWords(n%10000000) : '');
+    }
+    const paise = Math.round((grandTotal % 1) * 100);
+    const grandWords = 'INR ' + numToWords(Math.floor(grandTotal)) + ' and ' + (paise ? numToWords(paise) + ' paise' : 'Zero paise') + ' Only';
+    const taxPaise = Math.round((totalTax % 1) * 100);
+    const taxWords = 'INR ' + numToWords(Math.floor(totalTax)) + ' and ' + (taxPaise ? numToWords(taxPaise) + ' paise' : 'Zero paise') + ' Only';
+
+    return (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden" style={{maxHeight:'95vh'}}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 bg-[#1e3a34] text-white flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-blue-300" />
+                        <div>
+                            <h2 className="text-base font-bold">Invoice Preview</h2>
+                            <p className="text-[11px] text-white/60 uppercase tracking-widest">Review before downloading</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+
+                {/* Invoice preview body */}
+                <div className="overflow-y-auto flex-1 bg-slate-100 p-6">
+                    <div className="bg-white shadow-lg rounded-xl mx-auto" style={{maxWidth:760, fontFamily:'Arial,sans-serif', fontSize:11, color:'#000'}}>
+                        <div style={{padding:'20px 24px'}}>
+                            {/* Title */}
+                            <h1 style={{textAlign:'center',fontSize:16,fontWeight:'bold',marginBottom:8,border:'2px solid #000',padding:'6px',letterSpacing:1}}>Tax Invoice</h1>
+
+                            {/* Top header table */}
+                            <table style={{width:'100%',borderCollapse:'collapse',marginBottom:0}}>
+                                <tbody>
+                                    <tr>
+                                        <td rowSpan={8} style={{width:'48%',border:'1px solid #555',padding:'6px 8px',verticalAlign:'top'}}>
+                                            <div style={{fontWeight:'bold',fontSize:12}}>Morlatis Engineering And Construction Pvt Ltd</div>
+                                            <div>01, Ramanad Nagar, Keshonaryanpur, Gram</div>
+                                            <div>Panchayat Office, Keshonaryanpur, Bond Dih</div>
+                                            <div>Dakhli, Samastipur, Bihar, 848504</div>
+                                            <div><span style={{fontWeight:'bold'}}>GSTIN/UIN:</span> 10AAMCM1665L2ZC</div>
+                                            <div><span style={{fontWeight:'bold'}}>State Name:</span> Bihar, Code: 10</div>
+                                            <br/>
+                                            <div style={{fontWeight:'bold'}}>Consignee (Ship to)</div>
+                                            <div style={{fontWeight:'bold',fontSize:11}}>{partyName}</div>
+                                            {partyAddr && <div>{partyAddr}</div>}
+                                            {partyGSTIN && <div><span style={{fontWeight:'bold'}}>GSTIN/UIN</span> : {partyGSTIN}</div>}
+                                            <br/>
+                                            <div style={{fontWeight:'bold'}}>Buyer (Bill to)</div>
+                                            <div style={{fontWeight:'bold',fontSize:11}}>{partyName}</div>
+                                            {partyAddr && <div>{partyAddr}</div>}
+                                            {partyGSTIN && <div><span style={{fontWeight:'bold'}}>GSTIN/UIN</span> : {partyGSTIN}</div>}
+                                        </td>
+                                        <td style={{width:'26%',border:'1px solid #555',padding:'5px 7px'}}><div>Invoice No.</div><div style={{fontWeight:'bold'}}>{invoiceNo}</div></td>
+                                        <td style={{width:'26%',border:'1px solid #555',padding:'5px 7px'}}><div>Dated</div><div style={{fontWeight:'bold'}}>{dateStr}</div></td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Delivery Note</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Mode/Terms of Payment</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Reference No. &amp; Date.</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Other References</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Buyer's Order No.</div><div style={{fontWeight:'bold'}}>PI/2026-27/07</div></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Dated</div><div style={{fontWeight:'bold'}}>{dateStr}</div></td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Dispatch Doc No.</div><div style={{fontWeight:'bold'}}>{invoiceNo}</div></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Delivery Note Date</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Dispatched through</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Destination</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Bill of Lading/LR-RR No.</div><div style={{fontWeight:'bold'}}>dt. {dateStr}</div></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Motor Vehicle No.</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={2} style={{border:'1px solid #555',padding:'5px 7px'}}>Terms of Delivery</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Items table */}
+                            <table style={{width:'100%',borderCollapse:'collapse',marginTop:8}}>
+                                <thead>
+                                    <tr>
+                                        {['Sl No.','Description of Services','HSN/SAC','Qty','Rate','per','Amount'].map(h => (
+                                            <th key={h} style={{border:'1px solid #555',padding:'5px 7px',background:'#f0f0f0',fontWeight:'bold',textAlign:'center',fontSize:11}}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center'}}>1</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',fontWeight:'bold'}}>{materialDesc}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center'}}>{hsn}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold'}}>{qty}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>{rate.toFixed(2)}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center'}}>Nos</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>{fmt(baseAmount)}</td>
+                                    </tr>
+                                    {[...Array(4)].map((_,i) => (
+                                        <tr key={i}>{[...Array(7)].map((_,j) => <td key={j} style={{border:'1px solid #555',height:22}}></td>)}</tr>
+                                    ))}
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>CGST</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>{cgstRate}%</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>{fmt(cgstAmt)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>SGST</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>{sgstRate}%</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>{fmt(sgstAmt)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>Total</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold',fontSize:13}}>₹ {fmt(grandTotal)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Amount in words + tax summary */}
+                            <table style={{width:'100%',borderCollapse:'collapse',borderTop:'none'}}>
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={4} style={{border:'1px solid #555',padding:'5px 7px',borderTop:'none'}}>
+                                            <div>Amount Chargeable (in words)</div>
+                                            <div style={{fontWeight:'bold',fontStyle:'italic',fontSize:10}}>{grandWords}</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold',width:'50%'}}>HSN/SAC</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold',width:'15%'}}>Taxable Value</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold',width:'17.5%'}}>CGST Amount</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold',width:'17.5%'}}>SGST Amount</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right'}}>{hsn}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right'}}>{fmt(taxableValue)}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center'}}>{fmt(cgstAmt)}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center'}}>{fmt(sgstAmt)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>Total</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold'}}>{fmt(taxableValue)}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold'}}>{fmt(cgstAmt)}</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold'}}>{fmt(sgstAmt)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={4} style={{border:'1px solid #555',padding:'5px 7px'}}>
+                                            <div>Tax Amount (in words) : <span style={{fontWeight:'bold',fontStyle:'italic',fontSize:10}}>{taxWords}</span></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Declaration & Signature */}
+                            <table style={{width:'100%',borderCollapse:'collapse',marginTop:8}}>
+                                <tbody>
+                                    <tr>
+                                        <td style={{width:'50%',border:'1px solid #555',padding:'5px 7px',borderRight:'none',fontSize:'9.5px',color:'#333'}}>
+                                            <span style={{fontWeight:'bold',textDecoration:'underline'}}>Declaration</span><br/>
+                                            We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                                        </td>
+                                        <td style={{width:'50%',border:'1px solid #555',padding:'5px 7px',borderLeft:'none',textAlign:'right',fontSize:'9.5px',color:'#333'}}>
+                                            <div style={{fontWeight:'bold'}}>for Morlatis Engineering And Construction Pvt Ltd</div>
+                                            <br/><br/><br/>
+                                            <div>Authorised Signatory</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div style={{textAlign:'center',fontSize:'9.5px',color:'#333',marginTop:5}}>This is a Computer Generated Invoice</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action bar */}
+                <div className="flex-shrink-0 px-6 py-4 bg-white border-t border-slate-100 flex flex-col sm:flex-row gap-3 items-center">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex items-center gap-2 px-5 py-3 text-[11px] font-black text-slate-600 uppercase tracking-widest bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-95"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back / Edit
+                    </button>
+                    <div className="flex gap-3 sm:ml-auto">
+                        <button
+                            type="button"
+                            onClick={onPrint}
+                            className="flex items-center gap-2 px-5 py-3 text-[11px] font-black text-[#2f6645] uppercase tracking-widest border-2 border-[#2f6645] hover:bg-[#2f6645]/10 rounded-xl transition-all active:scale-95"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onDownload}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 px-6 py-3 text-[11px] font-black text-white uppercase tracking-widest bg-[#2f6645] hover:bg-[#1e3a34] rounded-xl shadow-lg shadow-[#2f6645]/20 transition-all active:scale-95 disabled:opacity-60"
+                        >
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Download PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function Vouchers() {
     const { setActiveModule, setSelectedVoucher } = useApp();
     const [vouchers, setVouchers] = useState([]);
@@ -294,6 +563,7 @@ export default function Vouchers() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isTypeLocked, setIsTypeLocked] = useState(false);
+    const [showInvoicePreview, setShowInvoicePreview] = useState(false);
 
     const [formData, setFormData] = useState(INITIAL_FORM);
     const [refData, setRefData] = useState(EMPTY_REF_DATA);
@@ -443,6 +713,12 @@ export default function Vouchers() {
         }
     };
 
+    // Opens preview instead of saving (for Sales Voucher "Download Invoice" button)
+    const handleOpenInvoicePreview = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        setShowInvoicePreview(true);
+    };
+
     const handleSave = async (e) => {
         e.preventDefault ? e.preventDefault() : null;
         setIsSaving(true);
@@ -484,6 +760,7 @@ export default function Vouchers() {
                 }
             }
             fetchVouchers();
+            setShowInvoicePreview(false);
             setIsModalOpen(false);
             setIsEditing(false);
             setFormData(freshForm());
@@ -494,6 +771,20 @@ export default function Vouchers() {
             toast.error('Failed to post voucher');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handlePrintInvoice = () => {
+        const year = new Date(formData.date).getFullYear();
+        const nextShortYear = String(year + 1).slice(2);
+        const invoiceNo = formData.invoiceNo || `RK/${year}-${nextShortYear}/0001`;
+        const html = generateInvoiceHTML(formData, selectedPartyObj, selectedMaterialObj, invoiceNo);
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            setTimeout(() => { win.print(); }, 400);
         }
     };
 
@@ -921,16 +1212,25 @@ export default function Vouchers() {
                             {/* Submit Buttons */}
                             <div className="flex gap-4 pt-4 mt-6 border-t border-slate-100 sticky bottom-0 bg-white z-40 pb-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">Discard</button>
-                                <button type="submit" disabled={isSaving}
-                                    className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20">
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                    {isEditing
-                                        ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
-                                        : isSalesVoucher
-                                            ? 'Download Invoice'
+                                {isSalesVoucher && !isEditing ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenInvoicePreview}
+                                        className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download Invoice
+                                    </button>
+                                ) : (
+                                    <button type="submit" disabled={isSaving}
+                                        className="btn-primary flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20">
+                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                        {isEditing
+                                            ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
                                             : 'Post to Ledger'
-                                    }
-                                </button>
+                                        }
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
@@ -975,6 +1275,19 @@ export default function Vouchers() {
             {/* Add Material Sub-modal */}
             {showAddMaterial && (
                 <AddMaterialModal onClose={() => setShowAddMaterial(false)} onCreated={handleMaterialCreated} />
+            )}
+
+            {/* Invoice Preview Modal */}
+            {showInvoicePreview && (
+                <InvoicePreviewModal
+                    formData={formData}
+                    partyObj={selectedPartyObj}
+                    materialObj={selectedMaterialObj}
+                    onClose={() => setShowInvoicePreview(false)}
+                    onDownload={handleSave}
+                    onPrint={handlePrintInvoice}
+                    isSaving={isSaving}
+                />
             )}
         </div>
     );
