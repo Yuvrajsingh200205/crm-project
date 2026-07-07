@@ -296,6 +296,7 @@ function LiveInvoicePreview({ formData, partyObj, materialObj }) {
     const partyName = partyObj?.partyName || partyObj?.name || formData.partyName || '—';
     const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ') || '—';
     const partyGSTIN = partyObj?.gstin || '—';
+    const sgstLabel = (partyGSTIN !== '—' && !partyGSTIN.startsWith('10')) ? 'IGST' : 'SGST';
     const fmt = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
@@ -396,7 +397,7 @@ function LiveInvoicePreview({ formData, partyObj, materialObj }) {
                             <td style={{ ...cell(), textAlign: 'right' }}>{cgstAmt ? fmt(cgstAmt) : '—'}</td>
                         </tr>
                         <tr>
-                            <td colSpan={5} style={{ ...cell(), textAlign: 'right', fontStyle: 'italic', fontWeight: 'bold' }}>SGST @ {sgstRate}%</td>
+                            <td colSpan={5} style={{ ...cell(), textAlign: 'right', fontStyle: 'italic', fontWeight: 'bold' }}>{sgstLabel} @ {sgstRate}%</td>
                             <td style={cell()} />
                             <td style={{ ...cell(), textAlign: 'right' }}>{sgstAmt ? fmt(sgstAmt) : '—'}</td>
                         </tr>
@@ -421,7 +422,7 @@ function LiveInvoicePreview({ formData, partyObj, materialObj }) {
                             <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right', fontSize: 9 }}>HSN/SAC</th>
                             <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right', fontSize: 9 }}>Taxable Value</th>
                             <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center', fontSize: 9 }}>CGST Amt</th>
-                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center', fontSize: 9 }}>SGST Amt</th>
+                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center', fontSize: 9 }}>{sgstLabel} Amt</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -490,6 +491,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
     const partyName = partyObj?.partyName || partyObj?.name || partyObj?.vendorName || formData.partyName || '—';
     const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ');
     const partyGSTIN = partyObj?.gstin || '';
+    const sgstLabel = (partyGSTIN && !partyGSTIN.startsWith('10')) ? 'IGST' : 'SGST';
 
     const fmt = (n) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -620,7 +622,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
                                     </tr>
                                     <tr>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
-                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>SGST</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>{sgstLabel}</td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}></td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontStyle:'italic',fontWeight:'bold'}}>{sgstRate}%</td>
@@ -652,7 +654,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
                                         <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold',width:'50%'}}>HSN/SAC</td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right',fontWeight:'bold',width:'15%'}}>Taxable Value</td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold',width:'17.5%'}}>CGST Amount</td>
-                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold',width:'17.5%'}}>SGST Amount</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'center',fontWeight:'bold',width:'17.5%'}}>{sgstLabel} Amount</td>
                                     </tr>
                                     <tr>
                                         <td style={{border:'1px solid #555',padding:'5px 7px',textAlign:'right'}}>{hsn}</td>
@@ -1343,7 +1345,13 @@ export default function Vouchers() {
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="space-y-2">
-                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST (%)</label>
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                                            {(() => {
+                                                                const p = refData?.parties?.find(x => (x.id || x._id) === formData.partyId);
+                                                                const g = p?.gstin || '';
+                                                                return (g && !g.startsWith('10')) ? 'IGST (%)' : 'SGST (%)';
+                                                            })()}
+                                                        </label>
                                                         <input name="sgst" type="number" className="input h-11 w-full font-bold" placeholder="5" value={formData.sgst} onChange={handleInputChange} />
                                                     </div>
                                                     <div className="space-y-2">

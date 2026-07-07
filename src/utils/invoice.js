@@ -65,6 +65,8 @@ export function generateInvoiceHTML(formData, party, material, invoiceNo) {
         buyerOrder, destination
     } = calculateInvoiceData(formData, party, material, invoiceNo);
 
+    const sgstLabel = (partyGSTIN && !partyGSTIN.startsWith('10')) ? 'IGST' : 'SGST';
+
     const emptyRows = Array(6).fill(0).map(() =>
         '<tr>' + Array(8).fill('<td style="height:22px;"></td>').join('') + '</tr>'
     ).join('');
@@ -159,7 +161,7 @@ export function generateInvoiceHTML(formData, party, material, invoiceNo) {
       </tr>
       <tr>
         <td></td>
-        <td class="right italic-bold">SGST</td>
+        <td class="right italic-bold">${sgstLabel}</td>
         <td></td><td></td>
         <td class="right italic-bold">${sgstRate}%</td>
         <td></td>
@@ -183,7 +185,7 @@ export function generateInvoiceHTML(formData, party, material, invoiceNo) {
       <td class="right bold" style="width:50%;">HSN/SAC</td>
       <td class="right bold" style="width:15%;">Taxable Value</td>
       <td class="center bold" style="width:17.5%;">CGST Amount</td>
-      <td class="center bold" style="width:17.5%;">SGST Amount</td>
+      <td class="center bold" style="width:17.5%;">${sgstLabel} Amount</td>
     </tr>
     <tr>
       <td class="right">${hsn}</td>
