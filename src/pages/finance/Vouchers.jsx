@@ -153,7 +153,7 @@ function AddPartyModal({ onClose, onCreated }) {
                             required
                             name="partyName"
                             className="input h-11 w-full"
-                            placeholder="e.g. Ramkrishna Enterprises"
+                            placeholder="xxxx..."
                             value={form.partyName}
                             onChange={handleChange}
                         />
@@ -213,7 +213,7 @@ function AddPartyModal({ onClose, onCreated }) {
                             <input
                                 name="pincode"
                                 className="input h-11 w-full"
-                                placeholder="110043"
+                                placeholder="xxxxxx"
                                 maxLength={6}
                                 pattern="[0-9]{6}"
                                 value={form.pincode}
@@ -225,7 +225,7 @@ function AddPartyModal({ onClose, onCreated }) {
                             <input
                                 name="gstin"
                                 className="input h-11 w-full"
-                                placeholder="10ASDFG1234F3DD"
+                                placeholder="xxxxxxxxxxxx"
                                 maxLength={15}
                                 value={form.gstin}
                                 onChange={handleChange}

@@ -1,148 +1,21 @@
+import { State, City } from 'country-state-city';
+
+const indiaStates = State.getStatesOfCountry('IN');
+const indiaCities = City.getCitiesOfCountry('IN');
+
+const stateMap = {};
+indiaStates.forEach(s => {
+    stateMap[s.isoCode] = s.name;
+});
+
 /**
  * India City → State mapping
  * Each entry: { city: string, state: string }
- * Sorted alphabetically by city name.
  */
-export const INDIA_CITIES = [
-    { city: 'Agartala', state: 'Tripura' },
-    { city: 'Agra', state: 'Uttar Pradesh' },
-    { city: 'Ahmedabad', state: 'Gujarat' },
-    { city: 'Ahmednagar', state: 'Maharashtra' },
-    { city: 'Aizawl', state: 'Mizoram' },
-    { city: 'Ajmer', state: 'Rajasthan' },
-    { city: 'Akola', state: 'Maharashtra' },
-    { city: 'Aligarh', state: 'Uttar Pradesh' },
-    { city: 'Alwar', state: 'Rajasthan' },
-    { city: 'Ambala', state: 'Haryana' },
-    { city: 'Amravati', state: 'Maharashtra' },
-    { city: 'Amritsar', state: 'Punjab' },
-    { city: 'Anand', state: 'Gujarat' },
-    { city: 'Anantapur', state: 'Andhra Pradesh' },
-    { city: 'Asansol', state: 'West Bengal' },
-    { city: 'Aurangabad', state: 'Maharashtra' },
-    { city: 'Bangalore', state: 'Karnataka' },
-    { city: 'Bareilly', state: 'Uttar Pradesh' },
-    { city: 'Belgaum', state: 'Karnataka' },
-    { city: 'Bellary', state: 'Karnataka' },
-    { city: 'Bengaluru', state: 'Karnataka' },
-    { city: 'Bhagalpur', state: 'Bihar' },
-    { city: 'Bhavnagar', state: 'Gujarat' },
-    { city: 'Bhilai', state: 'Chhattisgarh' },
-    { city: 'Bhiwandi', state: 'Maharashtra' },
-    { city: 'Bhopal', state: 'Madhya Pradesh' },
-    { city: 'Bhubaneswar', state: 'Odisha' },
-    { city: 'Bidar', state: 'Karnataka' },
-    { city: 'Bihar Sharif', state: 'Bihar' },
-    { city: 'Bikaner', state: 'Rajasthan' },
-    { city: 'Bilaspur', state: 'Chhattisgarh' },
-    { city: 'Bokaro', state: 'Jharkhand' },
-    { city: 'Chandigarh', state: 'Chandigarh' },
-    { city: 'Chennai', state: 'Tamil Nadu' },
-    { city: 'Coimbatore', state: 'Tamil Nadu' },
-    { city: 'Cuttack', state: 'Odisha' },
-    { city: 'Dahanu', state: 'Maharashtra' },
-    { city: 'Darbhanga', state: 'Bihar' },
-    { city: 'Davangere', state: 'Karnataka' },
-    { city: 'Dehradun', state: 'Uttarakhand' },
-    { city: 'Delhi', state: 'Delhi' },
-    { city: 'Dhanbad', state: 'Jharkhand' },
-    { city: 'Dharwad', state: 'Karnataka' },
-    { city: 'Dibrugarh', state: 'Assam' },
-    { city: 'Durgapur', state: 'West Bengal' },
-    { city: 'Erode', state: 'Tamil Nadu' },
-    { city: 'Faridabad', state: 'Haryana' },
-    { city: 'Firozabad', state: 'Uttar Pradesh' },
-    { city: 'Gandhinagar', state: 'Gujarat' },
-    { city: 'Gaya', state: 'Bihar' },
-    { city: 'Gorakhpur', state: 'Uttar Pradesh' },
-    { city: 'Gulbarga', state: 'Karnataka' },
-    { city: 'Guntur', state: 'Andhra Pradesh' },
-    { city: 'Gurgaon', state: 'Haryana' },
-    { city: 'Gurugram', state: 'Haryana' },
-    { city: 'Guwahati', state: 'Assam' },
-    { city: 'Gwalior', state: 'Madhya Pradesh' },
-    { city: 'Haora', state: 'West Bengal' },
-    { city: 'Hapur', state: 'Uttar Pradesh' },
-    { city: 'Haridwar', state: 'Uttarakhand' },
-    { city: 'Hubli', state: 'Karnataka' },
-    { city: 'Hugli-Chinsurah', state: 'West Bengal' },
-    { city: 'Hyderabad', state: 'Telangana' },
-    { city: 'Imphal', state: 'Manipur' },
-    { city: 'Indore', state: 'Madhya Pradesh' },
-    { city: 'Itanagar', state: 'Arunachal Pradesh' },
-    { city: 'Jabalpur', state: 'Madhya Pradesh' },
-    { city: 'Jagdalpur', state: 'Chhattisgarh' },
-    { city: 'Jaipur', state: 'Rajasthan' },
-    { city: 'Jalandhar', state: 'Punjab' },
-    { city: 'Jammu', state: 'Jammu & Kashmir' },
-    { city: 'Jamnagar', state: 'Gujarat' },
-    { city: 'Jamshedpur', state: 'Jharkhand' },
-    { city: 'Jhansi', state: 'Uttar Pradesh' },
-    { city: 'Jodhpur', state: 'Rajasthan' },
-    { city: 'Jorhat', state: 'Assam' },
-    { city: 'Junagadh', state: 'Gujarat' },
-    { city: 'Kakinada', state: 'Andhra Pradesh' },
-    { city: 'Kalyan', state: 'Maharashtra' },
-    { city: 'Kanpur', state: 'Uttar Pradesh' },
-    { city: 'Karnal', state: 'Haryana' },
-    { city: 'Kochi', state: 'Kerala' },
-    { city: 'Kohima', state: 'Nagaland' },
-    { city: 'Kolhapur', state: 'Maharashtra' },
-    { city: 'Kolkata', state: 'West Bengal' },
-    { city: 'Kota', state: 'Rajasthan' },
-    { city: 'Kozhikode', state: 'Kerala' },
-    { city: 'Kurnool', state: 'Andhra Pradesh' },
-    { city: 'Latur', state: 'Maharashtra' },
-    { city: 'Lucknow', state: 'Uttar Pradesh' },
-    { city: 'Ludhiana', state: 'Punjab' },
-    { city: 'Madurai', state: 'Tamil Nadu' },
-    { city: 'Mangalore', state: 'Karnataka' },
-    { city: 'Mathura', state: 'Uttar Pradesh' },
-    { city: 'Meerut', state: 'Uttar Pradesh' },
-    { city: 'Moradabad', state: 'Uttar Pradesh' },
-    { city: 'Mumbai', state: 'Maharashtra' },
-    { city: 'Muzaffarpur', state: 'Bihar' },
-    { city: 'Mysore', state: 'Karnataka' },
-    { city: 'Mysuru', state: 'Karnataka' },
-    { city: 'Nagpur', state: 'Maharashtra' },
-    { city: 'Nanded', state: 'Maharashtra' },
-    { city: 'Nashik', state: 'Maharashtra' },
-    { city: 'Navi Mumbai', state: 'Maharashtra' },
-    { city: 'New Delhi', state: 'Delhi' },
-    { city: 'Noida', state: 'Uttar Pradesh' },
-    { city: 'Panaji', state: 'Goa' },
-    { city: 'Patiala', state: 'Punjab' },
-    { city: 'Patna', state: 'Bihar' },
-    { city: 'Pondicherry', state: 'Puducherry' },
-    { city: 'Puducherry', state: 'Puducherry' },
-    { city: 'Pune', state: 'Maharashtra' },
-    { city: 'Raipur', state: 'Chhattisgarh' },
-    { city: 'Rajkot', state: 'Gujarat' },
-    { city: 'Ranchi', state: 'Jharkhand' },
-    { city: 'Rourkela', state: 'Odisha' },
-    { city: 'Salem', state: 'Tamil Nadu' },
-    { city: 'Sangli', state: 'Maharashtra' },
-    { city: 'Shillong', state: 'Meghalaya' },
-    { city: 'Shimla', state: 'Himachal Pradesh' },
-    { city: 'Silchar', state: 'Assam' },
-    { city: 'Siliguri', state: 'West Bengal' },
-    { city: 'Solapur', state: 'Maharashtra' },
-    { city: 'Srinagar', state: 'Jammu & Kashmir' },
-    { city: 'Surat', state: 'Gujarat' },
-    { city: 'Thane', state: 'Maharashtra' },
-    { city: 'Thiruvananthapuram', state: 'Kerala' },
-    { city: 'Thrissur', state: 'Kerala' },
-    { city: 'Tiruchirapalli', state: 'Tamil Nadu' },
-    { city: 'Tiruppur', state: 'Tamil Nadu' },
-    { city: 'Tirupati', state: 'Andhra Pradesh' },
-    { city: 'Ujjain', state: 'Madhya Pradesh' },
-    { city: 'Vadodara', state: 'Gujarat' },
-    { city: 'Varanasi', state: 'Uttar Pradesh' },
-    { city: 'Vasai-Virar', state: 'Maharashtra' },
-    { city: 'Vijayawada', state: 'Andhra Pradesh' },
-    { city: 'Visakhapatnam', state: 'Andhra Pradesh' },
-    { city: 'Warangal', state: 'Telangana' },
-];
+export const INDIA_CITIES = indiaCities.map(city => ({
+    city: city.name,
+    state: stateMap[city.stateCode] || ''
+}));
 
 /** Return the state for a given city name (case-insensitive). Returns '' if not found. */
 export function getStateForCity(cityName) {
@@ -154,9 +27,9 @@ export function getStateForCity(cityName) {
 }
 
 /** All unique states sorted alphabetically — for the State dropdown */
-export const STATE_OPTIONS = [
-    ...new Set(INDIA_CITIES.map((c) => c.state))
-].sort().map((s) => ({ id: s, label: s }));
+export const STATE_OPTIONS = [...indiaStates]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => ({ id: s.name, label: s.name }));
 
 /** All cities for SearchableSelect (unfiltered) */
 export const CITY_OPTIONS = INDIA_CITIES.map((c) => ({
@@ -168,7 +41,14 @@ export const CITY_OPTIONS = INDIA_CITIES.map((c) => ({
 /** Return city options filtered to a specific state */
 export function getCitiesForState(stateName) {
     if (!stateName) return CITY_OPTIONS;
-    return INDIA_CITIES
-        .filter((c) => c.state === stateName)
-        .map((c) => ({ id: c.city, label: c.city, state: c.state }));
+    
+    const state = indiaStates.find(s => s.name === stateName);
+    if (!state) return [];
+    
+    const citiesOfState = City.getCitiesOfState('IN', state.isoCode);
+    return citiesOfState.map(c => ({
+        id: c.name,
+        label: c.name,
+        state: stateName
+    }));
 }
