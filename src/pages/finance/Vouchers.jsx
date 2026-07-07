@@ -62,14 +62,13 @@ const INITIAL_PARTY_FORM = {
 
 const INITIAL_MATERIAL_FORM = {
     materialName: '',
-    category: 'good',
+    category: 'Building',
     quantity: 100,
     quantityType: 'bags',
     avgPurchaseRate: 0,
-    type: 'owned',
-    purchaseDate: new Date().toISOString().split('T')[0],
-    sgstRate: 5,
-    cgstRate: 5,
+    hsnNumber: '',
+    sgstRate: 9,
+    cgstRate: 9,
 };
 
 const parseList = (res, key) => {
@@ -218,6 +217,7 @@ function AddMaterialModal({ onClose, onCreated }) {
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Category</label>
                             <div className="relative">
                                 <select name="category" className="input h-11 w-full appearance-none" value={form.category} onChange={handleChange}>
+                                    <option value="Building">Building</option>
                                     <option value="good">Good</option>
                                     <option value="services">Services</option>
                                     <option value="capital good">Capital Good</option>
@@ -240,22 +240,9 @@ function AddMaterialModal({ onClose, onCreated }) {
                             <input type="number" name="avgPurchaseRate" className="input h-11 w-full" placeholder="350" value={form.avgPurchaseRate} onChange={handleChange} />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Type</label>
-                            <div className="relative">
-                                <select name="type" className="input h-11 w-full appearance-none" value={form.type} onChange={handleChange}>
-                                    <option value="owned">Owned</option>
-                                    <option value="rented">Rented</option>
-                                    <option value="leased">Leased</option>
-                                </select>
-                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Purchase Date</label>
-                            <input type="date" name="purchaseDate" className="input h-11 w-full" value={form.purchaseDate} onChange={handleChange} />
-                        </div>
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">HSN Number</label>
+                        <input name="hsnNumber" className="input h-11 w-full" placeholder="e.g. 123456" value={form.hsnNumber} onChange={handleChange} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
