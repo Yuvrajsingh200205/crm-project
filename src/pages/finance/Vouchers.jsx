@@ -236,7 +236,7 @@ function AddMaterialModal({ onClose, onCreated }) {
                             <input name="quantityType" className="input h-11 w-full" placeholder="bags" value={form.quantityType} onChange={handleChange} />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Avg. Rate</label>
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Rate</label>
                             <input type="number" name="avgPurchaseRate" className="input h-11 w-full" placeholder="350" value={form.avgPurchaseRate} onChange={handleChange} />
                         </div>
                     </div>
