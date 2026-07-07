@@ -10,7 +10,7 @@ export function calculateInvoiceData(formData, party, material, invoiceNo) {
     
     const dateStr = new Date(formData.date || new Date()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
-    const hsn = formData.hsn || material?.hsn || '998519';
+    const hsn = formData.hsn || material?.hsnNumber || material?.hsn || '998519';
     const qty = Number(formData.quantity) || 1;
     const matRate = material?.avgPurchaseRate || material?.rate || material?.price || 0;
     
@@ -48,16 +48,21 @@ export function calculateInvoiceData(formData, party, material, invoiceNo) {
     const partyAddr = [party?.address, party?.city, party?.state, party?.pincode].filter(Boolean).join(', ');
     const partyGSTIN = party?.gstin || '';
 
+    const buyerOrder = formData.buyerOrder || '';
+    const destination = formData.destination || '';
+
     return {
         cgstRate, sgstRate, dateStr, hsn, qty, rate, baseAmount, cgstAmt, sgstAmt, totalTax,
-        taxableValue, grandTotal, materialDesc, grandWords, taxWords, partyName, partyAddr, partyGSTIN, invoiceNo
+        taxableValue, grandTotal, materialDesc, grandWords, taxWords, partyName, partyAddr, partyGSTIN, invoiceNo,
+        buyerOrder, destination
     };
 }
 
 export function generateInvoiceHTML(formData, party, material, invoiceNo) {
     const {
         cgstRate, sgstRate, dateStr, hsn, qty, rate, baseAmount, cgstAmt, sgstAmt,
-        taxableValue, grandTotal, materialDesc, grandWords, taxWords, partyName, partyAddr, partyGSTIN
+        taxableValue, grandTotal, materialDesc, grandWords, taxWords, partyName, partyAddr, partyGSTIN,
+        buyerOrder, destination
     } = calculateInvoiceData(formData, party, material, invoiceNo);
 
     const emptyRows = Array(6).fill(0).map(() =>
@@ -114,9 +119,9 @@ export function generateInvoiceHTML(formData, party, material, invoiceNo) {
     </tr>
     <tr><td>Delivery Note</td><td>Mode/Terms of Payment</td></tr>
     <tr><td>Reference No. &amp; Date.</td><td>Other References</td></tr>
-    <tr><td><div>Buyer's Order No.</div><div class="bold">PI/2026-27/07</div></td><td><div>Dated</div><div class="bold">${dateStr}</div></td></tr>
+    <tr><td><div>BUYER'S ORDER NO.</div><div class="bold">${buyerOrder}</div></td><td><div>Dated</div><div class="bold">${dateStr}</div></td></tr>
     <tr><td><div>Dispatch Doc No.</div><div class="bold">${invoiceNo}</div></td><td>Delivery Note Date</td></tr>
-    <tr><td>Dispatched through</td><td>Destination</td></tr>
+    <tr><td>Dispatched through</td><td><div>Destination</div><div class="bold">${destination}</div></td></tr>
     <tr><td><div>Bill of Lading/LR-RR No.</div><div class="bold">dt. ${dateStr}</div></td><td>Motor Vehicle No.</td></tr>
     <tr><td colspan="2">Terms of Delivery</td></tr>
   </table>

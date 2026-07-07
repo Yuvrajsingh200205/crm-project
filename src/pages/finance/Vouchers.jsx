@@ -291,7 +291,7 @@ function LiveInvoicePreview({ formData, partyObj, materialObj }) {
     const cgstAmt = parseFloat(((baseAmount * cgstRate) / 100).toFixed(2));
     const sgstAmt = parseFloat(((baseAmount * sgstRate) / 100).toFixed(2));
     const grandTotal = parseFloat((baseAmount + cgstAmt + sgstAmt).toFixed(2));
-    const hsn = formData.hsn || materialObj?.hsn || '—';
+    const hsn = formData.hsn || materialObj?.hsnNumber || materialObj?.hsn || '—';
     const materialDesc = formData.materialName || materialObj?.materialName || '—';
     const partyName = partyObj?.partyName || partyObj?.name || formData.partyName || '—';
     const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ') || '—';
@@ -485,7 +485,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
     const totalTax = parseFloat((cgstAmt + sgstAmt).toFixed(2));
     const grandTotal = parseFloat((baseAmount + totalTax).toFixed(2));
     const taxableValue = baseAmount;
-    const hsn = formData.hsn || materialObj?.hsn || '998519';
+    const hsn = formData.hsn || materialObj?.hsnNumber || materialObj?.hsn || '998519';
     const materialDesc = formData.materialName || materialObj?.materialName || materialObj?.name || 'Service';
     const partyName = partyObj?.partyName || partyObj?.name || partyObj?.vendorName || formData.partyName || '—';
     const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ');
@@ -1034,7 +1034,7 @@ export default function Vouchers() {
                 ...prev,
                 materialId: id || '',
                 materialName: label || '',
-                hsn: mat?.hsn || prev.hsn,
+                hsn: mat?.hsnNumber || mat?.hsn || prev.hsn,
                 sgst: mat?.sgstRate ?? prev.sgst,
                 cgst: mat?.cgstRate ?? prev.cgst,
                 rate: rate ? String(rate) : prev.rate,
@@ -1062,7 +1062,7 @@ export default function Vouchers() {
                 ...prev,
                 materialId: newMaterial.id || newMaterial._id || '',
                 materialName: newMaterial.materialName || '',
-                hsn: newMaterial.hsn || prev.hsn,
+                hsn: newMaterial.hsnNumber || newMaterial.hsn || prev.hsn,
                 sgst: newMaterial.sgstRate ?? prev.sgst,
                 cgst: newMaterial.cgstRate ?? prev.cgst,
                 rate: rate ? String(rate) : prev.rate,
