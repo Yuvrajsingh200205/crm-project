@@ -47,6 +47,8 @@ const INITIAL_FORM = {
     sgst: 5,
     cgst: 5,
     invoiceNo: '',
+    buyerOrder: '',
+    destination: '',
 };
 
 const INITIAL_PARTY_FORM = {
@@ -282,6 +284,197 @@ function AddMaterialModal({ onClose, onCreated }) {
 // Main Component
 // ------------------------------------------------------------
 // ------------------------------------------------------------
+// Live Invoice Preview (inline, real-time, no extra state)
+// ------------------------------------------------------------
+function LiveInvoicePreview({ formData, partyObj, materialObj }) {
+    const getRate = (v1, v2, def) => {
+        if (v1 !== undefined && v1 !== null && v1 !== '') return Number(v1);
+        if (v2 !== undefined && v2 !== null && v2 !== '') return Number(v2);
+        return def || 9;
+    };
+    const cgstRate = getRate(formData.cgst, formData.cgstRate, materialObj?.cgstRate);
+    const sgstRate = getRate(formData.sgst, formData.sgstRate, materialObj?.sgstRate);
+    const year = new Date(formData.date || new Date()).getFullYear();
+    const nextShortYear = String(year + 1).slice(2);
+    const invoiceNo = formData.invoiceNo || `RK/${year}-${nextShortYear}/—`;
+    const dateStr = new Date(formData.date || new Date()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+    const qty = Number(formData.quantity) || 0;
+    const rate = Number(formData.amount) || 0;
+    const baseAmount = rate * qty;
+    const cgstAmt = parseFloat(((baseAmount * cgstRate) / 100).toFixed(2));
+    const sgstAmt = parseFloat(((baseAmount * sgstRate) / 100).toFixed(2));
+    const grandTotal = parseFloat((baseAmount + cgstAmt + sgstAmt).toFixed(2));
+    const hsn = formData.hsn || materialObj?.hsn || '—';
+    const materialDesc = formData.materialName || materialObj?.materialName || '—';
+    const partyName = partyObj?.partyName || partyObj?.name || formData.partyName || '—';
+    const partyAddr = [partyObj?.address, partyObj?.city, partyObj?.state, partyObj?.pincode].filter(Boolean).join(', ') || '—';
+    const partyGSTIN = partyObj?.gstin || '—';
+    const fmt = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+    const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+    function numToWords(n) {
+        n = Math.round(n);
+        if (n === 0) return 'Zero';
+        if (n < 20) return ones[n];
+        if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' '+ones[n%10] : '');
+        if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' '+numToWords(n%100) : '');
+        if (n < 100000) return numToWords(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' '+numToWords(n%1000) : '');
+        if (n < 10000000) return numToWords(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' '+numToWords(n%100000) : '');
+        return numToWords(Math.floor(n/10000000)) + ' Crore' + (n%10000000 ? ' '+numToWords(n%10000000) : '');
+    }
+    const paise = Math.round((grandTotal % 1) * 100);
+    const grandWords = grandTotal > 0
+        ? 'INR ' + numToWords(Math.floor(grandTotal)) + ' and ' + (paise ? numToWords(paise) + ' paise' : 'Zero paise') + ' Only'
+        : '—';
+
+    const cell = (extra = '') => ({ border: '1px solid #888', padding: '4px 6px', verticalAlign: 'top', ...parseStyleStr(extra) });
+    function parseStyleStr(s) {
+        if (!s) return {};
+        return s.split(';').reduce((acc, p) => {
+            const [k, v] = p.split(':');
+            if (k && v) acc[k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v.trim();
+            return acc;
+        }, {});
+    }
+
+    return (
+        <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 10, color: '#111', background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+            {/* Title */}
+            <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 'bold', padding: '8px 12px', border: '2px solid #222', margin: '10px 10px 0', letterSpacing: 1 }}>
+                Tax Invoice
+            </div>
+
+            <div style={{ padding: '0 10px 10px' }}>
+                {/* Header info table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
+                    <tbody>
+                        <tr>
+                            <td rowSpan={5} style={{ ...cell(), width: '50%', fontSize: 9.5 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 2 }}>Morlatis Engineering And Construction Pvt Ltd</div>
+                                <div>01, Ramanad Nagar, Keshonaryanpur</div>
+                                <div>Dakhli, Samastipur, Bihar – 848504</div>
+                                <div><b>GSTIN:</b> 10AAMCM1665L2ZC</div>
+                                <div style={{ marginTop: 6, fontWeight: 'bold' }}>Buyer (Bill to)</div>
+                                <div style={{ fontWeight: 'bold', color: '#1e3a34' }}>{partyName}</div>
+                                <div style={{ color: '#555' }}>{partyAddr}</div>
+                                <div>GSTIN: {partyGSTIN}</div>
+                            </td>
+                            <td style={cell('width:25%')}><div style={{ color: '#888', fontSize: 9 }}>Invoice No.</div><div style={{ fontWeight: 'bold' }}>{invoiceNo}</div></td>
+                            <td style={cell('width:25%')}><div style={{ color: '#888', fontSize: 9 }}>Dated</div><div style={{ fontWeight: 'bold' }}>{dateStr}</div></td>
+                        </tr>
+                        <tr>
+                            <td style={cell()}><div style={{ color: '#888', fontSize: 9 }}>Buyer's Order No.</div><div style={{ fontWeight: 'bold' }}>{formData.buyerOrder || '—'}</div></td>
+                            <td style={cell()}><div style={{ color: '#888', fontSize: 9 }}>Dated</div><div style={{ fontWeight: 'bold' }}>{dateStr}</div></td>
+                        </tr>
+                        <tr>
+                            <td style={cell()}>Dispatch Doc No.</td>
+                            <td style={cell()}>Delivery Note Date</td>
+                        </tr>
+                        <tr>
+                            <td style={cell()}>Dispatched through</td>
+                            <td style={cell()}>Destination: {formData.destination || '—'}</td>
+                        </tr>
+                        <tr>
+                            <td colSpan={2} style={cell()}>Terms of Delivery</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* Items table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 4 }}>
+                    <thead>
+                        <tr style={{ background: '#f0f0f0' }}>
+                            {['#', 'Description', 'HSN', 'Qty', 'Rate (₹)', 'per', 'Amount (₹)'].map(h => (
+                                <th key={h} style={{ border: '1px solid #888', padding: '4px 5px', textAlign: 'center', fontSize: 9, fontWeight: 'bold' }}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style={{ ...cell(), textAlign: 'center' }}>1</td>
+                            <td style={{ ...cell(), fontWeight: 'bold', color: '#1e3a34' }}>{materialDesc}</td>
+                            <td style={{ ...cell(), textAlign: 'center' }}>{hsn}</td>
+                            <td style={{ ...cell(), textAlign: 'center', fontWeight: 'bold' }}>{qty || '—'}</td>
+                            <td style={{ ...cell(), textAlign: 'right', fontWeight: 'bold' }}>{rate ? fmt(rate) : '—'}</td>
+                            <td style={{ ...cell(), textAlign: 'center' }}>Nos</td>
+                            <td style={{ ...cell(), textAlign: 'right', fontWeight: 'bold' }}>{baseAmount ? fmt(baseAmount) : '—'}</td>
+                        </tr>
+                        {[...Array(2)].map((_, i) => (
+                            <tr key={i}>{[...Array(7)].map((_, j) => <td key={j} style={{ border: '1px solid #bbb', height: 16 }} />)}</tr>
+                        ))}
+                        <tr>
+                            <td colSpan={5} style={{ ...cell(), textAlign: 'right', fontStyle: 'italic', fontWeight: 'bold' }}>CGST @ {cgstRate}%</td>
+                            <td style={cell()} />
+                            <td style={{ ...cell(), textAlign: 'right' }}>{cgstAmt ? fmt(cgstAmt) : '—'}</td>
+                        </tr>
+                        <tr>
+                            <td colSpan={5} style={{ ...cell(), textAlign: 'right', fontStyle: 'italic', fontWeight: 'bold' }}>SGST @ {sgstRate}%</td>
+                            <td style={cell()} />
+                            <td style={{ ...cell(), textAlign: 'right' }}>{sgstAmt ? fmt(sgstAmt) : '—'}</td>
+                        </tr>
+                        <tr style={{ background: '#f8fdf9' }}>
+                            <td colSpan={5} style={{ ...cell(), textAlign: 'right', fontWeight: 'bold', fontSize: 11 }}>Grand Total</td>
+                            <td style={cell()} />
+                            <td style={{ ...cell(), textAlign: 'right', fontWeight: 'bold', fontSize: 12, color: '#1e3a34' }}>₹ {grandTotal ? fmt(grandTotal) : '—'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* Amount in words */}
+                <div style={{ border: '1px solid #888', borderTop: 'none', padding: '5px 7px', fontSize: 9.5 }}>
+                    <span style={{ color: '#555' }}>Amount Chargeable (in words): </span>
+                    <span style={{ fontWeight: 'bold', fontStyle: 'italic' }}>{grandWords}</span>
+                </div>
+
+                {/* Tax summary */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 4 }}>
+                    <thead>
+                        <tr style={{ background: '#f0f0f0' }}>
+                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right', fontSize: 9 }}>HSN/SAC</th>
+                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right', fontSize: 9 }}>Taxable Value</th>
+                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center', fontSize: 9 }}>CGST Amt</th>
+                            <th style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center', fontSize: 9 }}>SGST Amt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right' }}>{hsn}</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right' }}>{baseAmount ? fmt(baseAmount) : '—'}</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center' }}>{cgstAmt ? fmt(cgstAmt) : '—'}</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center' }}>{sgstAmt ? fmt(sgstAmt) : '—'}</td>
+                        </tr>
+                        <tr style={{ fontWeight: 'bold', background: '#f8fdf9' }}>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right' }}>Total</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'right' }}>{baseAmount ? fmt(baseAmount) : '—'}</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center' }}>{cgstAmt ? fmt(cgstAmt) : '—'}</td>
+                            <td style={{ border: '1px solid #888', padding: '3px 5px', textAlign: 'center' }}>{sgstAmt ? fmt(sgstAmt) : '—'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* Declaration + Signatory */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 4 }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ border: '1px solid #888', padding: '5px 7px', width: '50%', fontSize: 9, color: '#444', borderRight: 'none' }}>
+                                <u style={{ fontWeight: 'bold' }}>Declaration</u><br />
+                                We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                            </td>
+                            <td style={{ border: '1px solid #888', padding: '5px 7px', textAlign: 'right', fontSize: 9, color: '#444', borderLeft: 'none' }}>
+                                <div style={{ fontWeight: 'bold' }}>for Morlatis Engineering And Construction Pvt Ltd</div>
+                                <div style={{ marginTop: 20 }}>Authorised Signatory</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style={{ textAlign: 'center', fontSize: 9, color: '#888', marginTop: 5 }}>This is a Computer Generated Invoice</div>
+            </div>
+        </div>
+    );
+}
+
+// ------------------------------------------------------------
 // Invoice Preview Modal
 // ------------------------------------------------------------
 function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownload, onPrint, isSaving }) {
@@ -386,7 +579,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}>Other References</td>
                                     </tr>
                                     <tr>
-                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Buyer's Order No.</div><div style={{fontWeight:'bold'}}>PI/2026-27/07</div></td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Buyer's Order No.</div><div style={{fontWeight:'bold'}}>{formData.buyerOrder || 'PI/2026-27/07'}</div></td>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Dated</div><div style={{fontWeight:'bold'}}>{dateStr}</div></td>
                                     </tr>
                                     <tr>
@@ -395,7 +588,7 @@ function InvoicePreviewModal({ formData, partyObj, materialObj, onClose, onDownl
                                     </tr>
                                     <tr>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}>Dispatched through</td>
-                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Destination</td>
+                                        <td style={{border:'1px solid #555',padding:'5px 7px'}}>Destination: {formData.destination || ''}</td>
                                     </tr>
                                     <tr>
                                         <td style={{border:'1px solid #555',padding:'5px 7px'}}><div>Bill of Lading/LR-RR No.</div><div style={{fontWeight:'bold'}}>dt. {dateStr}</div></td>
@@ -1020,16 +1213,21 @@ export default function Vouchers() {
 
             {/* ── Voucher Entry Modal ── */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
+                    <div
+                        className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col ${isSalesVoucher ? 'max-w-6xl' : 'max-w-2xl'}`}
+                        style={{ maxHeight: '96vh' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-[#1e3a34] text-white flex-shrink-0">
                             <div className="flex items-center gap-3">
                                 {isSalesVoucher && <FileText className="w-5 h-5 text-blue-300" />}
                                 <h2 className="text-base font-semibold">
                                     {currentVoucherType ? `${currentVoucherType.label} Entry` : 'Journal Entry'}
                                 </h2>
                                 {isSalesVoucher && (
-                                    <span className="text-[10px] bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">+ Invoice Download</span>
+                                    <span className="text-[10px] bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Live Preview</span>
                                 )}
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
@@ -1037,220 +1235,241 @@ export default function Vouchers() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSave} className="p-8 space-y-8 max-h-[78vh] overflow-y-auto">
-                            {/* Section 1: Basic Parameters */}
-                            <div>
-                                <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">1. Basic Parameters</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2 leading-none">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Type <span className="text-red-500">*</span></label>
-                                        <div className="relative">
-                                            <select name="type"
-                                                className={`input w-full h-12 appearance-none bg-white pr-10 font-bold ${isTypeLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
-                                                value={formData.type} onChange={handleInputChange} disabled={isTypeLocked}>
-                                                {VOUCHER_TYPES.map(vt => <option key={vt.key} value={vt.key}>{vt.label}</option>)}
-                                            </select>
-                                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Entry Date <span className="text-red-500">*</span></label>
-                                        <input name="date" type="date" className="input h-12 font-bold w-full" value={formData.date} onChange={handleInputChange} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice No</label>
-                                        <input name="invoiceNo" type="text" className="input h-12 w-full font-bold" placeholder="INV-001" value={formData.invoiceNo} onChange={handleInputChange} />
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Body: split for Sales, single-col for others */}
+                        <div className={`flex-1 overflow-hidden ${isSalesVoucher ? 'flex flex-col lg:flex-row' : ''}`}>
 
-                            {/* Section 2: Financial Matrix */}
-                            {!isSalesVoucher && (
-                                <div>
-                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Financial Matrix</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
-                                            <input name="amount" type="number" className="input h-12 font-black text-slate-800" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (&#8377;)</label>
-                                            <input name="tdsDeductions" type="number" className="input h-12 font-black text-rose-500 bg-rose-50/30 border-rose-100" placeholder="0.00" value={formData.tdsDeductions} onChange={handleInputChange} />
+                            {/* ── LEFT: Form ── */}
+                            <form
+                                onSubmit={handleSave}
+                                className={`flex flex-col overflow-y-auto ${isSalesVoucher ? 'lg:w-1/2 lg:border-r border-slate-100' : 'w-full'}`}
+                            >
+                                <div className="p-6 space-y-7 flex-1">
+                                    {/* Section 1: Basic Parameters */}
+                                    <div>
+                                        <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-5 uppercase">1. Basic Parameters</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div className="space-y-2 leading-none">
+                                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Type <span className="text-red-500">*</span></label>
+                                                <div className="relative">
+                                                    <select name="type"
+                                                        className={`input w-full h-11 appearance-none bg-white pr-10 font-bold ${isTypeLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                                                        value={formData.type} onChange={handleInputChange} disabled={isTypeLocked}>
+                                                        {VOUCHER_TYPES.map(vt => <option key={vt.key} value={vt.key}>{vt.label}</option>)}
+                                                    </select>
+                                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Entry Date <span className="text-red-500">*</span></label>
+                                                <input name="date" type="date" className="input h-11 font-bold w-full" value={formData.date} onChange={handleInputChange} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice No</label>
+                                                <input name="invoiceNo" type="text" className="input h-11 w-full font-bold" placeholder="INV-001" value={formData.invoiceNo} onChange={handleInputChange} />
+                                            </div>
                                         </div>
                                     </div>
-                                    {(formData.type === 'Purchase Voucher') && (
-                                        <div className="space-y-2 mt-6">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Account <span className="text-red-500">*</span></label>
-                                            <div className="relative">
-                                                <select required name="accountId" className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={formData.accountId} onChange={handleInputChange}>
-                                                    <option value="">Select Bank Account...</option>
-                                                    {(refData.banks || []).map(bank => (
-                                                        <option key={bank.id} value={bank.id}>
-                                                            {bank.bankName} - {bank.accountNo} (Balance: &#8377;{Number(bank.balance).toLocaleString()})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+                                    {/* Financial Matrix (non-Sales) */}
+                                    {!isSalesVoucher && (
+                                        <div>
+                                            <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-5 uppercase">2. Financial Matrix</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <div className="space-y-2">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
+                                                    <input name="amount" type="number" className="input h-11 font-black text-slate-800" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">TDS / Deductions (&#8377;)</label>
+                                                    <input name="tdsDeductions" type="number" className="input h-11 font-black text-rose-500 bg-rose-50/30 border-rose-100" placeholder="0.00" value={formData.tdsDeductions} onChange={handleInputChange} />
+                                                </div>
+                                            </div>
+                                            {(formData.type === 'Purchase Voucher') && (
+                                                <div className="space-y-2 mt-5">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Account <span className="text-red-500">*</span></label>
+                                                    <div className="relative">
+                                                        <select required name="accountId" className="input w-full h-11 appearance-none bg-white pr-10 font-bold" value={formData.accountId} onChange={handleInputChange}>
+                                                            <option value="">Select Bank Account...</option>
+                                                            {(refData.banks || []).map(bank => (
+                                                                <option key={bank.id} value={bank.id}>
+                                                                    {bank.bankName} - {bank.accountNo} (Balance: &#8377;{Number(bank.balance).toLocaleString()})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Sales Voucher Details */}
+                                    {isSalesVoucher && (
+                                        <div>
+                                            <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-5 uppercase">2. Voucher Details</h3>
+                                            <div className="space-y-4">
+                                                <SearchableSelect
+                                                    label="Party Name"
+                                                    required
+                                                    placeholder="Search parties..."
+                                                    options={refData.parties || []}
+                                                    value={formData.partyId}
+                                                    displayLabel={formData.partyName}
+                                                    isLoading={refLoading.parties}
+                                                    getOptionValue={(o) => o.id || o._id}
+                                                    getOptionLabel={(o) => o.partyName || o.name || `Party #${o.id}`}
+                                                    onChange={handlePartySelect}
+                                                    actionElement={
+                                                        <button type="button" onClick={() => setShowAddParty(true)}
+                                                            className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                            <Plus className="w-3.5 h-3.5" /> Add New Party
+                                                        </button>
+                                                    }
+                                                />
+                                                <SearchableSelect
+                                                    label="Material / Service"
+                                                    required
+                                                    placeholder="Search materials..."
+                                                    options={refData.materials || []}
+                                                    value={formData.materialId}
+                                                    displayLabel={formData.materialName}
+                                                    isLoading={refLoading.materials}
+                                                    getOptionValue={(o) => o.id || o._id}
+                                                    getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
+                                                    onChange={handleSalesMaterialSelect}
+                                                    actionElement={
+                                                        <button type="button" onClick={() => setShowAddMaterial(true)}
+                                                            className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
+                                                            <Plus className="w-3.5 h-3.5" /> Add New Material
+                                                        </button>
+                                                    }
+                                                />
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity <span className="text-red-500">*</span></label>
+                                                        <input name="quantity" type="number" className="input h-11 w-full font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
+                                                    </div>
+                                                    <div className="space-y-2 col-span-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount / Rate (&#8377;) <span className="text-red-500">*</span></label>
+                                                        <input name="amount" type="number" className="input h-11 w-full font-bold" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST (%)</label>
+                                                        <input name="sgst" type="number" className="input h-11 w-full font-bold" placeholder="5" value={formData.sgst} onChange={handleInputChange} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">CGST (%)</label>
+                                                        <input name="cgst" type="number" className="input h-11 w-full font-bold" placeholder="5" value={formData.cgst} onChange={handleInputChange} />
+                                                    </div>
+                                                </div>
+                                                {/* Optional: Buyer Order & Destination */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Buyer Order No. <span className="text-slate-300 font-normal normal-case">optional</span></label>
+                                                        <input name="buyerOrder" type="text" className="input h-11 w-full font-bold" placeholder="e.g. PO-2026-07" value={formData.buyerOrder} onChange={handleInputChange} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Destination <span className="text-slate-300 font-normal normal-case">optional</span></label>
+                                                        <input name="destination" type="text" className="input h-11 w-full font-bold" placeholder="e.g. Patna" value={formData.destination} onChange={handleInputChange} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Party & Intent (non-Sales) */}
+                                    {!isSalesVoucher && (
+                                        <div>
+                                            <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-5 uppercase">3. Party &amp; Intent</h3>
+                                            <div className="grid grid-cols-1 gap-5">
+                                                <div className="space-y-2">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Party / Ledger Account <span className="text-red-500">*</span></label>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Type <span className="text-red-500">*</span></label>
+                                                            <div className="relative">
+                                                                <select className="input w-full h-11 appearance-none bg-white pr-10 font-bold" value={secondaryPartyKind} onChange={handleSecondaryPartyKindChange}>
+                                                                    <option value="">Select type...</option>
+                                                                    <option value="material">Material</option>
+                                                                    <option value="equipment">Equipment</option>
+                                                                    <option value="vendor">Vendor</option>
+                                                                    <option value="tender">Tender</option>
+                                                                </select>
+                                                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                            </div>
+                                                        </div>
+                                                        <SearchableSelect
+                                                            label={secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.label : 'Select'}
+                                                            required
+                                                            placeholder={secondaryPartyKind ? `Search ${secondaryPartyMeta[secondaryPartyKind]?.label?.toLowerCase()}...` : 'Select type first...'}
+                                                            options={secondaryPartyKind ? (refData[secondaryPartyMeta[secondaryPartyKind]?.dataKey] || []) : []}
+                                                            value={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.idField] : ''}
+                                                            displayLabel={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.nameField] : ''}
+                                                            isLoading={secondaryPartyKind ? refLoading[secondaryPartyMeta[secondaryPartyKind]?.dataKey] : false}
+                                                            disabled={!secondaryPartyKind}
+                                                            getOptionValue={(o) => o.id}
+                                                            getOptionLabel={(o) => secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.getOptionLabel(o) : ''}
+                                                            onChange={handleSecondaryPartySelect}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
+                                                    <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </div>
-                            )}
 
-                            {/* Section 3: Sales Invoice Details */}
-                            {isSalesVoucher && (
-                                <div>
-                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">2. Voucher Details</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {/* Party Name */}
-                                        <SearchableSelect
-                                            label="Party Name"
-                                            required
-                                            placeholder="Search parties..."
-                                            options={refData.parties || []}
-                                            value={formData.partyId}
-                                            displayLabel={formData.partyName}
-                                            isLoading={refLoading.parties}
-                                            getOptionValue={(o) => o.id || o._id}
-                                            getOptionLabel={(o) => o.partyName || o.name || `Party #${o.id}`}
-                                            onChange={handlePartySelect}
-                                            actionElement={
-                                                <button type="button" onClick={() => setShowAddParty(true)}
-                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
-                                                    <Plus className="w-3.5 h-3.5" /> Add New Party
-                                                </button>
-                                            }
-                                        />
-
-                                        {/* Material Name */}
-                                        <SearchableSelect
-                                            label="Material / Service"
-                                            required
-                                            placeholder="Search materials..."
-                                            options={refData.materials || []}
-                                            value={formData.materialId}
-                                            displayLabel={formData.materialName}
-                                            isLoading={refLoading.materials}
-                                            getOptionValue={(o) => o.id || o._id}
-                                            getOptionLabel={(o) => o.materialName || o.name || `Material #${o.id}`}
-                                            onChange={handleSalesMaterialSelect}
-                                            actionElement={
-                                                <button type="button" onClick={() => setShowAddMaterial(true)}
-                                                    className="w-full flex items-center justify-center gap-1.5 text-[11px] font-black text-[#2f6645] hover:text-[#1e3a34] bg-[#2f6645]/10 hover:bg-[#2f6645]/20 py-2.5 rounded-lg transition-all active:scale-95 shadow-sm">
-                                                    <Plus className="w-3.5 h-3.5" /> Add New Material
-                                                </button>
-                                            }
-                                        />
-
-                                        {/* Quantity */}
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity <span className="text-red-500">*</span></label>
-                                            <input name="quantity" type="number" className="input h-12 w-full font-bold" placeholder="1" value={formData.quantity} onChange={handleInputChange} />
-                                        </div>
-
-                                        {/* Amount */}
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount (&#8377;) <span className="text-red-500">*</span></label>
-                                            <input name="amount" type="number" className="input h-12 w-full font-bold" placeholder="0.00" value={formData.amount} onChange={handleInputChange} />
-                                        </div>
-
-                                        {/* SGST */}
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SGST (%)</label>
-                                            <input name="sgst" type="number" className="input h-12 w-full font-bold" placeholder="5" value={formData.sgst} onChange={handleInputChange} />
-                                        </div>
-
-                                        {/* CGST */}
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">CGST (%)</label>
-                                            <input name="cgst" type="number" className="input h-12 w-full font-bold" placeholder="5" value={formData.cgst} onChange={handleInputChange} />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Section 3: Party & Intent (non-Sales) */}
-                            {!isSalesVoucher && (
-                                <div>
-                                    <h3 className="text-[10px] font-black tracking-[0.2em] text-[#1e3a34] mb-6 uppercase">3. Party & Intent</h3>
-                                    <div className="grid grid-cols-1 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Party / Ledger Account <span className="text-red-500">*</span></label>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Type <span className="text-red-500">*</span></label>
-                                                    <div className="relative">
-                                                        <select className="input w-full h-12 appearance-none bg-white pr-10 font-bold" value={secondaryPartyKind} onChange={handleSecondaryPartyKindChange}>
-                                                            <option value="">Select type...</option>
-                                                            <option value="material">Material</option>
-                                                            <option value="equipment">Equipment</option>
-                                                            <option value="vendor">Vendor</option>
-                                                            <option value="tender">Tender</option>
-                                                        </select>
-                                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                                <SearchableSelect
-                                                    label={secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.label : 'Select'}
-                                                    required
-                                                    placeholder={secondaryPartyKind ? `Search ${secondaryPartyMeta[secondaryPartyKind]?.label?.toLowerCase()}...` : 'Select type first...'}
-                                                    options={secondaryPartyKind ? (refData[secondaryPartyMeta[secondaryPartyKind]?.dataKey] || []) : []}
-                                                    value={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.idField] : ''}
-                                                    displayLabel={secondaryPartyKind ? formData[secondaryPartyMeta[secondaryPartyKind]?.nameField] : ''}
-                                                    isLoading={secondaryPartyKind ? refLoading[secondaryPartyMeta[secondaryPartyKind]?.dataKey] : false}
-                                                    disabled={!secondaryPartyKind}
-                                                    getOptionValue={(o) => o.id}
-                                                    getOptionLabel={(o) => secondaryPartyKind ? secondaryPartyMeta[secondaryPartyKind]?.getOptionLabel(o) : ''}
-                                                    onChange={handleSecondaryPartySelect}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Narration / Detailed Remarks</label>
-                                            <textarea name="narrationRemarks" rows="3" className="input py-3 font-medium h-auto" placeholder="Enter transaction narrative..." value={formData.narrationRemarks} onChange={handleInputChange}></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-
-
-                            {/* Submit Buttons */}
-                            <div className="flex gap-3 pt-4 mt-6 border-t border-slate-100 sticky bottom-0 bg-white z-40 pb-2 flex-wrap">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex-shrink-0">Discard</button>
-                                {isSalesVoucher && !isEditing ? (
-                                    <>
-                                        {/* Preview Invoice — opens modal, no save */}
-                                        <button
-                                            type="button"
-                                            onClick={handleOpenInvoicePreview}
-                                            className="flex-1 min-w-[140px] h-12 text-[11px] font-black uppercase tracking-widest border-2 border-[#2f6645] text-[#2f6645] hover:bg-[#2f6645]/10 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
-                                        >
-                                            <Eye className="w-4 h-4" />
-                                            Preview Invoice
-                                        </button>
-                                        {/* Download Invoice — submits form, saves + downloads directly */}
+                                {/* Form footer / action buttons */}
+                                <div className="flex gap-3 px-6 py-4 border-t border-slate-100 bg-white flex-shrink-0 flex-wrap">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex-shrink-0">Discard</button>
+                                    {isSalesVoucher && !isEditing ? (
                                         <button
                                             type="submit"
                                             disabled={isSaving}
-                                            className="flex-1 min-w-[140px] h-12 text-[11px] font-black uppercase tracking-widest rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-lg shadow-[#2f6645]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                                            className="flex-1 min-w-[160px] h-11 text-[11px] font-black uppercase tracking-widest rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-lg shadow-[#2f6645]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
                                         >
                                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                                             Download Invoice
                                         </button>
-                                    </>
-                                ) : (
-                                    <button type="submit" disabled={isSaving}
-                                        className="flex-1 h-12 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20 disabled:opacity-60">
-                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                        {isEditing
-                                            ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
-                                            : 'Post to Ledger'
-                                        }
-                                    </button>
-                                )}
-                            </div>
-                        </form>
+                                    ) : (
+                                        <button type="submit" disabled={isSaving}
+                                            className="flex-1 h-11 text-[11px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all rounded-xl text-white bg-[#2f6645] hover:bg-[#1e3a34] shadow-[#2f6645]/20 disabled:opacity-60">
+                                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSalesVoucher ? <Download className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                            {isEditing
+                                                ? `Update ${currentVoucherType ? currentVoucherType.label : 'Journal'}`
+                                                : 'Post to Ledger'
+                                            }
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
+
+                            {/* ── RIGHT: Live Invoice Preview (Sales only) ── */}
+                            {isSalesVoucher && (
+                                <div className="lg:w-1/2 bg-slate-50 overflow-y-auto flex flex-col border-t lg:border-t-0 border-slate-100">
+                                    {/* Preview header */}
+                                    <div className="px-5 py-3 border-b border-slate-200 bg-white flex items-center gap-2 flex-shrink-0">
+                                        <Eye className="w-4 h-4 text-[#2f6645]" />
+                                        <span className="text-[11px] font-black text-[#1e3a34] uppercase tracking-widest">Live Invoice Preview</span>
+                                        <span className="ml-auto text-[10px] text-slate-400 font-semibold italic">Updates as you type</span>
+                                    </div>
+
+                                    {/* Preview content */}
+                                    <div className="p-4 flex-1">
+                                        <LiveInvoicePreview
+                                            formData={formData}
+                                            partyObj={selectedPartyObj}
+                                            materialObj={selectedMaterialObj}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
