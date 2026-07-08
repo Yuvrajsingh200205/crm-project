@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../hooks/useApp';
 import {
     TrendingUp, TrendingDown, DollarSign, FolderKanban, Users,
     Package, AlertTriangle, CheckCircle, Clock, Activity,
@@ -116,8 +116,8 @@ export default function Dashboard() {
                 if (Array.isArray(list)) {
                     setEmployeeCount(list.length);
                 }
-            } catch (err) {
-                console.debug('Dashboard stats skip: ', err.message);
+            } catch {
+                // Dashboard stats stay at their fallback values when this endpoint is unavailable.
             } finally {
                 setTimeout(() => setIsLoading(false), 500);
             }

@@ -1,68 +1,21 @@
-import { Bell, Search, Menu, X, Sun, ChevronDown, Zap, LogOut, User, Settings, Mail as MailIcon, Clock, LogIn } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { Search, Menu, X, ChevronDown, Zap, LogOut, User, Settings, Mail as MailIcon, LogIn } from 'lucide-react';
+import { useApp } from '../hooks/useApp';
 import { useState, useEffect, useRef } from 'react';
 import { axiosInstance } from '../api/axios';
 import toast from 'react-hot-toast';
-
-const moduleTitles = {
-    'dashboard': 'Dashboard',
-    'project-master': 'Project Master',
-    'work-orders': 'Work Orders',
-    'boq': 'Bill of Quantities',
-    'site-management': 'Site Management',
-    'progress-tracking': 'Progress Tracking',
-    'chart-of-accounts': 'Chart of Accounts',
-    'bank-management': 'Bank Management',
-    'vouchers': 'Voucher Management',
-    'invoicing': 'Invoicing & Billing',
-    'accounts-payable': 'Accounts Payable',
-    'accounts-receivable': 'Accounts Receivable',
-    'gst-management': 'GST Management',
-    'tds-management': 'TDS Management',
-    'bank-reconciliation': 'Bank Reconciliation',
-    'job-costing': 'Job Costing (P&L)',
-    'procurement': 'Procurement Management',
-    'inventory': 'Inventory & Store',
-    'material-reconciliation': 'Material Reconciliation',
-    'equipment': 'Equipment & Assets',
-    'subcontractors': 'Subcontractor Management',
-    'employee-master': 'Employee Master',
-    'attendance': 'Attendance Management',
-    'leave-management': 'Leave Management',
-    'payroll': 'Payroll Processing',
-    'statutory-compliance': 'Statutory Compliance',
-    'reimbursements': 'Reimbursements',
-    'crm': 'CRM',
-    'quotations': 'Quotations',
-    'tenders': 'Tender Management',
-    'contracts': 'Contract Management',
-    'vendor-management': 'Vendor Management',
-    'legal-compliance': 'Legal Compliance',
-    'board-resolutions': 'Board Resolutions',
-    'safety-quality': 'Safety & Quality',
-    'executive-dashboard': 'Executive Dashboard',
-    'project-analytics': 'Project Analytics',
-    'financial-analytics': 'Financial Analytics',
-    'hr-analytics': 'HR Analytics',
-    'custom-reports': 'Custom Reports',
-};
+import { MODULE_TITLES } from '../constants/navigation';
 
 export default function Header() {
-    const { activeModule, sidebarOpen, setSidebarOpen, notifications, markAllRead, userRole, userProfile, logout } = useApp();
-    const [showNotifications, setShowNotifications] = useState(false);
+    const { activeModule, sidebarOpen, setSidebarOpen, userRole, userProfile, logout } = useApp();
     const [showSearch, setShowSearch] = useState(false);
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
 
-    const notificationsRef = useRef(null);
     const profileRef = useRef(null);
 
     // Close dropdowns on outside click
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-                setShowNotifications(false);
-            }
             if (profileRef.current && !profileRef.current.contains(event.target)) {
                 setShowProfileDropdown(false);
             }
@@ -71,15 +24,6 @@ export default function Header() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const typeColors = {
-        warning: 'text-yellow-600',
-        info: 'text-blue-600',
-        success: 'text-green-600',
-        error: 'text-red-600',
-    };
 
     const profileName = userProfile?.name || (userRole === 'admin' ? 'Admin' : 'Employee');
     const profileEmail = userProfile?.email || '';
@@ -133,7 +77,7 @@ export default function Header() {
                     <Menu className="w-5 h-5" />
                 </button>
                 <div>
-                    <h1 className="text-slate-900 font-bold text-base md:text-lg truncate max-w-[150px] md:max-w-none">{moduleTitles[activeModule] || 'Dashboard'}</h1>
+                    <h1 className="text-slate-900 font-bold text-base md:text-lg truncate max-w-[150px] md:max-w-none">{MODULE_TITLES[activeModule] || 'Dashboard'}</h1>
                     <div className="hidden md:flex items-center gap-2 text-slate-500 text-xs mt-0.5">
                         <span className="font-medium">EcoConstruct CRM</span>
                         <span>•</span>

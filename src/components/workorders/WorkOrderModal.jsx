@@ -3,7 +3,7 @@ import { X, Loader2 } from 'lucide-react';
 const woTypes = ['Rate Contract', 'Lumpsum', 'Unit Rate', 'Cost Plus'];
 const statusOptions = ['active', 'draft', 'pending approval', 'completed'];
 
-export default function WorkOrderModal({ isOpen, isEditing, formData, projects, isSaving, onClose, onSave, onInputChange }) {
+export default function WorkOrderModal({ isOpen, isEditing, formData, isSaving, onClose, onSave, onInputChange }) {
     if (!isOpen) return null;
 
     return (

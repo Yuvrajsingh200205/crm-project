@@ -4,7 +4,7 @@ import {
     BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
 
-export default function ProgressCharts({ tasks }) {
+export default function ProgressCharts() {
     // Analytics Data
     const velocityData = [
         { name: 'Mon', value: 35 },

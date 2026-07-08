@@ -4,7 +4,7 @@ import { X, Loader2 } from 'lucide-react';
 const statuses = ['status', 'active', 'in progress', 'completed', 'on hold', 'delayed'];
 const priorities = ['priority', 'low', 'medium', 'high', 'critical'];
 
-export default function ProgressUpdateModal({ isOpen, isEditing, formData, sites, isSaving, onClose, onSave, onInputChange }) {
+export default function ProgressUpdateModal({ isOpen, isEditing, formData, isSaving, onClose, onSave, onInputChange }) {
     if (!isOpen) return null;
 
     return (

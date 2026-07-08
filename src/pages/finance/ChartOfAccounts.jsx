@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
     BookOpen, Search, Plus, ChevronRight, ChevronDown, 
     Landmark, Wallet, ArrowRightLeft, Download, Edit2, Trash2, ShieldCheck, X
@@ -6,18 +6,6 @@ import {
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
 import { accountAPI } from '../../api/account';
-
-// Helper to flatten accounts for parent selection
-const getAllAccountsFlat = (acctList) => {
-    let result = [];
-    acctList.forEach(a => {
-        result.push(a);
-        if (a.subAccounts) {
-            result = result.concat(getAllAccountsFlat(a.subAccounts));
-        }
-    });
-    return result;
-};
 
 // Helper to reconstruct tree from flat list with "parents" references
 const buildTree = (flatList) => {
@@ -103,14 +91,8 @@ export default function ChartOfAccounts() {
     const [flatData, setFlatData] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        fetchAccounts();
-    }, []);
-
-    const fetchAccounts = async () => {
-        setIsLoading(true);
+    const fetchAccounts = useCallback(async () => {
         try {
             const res = await accountAPI.getAllAccounts();
             const data = Array.isArray(res) ? res : (res?.data || res?.accounts || []);
@@ -119,10 +101,12 @@ export default function ChartOfAccounts() {
         } catch (error) {
             console.error('Failed to fetch accounts:', error);
             toast.error('Failed to load chart of accounts');
-        } finally {
-            setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        queueMicrotask(fetchAccounts);
+    }, [fetchAccounts]);
 
     const [formData, setFormData] = useState({
         code: '',
@@ -152,7 +136,6 @@ export default function ChartOfAccounts() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
         try {
             const payload = {
                 ...formData,
@@ -171,8 +154,6 @@ export default function ChartOfAccounts() {
         } catch (error) {
             console.error('Failed to save account:', error);
             toast.error('Failed to save account changes');
-        } finally {
-            setIsLoading(false);
         }
     };
 

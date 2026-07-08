@@ -4,51 +4,6 @@ import toast from 'react-hot-toast';
 import { materialReconciliationAPI } from '../../api/materialReconciliation';
 import Skeleton from '../../components/common/Skeleton';
 
-const initialReconciliationData = [
-    {
-        code: '10', description: 'PSC Pole 8 Mtr 200 Kg including fixing', unit: 'No',
-        contractorRate: 6234, subRate: 5800, poQty: 2.0,
-        billedQty: 0,
-        subcontractors: { 'JANKI ENTERPRISES': 0, 'GSAR': 0, 'JGD': 0, 'JYESTHI CONS.': 0, 'DARPAN POWER': 0, 'DILIP KUMAR': 0 },
-        contractorTotal: 0, diff: 2.0,
-    },
-    {
-        code: '50', description: 'PSC Pole 9 Mtr 400 Kg including fixing with cross arm', unit: 'No',
-        contractorRate: 11250, subRate: 10500, poQty: 10.0,
-        billedQty: 16,
-        subcontractors: { 'JANKI ENTERPRISES': 0, 'GSAR': 16, 'JGD': 4, 'JYESTHI CONS.': 0, 'DARPAN POWER': 0, 'DILIP KUMAR': 0 },
-        contractorTotal: 20, diff: -10.0,
-    },
-    {
-        code: '60', description: 'ABC Cable 3X185+1X95 Sq. mm (CKM)', unit: 'CKM',
-        contractorRate: 385000, subRate: 358000, poQty: 0.5,
-        billedQty: 0.9766,
-        subcontractors: { 'JANKI ENTERPRISES': 0.3, 'GSAR': 0.6766, 'JGD': 0, 'JYESTHI CONS.': 0, 'DARPAN POWER': 0, 'DILIP KUMAR': 0 },
-        contractorTotal: 0.9766, diff: -0.4766,
-    },
-    {
-        code: '80', description: 'PSC Pole 9 Mtr 300 Kg incl fixing', unit: 'No',
-        contractorRate: 9340, subRate: 8700, poQty: 10.0,
-        billedQty: 10,
-        subcontractors: { 'JANKI ENTERPRISES': 0, 'GSAR': 0, 'JGD': 10, 'JYESTHI CONS.': 0, 'DARPAN POWER': 0, 'DILIP KUMAR': 0 },
-        contractorTotal: 10, diff: 0.0,
-    },
-    {
-        code: '100', description: 'Stay Set Complete (Ground Anchor type)', unit: 'Set',
-        contractorRate: 1250, subRate: 1150, poQty: 10.0,
-        billedQty: 5,
-        subcontractors: { 'JANKI ENTERPRISES': 5, 'GSAR': 0, 'JGD': 0, 'JYESTHI CONS.': 0, 'DARPAN POWER': 2, 'DILIP KUMAR': 0 },
-        contractorTotal: 5, diff: 5.0,
-    },
-    {
-        code: '120', description: 'HG Fuse Set Complete with LA/SA', unit: 'Set',
-        contractorRate: 4225, subRate: 3900, poQty: 10.0,
-        billedQty: 7,
-        subcontractors: { 'JANKI ENTERPRISES': 5, 'GSAR': 2, 'JGD': 0, 'JYESTHI CONS.': 0, 'DARPAN POWER': 0, 'DILIP KUMAR': 0 },
-        contractorTotal: 7, diff: 3.0,
-    },
-];
-
 const subcontractors = ['JANKI ENTERPRISES', 'GSAR', 'JGD', 'JYESTHI CONS.', 'DARPAN POWER', 'DILIP KUMAR'];
 
 function getStatus(diff, poQty) {

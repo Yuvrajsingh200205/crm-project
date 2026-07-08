@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../api/auth';
+import { useState, useEffect } from 'react';
 import { projectAPI } from '../api/project';
+import { AppContext } from './AppContextValue';
 
 const initialProjects = [];
 
@@ -75,10 +75,6 @@ const initialProgressTasks = [
 
 const initialEmployees = [];
 
-const AppContext = createContext(null);
-
-export const useApp = () => useContext(AppContext);
-
 export function AppProvider({ children }) {
     // Restore active module from localStorage so page refresh stays on the same page
     const [activeModule, setActiveModuleState] = useState(
@@ -104,64 +100,16 @@ export function AppProvider({ children }) {
         try {
             const saved = localStorage.getItem('userProfile');
             return saved ? JSON.parse(saved) : null;
-        } catch (e) {
+        } catch {
             return null;
         }
     });
-
-    const fetchProfile = async () => {
-        // Only fetch if we have an endpoint. /users/me is known to return 404.
-        // We will rely on Login.jsx passing the profile data via login(role, profile).
-        console.debug('Profile fetch not available: /users/me returns 404. Using login data.');
-    };
-
-    const fetchGlobalProjects = async () => {
-        try {
-            const res = await projectAPI.getAllProjects();
-            const data = Array.isArray(res.data) ? res.data : (res.data?.projects || res.data?.data || []);
-            setProjects(data);
-        } catch (error) {
-            console.error("Global Project Fetch Error:", error);
-        }
-    };
-
-    useEffect(() => {
-        if (localStorage.getItem('accessToken')) {
-            fetchProfile();
-            fetchGlobalProjects();
-        }
-    }, [isLoggedIn]);
-
-    const login = (role, profile = null) => {
-        localStorage.setItem('userRole', role);
-        localStorage.setItem('activeModule', 'dashboard');
-        if (profile) {
-            localStorage.setItem('userProfile', JSON.stringify(profile));
-            setUserProfile(profile);
-        }
-        setIsLoggedIn(true);
-        setUserRole(role);
-        setActiveModuleState('dashboard');
-        // Still try to fetch the full profile if we don't have it all
-        fetchProfile();
-    };
-
-    const logout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('activeModule');
-        localStorage.removeItem('userProfile');
-        setIsLoggedIn(false);
-        setUserRole(null);
-        setUserProfile(null);
-    };
 
     const [selectedEmployee, setSelectedEmployeeState] = useState(() => {
         try {
             const saved = localStorage.getItem('selectedEmployee');
             return saved ? JSON.parse(saved) : null;
-        } catch (e) {
+        } catch {
             return null;
         }
     });
@@ -176,16 +124,58 @@ export function AppProvider({ children }) {
     };
 
     const [employees, setEmployees] = useState(initialEmployees);
-    const [projects, setProjects] = useState(initialProjects);
+    const [projects, setProjects] = useState(() => initialProjects);
     const [selectedProject, setSelectedProject] = useState(null);
     const [workOrders, setWorkOrders] = useState(initialWorkOrders);
     const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
     const [boqItems, setBoqItems] = useState(initialBOQItems);
-    const [selectedBOQItem, setSelectedBOQItem] = useState(null);
     const [sites, setSites] = useState(initialSites);
     const [progressTasks, setProgressTasks] = useState(initialProgressTasks);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [selectedVoucher, setSelectedVoucher] = useState(null);
+
+    const fetchProfile = async () => {};
+
+    const fetchGlobalProjects = async () => {
+        try {
+            const res = await projectAPI.getAllProjects();
+            const data = Array.isArray(res.data) ? res.data : (res.data?.projects || res.data?.data || []);
+            setProjects(data);
+        } catch {
+            // Keep existing local project state when the global project endpoint is unavailable.
+        }
+    };
+
+    useEffect(() => {
+        if (localStorage.getItem('accessToken')) {
+            fetchProfile();
+            queueMicrotask(fetchGlobalProjects);
+        }
+    }, [isLoggedIn]);
+
+    const login = (role, profile = null) => {
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('activeModule', 'dashboard');
+        if (profile) {
+            localStorage.setItem('userProfile', JSON.stringify(profile));
+            setUserProfile(profile);
+        }
+        setIsLoggedIn(true);
+        setUserRole(role);
+        setActiveModuleState('dashboard');
+        fetchProfile();
+    };
+
+    const logout = () => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('activeModule');
+        localStorage.removeItem('userProfile');
+        setIsLoggedIn(false);
+        setUserRole(null);
+        setUserProfile(null);
+    };
 
     const updateEmployee = (updatedEmp) => {
         setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));

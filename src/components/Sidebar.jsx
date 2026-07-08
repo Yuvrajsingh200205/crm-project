@@ -1,105 +1,9 @@
 import {
-    LayoutDashboard, FolderKanban, DollarSign, Package, Users,
-    Briefcase, Shield, BarChart3, Wrench, FileText, TrendingUp,
-    Building2, Calculator, Truck, ClipboardList, UserCheck,
-    FileBarChart, Settings, ChevronDown, ChevronRight, Zap
+    ClipboardList, DollarSign, ChevronDown, ChevronRight, Zap
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../hooks/useApp';
 import { useState } from 'react';
-
-const navItems = [
-    {
-        id: 'dashboard',
-        label: 'Dashboard',
-        icon: LayoutDashboard,
-    },
-    {
-        id: 'projects',
-        label: 'Project Management',
-        icon: FolderKanban,
-        children: [
-            { id: 'project-master', label: 'Project Master' },
-            { id: 'work-orders', label: 'Work Orders' },
-            { id: 'boq', label: 'Bill of Quantities' },
-            { id: 'site-management', label: 'Site Management' },
-            { id: 'progress-tracking', label: 'Progress Tracking' },
-        ]
-    },
-    {
-        id: 'finance',
-        label: 'Finance & Accounting',
-        icon: DollarSign,
-        children: [
-            { id: 'chart-of-accounts', label: 'Chart of Accounts' },
-            { id: 'vouchers', label: 'Vouchers' },
-            { id: 'invoicing', label: 'Invoicing & Billing' },
-            { id: 'accounts-payable', label: 'Accounts Payable' },
-            { id: 'accounts-receivable', label: 'Accounts Receivable' },
-            { id: 'gst-management', label: 'GST Management' },
-            { id: 'tds-management', label: 'TDS Management' },
-            { id: 'bank-reconciliation', label: 'Bank Reconciliation' },
-            { id: 'bank-management', label: 'Bank Management' },
-        ]
-    },
-    {
-        id: 'operations',
-        label: 'Operations',
-        icon: Package,
-        children: [
-            { id: 'procurement', label: 'Procurement' },
-            { id: 'inventory', label: 'Inventory & Store' },
-            { id: 'material-reconciliation', label: 'Material Reconciliation' },
-            { id: 'equipment', label: 'Equipment & Assets' },
-            { id: 'subcontractors', label: 'Subcontractors' },
-        ]
-    },
-    {
-        id: 'hr',
-        label: 'Human Resources',
-        icon: Users,
-        children: [
-            { id: 'employee-master', label: 'Employee Master' },
-            { id: 'attendance', label: 'Attendance' },
-            { id: 'leave-management', label: 'Leave Management' },
-            { id: 'payroll', label: 'Payroll Processing' },
-            { id: 'reimbursements', label: 'Reimbursements' },
-        ]
-    },
-    {
-        id: 'business-dev',
-        label: 'Business Development',
-        icon: Briefcase,
-        children: [
-            { id: 'crm', label: 'CRM' },
-            { id: 'quotations', label: 'Quotations' },
-            { id: 'tenders', label: 'Tender Management' },
-            { id: 'contracts', label: 'Contract Management' },
-            { id: 'vendor-management', label: 'Vendor Management' },
-        ]
-    },
-    {
-        id: 'compliance',
-        label: 'Compliance & Legal',
-        icon: Shield,
-        children: [
-            { id: 'legal-compliance', label: 'Legal Compliance' },
-            { id: 'board-resolutions', label: 'Board Resolutions' },
-            { id: 'safety-quality', label: 'Safety & Quality' },
-        ]
-    },
-    {
-        id: 'analytics',
-        label: 'Analytics & Reports',
-        icon: BarChart3,
-        children: [
-            { id: 'executive-dashboard', label: 'Executive Dashboard' },
-            { id: 'project-analytics', label: 'Project Analytics' },
-            { id: 'financial-analytics', label: 'Financial Analytics' },
-            { id: 'hr-analytics', label: 'HR Analytics' },
-            { id: 'custom-reports', label: 'Custom Reports' },
-        ]
-    },
-];
+import { NAV_ITEMS } from '../constants/navigation';
 
 function NavItem({ item, depth = 0, role, hasMultipleSections = false }) {
     const { activeModule, setActiveModule } = useApp();
@@ -159,7 +63,7 @@ export default function Sidebar({ role }) {
     const displayEmail = userProfile?.email || 'portal@ecoconstruct.com';
 
 
-    const baseFiltered = navItems.map(item => {
+    const baseFiltered = NAV_ITEMS.map(item => {
         const newItem = { ...item, children: item.children ? [...item.children] : undefined };
 
         if (role === 'admin') return newItem;

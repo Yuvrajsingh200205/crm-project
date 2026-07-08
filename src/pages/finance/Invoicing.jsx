@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     Search, Plus, Download, CheckCircle2, Clock, FileText, 
     TrendingUp, X, Edit2, Trash2, Eye, Save, Loader2,
     Calendar, Building2, Wallet, CreditCard, ChevronDown, ChevronRight
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
 import { invoiceAPI } from '../../api/invoice';
@@ -255,7 +255,7 @@ export default function Invoicing() {
                                         <td className="table-cell text-right"><Skeleton variant="button" className="w-20 h-8" /></td>
                                     </tr>
                                 ))
-                            ) : filteredInvoices.map((inv, i) => (
+                            ) : filteredInvoices.map((inv) => (
                                 <tr key={inv._id || inv.id} className="table-row hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => { setSelectedInvoice(inv); setActiveModule('invoice-detail'); }}>
                                     <td className="table-cell font-mono text-blue-500 text-xs font-semibold">{inv.invoiceId}</td>
                                     <td className="table-cell">

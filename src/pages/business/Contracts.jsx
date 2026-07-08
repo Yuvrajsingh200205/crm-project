@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
 import { contractAPI } from '../../api/contract';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 
 const statusBadge = {
   'active': 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -87,7 +87,7 @@ export default function Contracts() {
         toast.success('Contract deleted successfully');
         setDeleteConfirm({ show: false, id: null, name: '' });
         fetchContracts();
-    } catch (error) {
+    } catch {
         toast.error('Failed to delete contract');
     } finally {
         setIsSaving(false);

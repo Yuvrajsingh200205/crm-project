@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Briefcase, Settings, FileText, Plus, Search, Filter, Download, MoreVertical, Eye, X, Loader2, Edit3, Trash2, ChevronDown } from 'lucide-react';
 import { tenderAPI } from '../../api/tender';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import toast from 'react-hot-toast';
 
 export default function Tenders() {

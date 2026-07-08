@@ -18,9 +18,8 @@ export const employeeAPI = {
           console.warn(`Singular /users/employee failed (${status}), trying plural /users/employees...`);
           const pluralRes = await axiosInstance.get('/users/employees');
           return pluralRes.data;
-        } catch (pluralError) {
+        } catch {
           // If both fail, let it throw the original error
-          console.error('Both singular and plural employee endpoints failed.');
         }
       }
       console.error('Employee List Fetch Error:', error.response?.data || error.message);

@@ -43,7 +43,6 @@ axiosInstance.interceptors.response.use(
           throw new Error('No refresh token present.');
         }
 
-        console.log("Interceptor: Triggering refresh token API call...");
         
         // Call refresh token API without an interceptor
         // Removing Authorization header as it's expired and some servers reject refresh calls with it

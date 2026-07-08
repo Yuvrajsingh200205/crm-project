@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Loader2 } from 'lucide-react';
 
-export default function SiteModal({ isOpen, isEditing, formData, projects, isSaving, onClose, onSave, onInputChange }) {
+export default function SiteModal({ isOpen, isEditing, formData, isSaving, onClose, onSave, onInputChange }) {
     if (!isOpen) return null;
 
     return (

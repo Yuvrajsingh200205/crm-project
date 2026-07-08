@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Download, Building2, Calendar, CheckCircle2, Clock, AlertCircle, X, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { confirmToast } from '../../utils/toastUtils';
 import Skeleton from '../../components/common/Skeleton';
 
 const INITIAL_RECEIVABLES = [];
@@ -17,10 +16,9 @@ export default function AccountsReceivable() {
     const [receivables, setReceivables] = useState(INITIAL_RECEIVABLES);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setIsLoading(true);
         const timer = setTimeout(() => setIsLoading(false), 1200);
         return () => clearTimeout(timer);
     }, []);

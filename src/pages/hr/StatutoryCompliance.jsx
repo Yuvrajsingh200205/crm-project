@@ -17,10 +17,9 @@ export default function StatutoryCompliance() {
   const [selectedFiling, setSelectedFiling] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', month: 'February 2026', amount: '', status: 'Filed', type: 'Monthly', bank: 'HDFC Bank', challanNo: '' });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);

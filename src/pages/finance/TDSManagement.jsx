@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     Search, Plus, Download, CheckCircle2, AlertCircle, Clock, 
     FileText, Briefcase, X, Edit2, Trash2, Eye, Save, Loader2,
@@ -223,7 +223,7 @@ export default function TDSManagement() {
                                 ))
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan="9" className="p-6 text-center text-slate-500">No TDS records found.</td></tr>
-                            ) : filtered.map((tds, i) => {
+                            ) : filtered.map((tds) => {
                                 const vendor = vendors.find(v => (v.id === tds.vendorId) || (v._id === tds.vendorId));
                                 return (
                                     <tr key={tds.id} className="table-row hover:bg-slate-50 transition-colors group">

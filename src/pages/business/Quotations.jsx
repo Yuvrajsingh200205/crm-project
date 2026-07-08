@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
 import { quotationAPI } from '../../api/quotation';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 
 const statusBadge = {
   'Draft': 'bg-slate-50 text-slate-500 border-slate-200',

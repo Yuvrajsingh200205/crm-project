@@ -11,12 +11,6 @@ import toast from 'react-hot-toast';
 
 const initialSalaryData = [];
 
-const salaryHistory = [
-  { month: 'January 2026', gross: 58000, net: 51800, status: 'Paid', date: '2026-01-31' },
-  { month: 'December 2025', gross: 58000, net: 51800, status: 'Paid', date: '2025-12-31' },
-  { month: 'November 2025', gross: 56000, net: 50200, status: 'Paid', date: '2025-11-30' },
-];
-
 export default function Payroll() {
   const [salaries, setSalaries] = useState(initialSalaryData);
   const [view, setView] = useState('dashboard');

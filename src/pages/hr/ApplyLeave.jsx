@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useApp } from '../../hooks/useApp';
 import { leaveAPI } from '../../api/leave';
 import toast from 'react-hot-toast';
 import { Loader2, Plus, Calendar as CalendarIcon, AlignLeft, Clock, ChevronDown, CheckCircle2, XCircle, Timer, Search, X, Filter, FileText } from 'lucide-react';
@@ -25,10 +25,6 @@ export default function ApplyLeave() {
     });
 
     useEffect(() => {
-        fetchData();
-    }, [userProfile?.id, userProfile?.userId]);
-
-    useEffect(() => {
         if (formData.from && formData.to) {
             const start = new Date(formData.from);
             const end = new Date(formData.to);
@@ -40,7 +36,7 @@ export default function ApplyLeave() {
         }
     }, [formData.from, formData.to]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         const id = userProfile?.id || userProfile?.userId || userProfile?._id;
         if (!id) return;
 
@@ -65,7 +61,11 @@ export default function ApplyLeave() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [userProfile?._id, userProfile?.id, userProfile?.userId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleApply = async (e) => {
         e.preventDefault();

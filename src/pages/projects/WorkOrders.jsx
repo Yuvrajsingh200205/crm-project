@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, ClipboardList, AlertCircle, TrendingUp, CheckCircle2, RefreshCw } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
 import { workOrderAPI } from '../../api/workorder';

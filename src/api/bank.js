@@ -22,8 +22,7 @@ export const bankAPI = {
         try {
             const response = await axiosInstance.get('/banks');
             return response.data;
-        } catch (error) {
-            console.error("API error:", error);
+        } catch {
             return { success: true, banks: getLocalBanks() };
         }
     },
@@ -33,7 +32,7 @@ export const bankAPI = {
         try {
             const response = await axiosInstance.post('/banks', bankData);
             return response.data;
-        } catch (error) {
+        } catch {
             const banks = getLocalBanks();
             const newBank = { ...bankData, id: Date.now() };
             banks.push(newBank);
@@ -47,7 +46,7 @@ export const bankAPI = {
         try {
             const response = await axiosInstance.put(`/banks/${id}`, bankData);
             return response.data;
-        } catch (error) {
+        } catch {
             let banks = getLocalBanks();
             banks = banks.map(b => b.id === id ? { ...b, ...bankData } : b);
             saveLocalBanks(banks);
@@ -60,7 +59,7 @@ export const bankAPI = {
         try {
             const response = await axiosInstance.delete(`/banks/${id}`);
             return response.data;
-        } catch (error) {
+        } catch {
             let banks = getLocalBanks();
             banks = banks.filter(b => b.id !== id);
             saveLocalBanks(banks);

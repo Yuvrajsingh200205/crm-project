@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import {
     ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar,
     CreditCard, ShieldCheck, FileText, Download, Edit2,
@@ -10,7 +10,7 @@ import { employeeAPI } from '../../api/employee';
 import toast from 'react-hot-toast';
 
 export default function EmployeeDetails() {
-    const { selectedEmployee, setSelectedEmployee, setActiveModule, updateEmployee } = useApp();
+    const { selectedEmployee, setActiveModule, updateEmployee } = useApp();
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState(null);
     const [activeTab, setActiveTab] = useState('Overview');
@@ -568,4 +568,3 @@ export default function EmployeeDetails() {
         </div>
     );
 }
-

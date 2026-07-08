@@ -4,17 +4,7 @@ import toast from 'react-hot-toast';
 import { procurementAPI } from '../../api/procurement';
 import Skeleton from '../../components/common/Skeleton';
 
-const initialPurchaseOrders = [
-    { id: 'PO-2026-047', vendor: 'Bihar Cable Industries', items: 'ABC Cable 3X185 – 1 CKM', amount: 385000, raised: '2026-03-01', expectedDelivery: '2026-03-15', status: 'Pending Approval', approver: 'GM – Ops', stage: 1 },
-    { id: 'PO-2026-046', vendor: 'National Pole Manufacturers', items: 'PSC Pole 9M 400Kg – 20 Nos', amount: 225000, raised: '2026-02-28', expectedDelivery: '2026-03-10', status: 'Approved', approver: 'Approved', stage: 2 },
-    { id: 'PO-2026-045', vendor: 'Himachal Steel Corp', items: 'GI Wire 7/8 SWG – 500 Mtr', amount: 42500, raised: '2026-02-25', expectedDelivery: '2026-03-05', status: 'GRN Pending', approver: 'Delivered', stage: 3 },
-    { id: 'PO-2026-044', vendor: 'National Pole Manufacturers', items: 'Stay Set Complete – 10 Sets', amount: 12500, raised: '2026-02-20', expectedDelivery: '2026-02-28', status: 'Completed', approver: 'Done', stage: 4 },
-    { id: 'PO-2026-043', vendor: 'HG Fuse Suppliers Pvt Ltd', items: 'HG Fuse Set – 10 Nos', amount: 42250, raised: '2026-02-18', expectedDelivery: '2026-02-25', status: 'Completed', approver: 'Done', stage: 4 },
-];
-
 const stages = ['Indent', 'Approval', 'PO Issued', 'Delivered', 'GRN Done'];
-const statusToStage = { 'Pending Approval': 0, 'Approved': 1, 'GRN Pending': 3, 'Completed': 4 };
-
 const statusBadge = {
     'Pending Approval': 'badge-yellow',
     'Approved': 'badge-blue',

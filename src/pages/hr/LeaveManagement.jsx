@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import { leaveAPI } from '../../api/leave';
 import { employeeAPI } from '../../api/employee';
 import { CheckCircle2, XCircle, Plus, Search, X, ChevronDown, Loader2, UserPlus, FileText } from 'lucide-react';
@@ -36,13 +36,7 @@ export default function LeaveManagement() {
   const [rejectionModal, setRejectionModal] = useState({ show: false, id: null, reason: '' });
   const [nameCache, setNameCache] = useState({});
 
-  useEffect(() => {
-    fetchEmployees(); // load employees everywhere
-    fetchAllocations(); // load allocations everywhere
-    fetchRequests();
-  }, [userRole]);
-
-  const resolveMissingNames = async (reqs) => {
+  const resolveMissingNames = useCallback(async (reqs) => {
     const ids = [...new Set(reqs.map(r => r.userId || r.user_id))].filter(Boolean);
     const unknownIds = ids.filter(id => {
       const allPossible = [...employees, ...(globalEmployees || [])];
@@ -55,13 +49,13 @@ export default function LeaveManagement() {
         const empInfo = await employeeAPI.getEmployeeById(id);
         const name = empInfo?.name || empInfo?.employee?.name || `User ${id}`;
         setNameCache(prev => ({ ...prev, [id]: name }));
-      } catch (err) {
-        console.warn(`Could not resolve name for ID ${id}:`, err);
+      } catch {
+        // Missing names are non-blocking for the leave list.
       }
     }
-  };
+  }, [employees, globalEmployees, nameCache]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setIsLoading(true);
     try {
       let res;
@@ -80,20 +74,18 @@ export default function LeaveManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [resolveMissingNames, userProfile?.id, userProfile?.userId, userRole]);
 
-  const fetchAllocations = async () => {
+  const fetchAllocations = useCallback(async () => {
     try {
       let res;
       if (userRole === 'employee') {
         const id = userProfile?.id || userProfile?.userId || userProfile?._id;
         if (!id) return;
-        console.log('Fetching personal allocations for employee ID:', id);
         res = await leaveAPI.getUserLeaveAllocations(id);
       } else {
         res = await leaveAPI.getAllLeaveAllocations();
       }
-      console.log('Raw Allocations Response:', res);
 
       let backendAllocations = res?.leaveAllocation || res?.leaveAllocations || res?.allocations || res?.data || res?.items || res;
       if (!Array.isArray(backendAllocations)) {
@@ -108,9 +100,9 @@ export default function LeaveManagement() {
     } catch (error) {
       console.error('Failed to fetch allocations:', error);
     }
-  };
+  }, [userProfile?._id, userProfile?.id, userProfile?.userId, userRole]);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const res = await employeeAPI.getAllEmployees();
       // Robust check matching all known API response shapes
@@ -129,7 +121,13 @@ export default function LeaveManagement() {
     } catch (error) {
       console.error('Failed to fetch employees:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchAllocations();
+    fetchRequests();
+  }, [fetchAllocations, fetchEmployees, fetchRequests]);
 
   const handleApprove = async (id) => {
     try {
@@ -491,7 +489,7 @@ export default function LeaveManagement() {
                 toast.success('Leave allocated successfully!');
                 setAllotData({ userId: '', sick: '0', annual: '0', other: '0', casual: '0', company: '0' });
                 fetchAllocations();
-              } catch (error) {
+              } catch {
                 toast.error('Failed to allot leave');
               } finally {
                 setIsSaving(false);

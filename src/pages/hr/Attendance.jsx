@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, UserCheck, UserX, AlertCircle, Search, ChevronDown, X, CheckCircle2 } from 'lucide-react';
 import Skeleton from '../../components/common/Skeleton';
 import { attendanceAPI } from '../../api/attendance';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import { employeeAPI } from '../../api/employee';
-
-const initialAttendance = [];
 
 export default function Attendance() {
   const { userRole, userProfile } = useApp();
@@ -18,12 +16,7 @@ export default function Attendance() {
   const [toast, setToast] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchAttendance();
-  }, [userRole]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const res = await employeeAPI.getAllEmployees();
       const backendEmployees = res?.employees || res?.users || res?.staff || res?.data?.employees || (Array.isArray(res) ? res : (res?.data || []));
@@ -35,9 +28,9 @@ export default function Attendance() {
     } catch (error) {
       console.error('Failed to fetch employees:', error);
     }
-  };
+  }, []);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     setIsLoading(true);
     try {
       let res;
@@ -48,7 +41,6 @@ export default function Attendance() {
           res = await attendanceAPI.getAllLogs();
       }
       const rawResponse = res?.data || res;
-      console.log("Raw Attendance API Response:", rawResponse);
       const logs = Array.isArray(rawResponse) 
         ? rawResponse 
         : (rawResponse?.attendanceLogs || rawResponse?.logs || rawResponse?.data || []);
@@ -77,7 +69,12 @@ export default function Attendance() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [employees, userProfile?.id, userProfile?.userId, userRole]);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchAttendance();
+  }, [fetchAttendance, fetchEmployees]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);

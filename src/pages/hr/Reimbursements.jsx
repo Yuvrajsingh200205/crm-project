@@ -4,7 +4,7 @@ import { Receipt, Wallet, CheckCircle2, XCircle, Clock, Plus, Search, X, Chevron
 import Skeleton from '../../components/common/Skeleton';
 import { reimbursementAPI } from '../../api/reimbursement';
 import { employeeAPI } from '../../api/employee';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 
 const initialClaims = [];
 
@@ -93,7 +93,7 @@ export default function Reimbursements() {
         await reimbursementAPI.approveReimbursement(id);
         toast.success(`Claim #${id} approved!`);
         fetchClaims();
-    } catch (error) {
+    } catch {
         toast.error('Failed to approve claim');
     }
   };
@@ -103,7 +103,7 @@ export default function Reimbursements() {
         await reimbursementAPI.rejectReimbursement(id);
         toast.error(`Claim #${id} rejected`);
         fetchClaims();
-    } catch (error) {
+    } catch {
         toast.error('Failed to reject claim');
     }
   };

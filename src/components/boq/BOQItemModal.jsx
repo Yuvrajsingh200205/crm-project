@@ -1,7 +1,5 @@
 import { X } from 'lucide-react';
 
-const statuses = ['Pending', 'Reconciled', 'Minor Variance', 'Under Utilized', 'Over Issued'];
-
 export default function BOQItemModal({ isOpen, isEditing, formData, onClose, onSave, onInputChange, isLoading }) {
     if (!isOpen) return null;
 

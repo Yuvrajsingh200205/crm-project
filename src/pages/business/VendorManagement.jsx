@@ -101,7 +101,6 @@ export default function VendorManagement() {
         value: Number(formData.value) || 0
     };
 
-    console.log('DEBUG: Sending Vendor Payload ->', payload);
 
     if (!payload.name || !payload.category || !payload.headquater || !payload.panOrgstin) {
         toast.error('Please fill all required fields');
@@ -114,8 +113,7 @@ export default function VendorManagement() {
             await vendorAPI.updateVendor(currentVendorId, payload);
             toast.success('Vendor updated successfully');
         } else {
-            const res = await vendorAPI.createVendor(payload);
-            console.log('DEBUG: API Response ->', res);
+            await vendorAPI.createVendor(payload);
             toast.success('Vendor onboarded successfully');
         }
         

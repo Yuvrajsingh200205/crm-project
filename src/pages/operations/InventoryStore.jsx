@@ -10,13 +10,6 @@ import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
 import { inventoryAPI } from '../../api/inventory';
 
-const statusBadge = {
-  'In Stock': 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  'Low Stock': 'bg-amber-50 text-amber-600 border-amber-100',
-  'Out of Stock': 'bg-red-50 text-red-600 border-red-100',
-  'Damaged': 'bg-slate-50 text-slate-500 border-slate-200',
-};
-
 export default function InventoryStore() {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

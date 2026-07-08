@@ -8,13 +8,6 @@ import {
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
 
-const statusBadge = {
-  'Active': 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  'On Hold': 'bg-amber-50 text-amber-600 border-amber-100',
-  'Blacklisted': 'bg-red-50 text-red-600 border-red-100',
-  'Pending KYC': 'bg-blue-50 text-blue-600 border-blue-100',
-};
-
 export default function Subcontractors() {
   const [subs, setSubs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

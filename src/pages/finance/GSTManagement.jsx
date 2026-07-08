@@ -8,10 +8,9 @@ const MOCK_GST_RETURNS = [];
 export default function GSTManagement() {
     const [tab, setTab] = useState('returns');
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setIsLoading(true);
         const timer = setTimeout(() => setIsLoading(false), 900);
         return () => clearTimeout(timer);
     }, []);

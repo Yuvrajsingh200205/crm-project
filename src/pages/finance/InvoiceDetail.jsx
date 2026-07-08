@@ -3,7 +3,7 @@ import {
     ArrowLeft, Printer, Download, Share2, 
     Building2, FileText, Landmark, Loader2
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';

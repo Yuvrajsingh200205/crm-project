@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Download, Filter } from 'lucide-react';
 import Skeleton from '../../components/common/Skeleton';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import { boqAPI } from '../../api/boq';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/toastUtils';
@@ -36,7 +36,6 @@ export default function BOQ() {
         setIsLoadingData(true);
         try {
             const res = await boqAPI.getAllBills();
-            console.log("Fetched Bills:", res.data); // Inspect the response body structure here to see what backend returns
             // The backend returns an object with a "bills" key
             setBills(Array.isArray(res.data) ? res.data : (res.data?.bills || res.data?.data || []));
         } catch (error) {
@@ -100,7 +99,7 @@ export default function BOQ() {
                 await boqAPI.deleteBill(id);
                 setBills(prev => prev.filter(i => i.id !== id));
                 toast.success("BOQ item removed");
-            } catch (error) {
+            } catch {
                 toast.error("Failed to delete bill");
             }
         });

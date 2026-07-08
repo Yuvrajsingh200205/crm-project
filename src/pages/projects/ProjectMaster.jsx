@@ -110,7 +110,7 @@ export default function ProjectMaster() {
                 await projectAPI.deleteProject(id);
                 setProjectsList(prev => prev.filter(p => p.id !== id && p.code !== id));
                 toast.success("Project deleted successfully");
-            } catch(err) {
+            } catch {
                 toast.error("Failed to delete project");
             }
         });
@@ -204,11 +204,6 @@ export default function ProjectMaster() {
             console.error(error);
             toast.error("Failed to generate report", { id: toastId });
         }
-    };
-
-    const handleOpenGantt = (project) => {
-        setSelectedProj(project);
-        setIsGanttOpen(true);
     };
 
     return (

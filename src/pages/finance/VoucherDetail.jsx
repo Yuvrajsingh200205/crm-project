@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Loader2, Building2 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import { calculateInvoiceData, downloadInvoice } from '../../utils/invoice';
 import { partyAPI } from '../../api/party';
 import { inventoryAPI } from '../../api/inventory';

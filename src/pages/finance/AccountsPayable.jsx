@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
     CreditCard, Search, Plus, Download, 
     Truck, Calendar, AlertCircle, CheckCircle2, Clock, X, Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { confirmToast } from '../../utils/toastUtils';
 import Skeleton from '../../components/common/Skeleton';
 
 const INITIAL_BILLS = [];
@@ -21,10 +20,9 @@ export default function AccountsPayable() {
     const [bills, setBills] = useState(INITIAL_BILLS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     React.useEffect(() => {
-        setIsLoading(true);
         const timer = setTimeout(() => {
             setIsLoading(false);
         }, 1200);

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Download, Upload, CheckCircle, Clock, XCircle, X, Eye, ChevronDown, Trash2, Loader2, AlertOctagon } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import { employeeAPI } from '../../api/employee';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/common/Skeleton';
@@ -16,15 +16,10 @@ export default function EmployeeMaster() {
     const [isFetching, setIsFetching] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null, name: '' });
 
-    useEffect(() => {
-        loadEmployees();
-    }, []);
-
-    const loadEmployees = async () => {
+    const loadEmployees = useCallback(async () => {
         setIsFetching(true);
         try {
             const res = await employeeAPI.getAllEmployees();
-            console.log('Employee API Result:', res);
             // Robust check for different potential response keys
             const backendEmployees = res?.employees || res?.users || res?.staff || res?.data?.employees || (Array.isArray(res) ? res : (res?.data || []));
             const mapped = (Array.isArray(backendEmployees) ? backendEmployees : []).map(emp => {
@@ -55,7 +50,11 @@ export default function EmployeeMaster() {
         } finally {
             setIsFetching(false);
         }
-    };
+    }, [setEmployees]);
+
+    useEffect(() => {
+        loadEmployees();
+    }, [loadEmployees]);
 
     const depts = ['All', ...new Set(employees.map(e => e.department))];
     const filtered = employees.filter(e => {
@@ -79,7 +78,6 @@ export default function EmployeeMaster() {
         setIsLoading(true);
         const basic = parseFloat(formData.basic || 0);
         const gross = parseFloat(formData.gross || (basic * 1.5));
-        const net = gross - (basic * 0.12); // simple mock calculation
         
         try {
             // Build payload exactly as requested
@@ -109,7 +107,7 @@ export default function EmployeeMaster() {
                         formData.department === 'Marketing' ? 4 : 2 // Default to HR or similar safe role
             };
 
-            const response = await employeeAPI.createEmployee(payload);
+            await employeeAPI.createEmployee(payload);
             toast.success('Employee created successfully!');
             
             // Re-fetch all employees to get real IDs from the backend

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { STATE_OPTIONS, getCitiesForState } from '../../utils/cityStateData';
 import {
     FileText, Search, Plus, Filter, Download, MoreVertical,
@@ -8,17 +8,13 @@ import {
     Trash2, Edit3, Eye, ChevronDown, Save, Loader2, UserPlus, Package, Printer, ArrowLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
 import Skeleton from '../../components/common/Skeleton';
 import SearchableSelect from '../../components/common/SearchableSelect';
 import { voucherAPI } from '../../api/voucher';
 import { inventoryAPI } from '../../api/inventory';
-import { equipmentAPI } from '../../api/equipment';
-import { vendorAPI } from '../../api/vendor';
-import { tenderAPI } from '../../api/tender';
 import { bankAPI } from '../../api/bank';
 import { partyAPI } from '../../api/party';
-import html2pdf from 'html2pdf.js';
 
 const EMPTY_REF_DATA = { materials: [], equipments: [], vendors: [], tenders: [], banks: [], parties: [] };
 const EMPTY_REF_LOADING = { materials: false, equipments: false, vendors: false, tenders: false, banks: false, parties: false };
@@ -983,12 +979,6 @@ export default function Vouchers() {
         }
     };
 
-    // Opens preview instead of saving (for Sales Voucher "Download Invoice" button)
-    const handleOpenInvoicePreview = (e) => {
-        if (e && e.preventDefault) e.preventDefault();
-        setShowInvoicePreview(true);
-    };
-
     const handleSave = async (e) => {
         e.preventDefault ? e.preventDefault() : null;
         setIsSaving(true);
@@ -1169,11 +1159,6 @@ export default function Vouchers() {
             (v.narrationRemarks || '').toLowerCase().includes(search.toLowerCase())) &&
         (filter === 'All' || (v.type || '').includes(filter))
     );
-
-    const salesTaxable = (Number(formData.amount) || 0) * (Number(formData.quantity) || 1);
-    const salesCGST = parseFloat(((salesTaxable * (Number(formData.cgst) || 0)) / 100).toFixed(2));
-    const salesSGST = parseFloat(((salesTaxable * (Number(formData.sgst) || 0)) / 100).toFixed(2));
-    const salesGrandTotal = salesTaxable + salesCGST + salesSGST;
 
     return (
         <div className="space-y-5 animate-fade-in pb-12 relative">
