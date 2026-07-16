@@ -11,48 +11,51 @@ import {
     LayoutDashboard,
     Package,
     Shield,
+    Key,
     TrendingUp,
     Users,
 } from 'lucide-react';
 
-import FinancialAnalytics from '../pages/analytics/FinancialAnalytics';
-import CRM from '../pages/business/CRM';
-import Contracts from '../pages/business/Contracts';
-import Quotations from '../pages/business/Quotations';
-import Tenders from '../pages/business/Tenders';
-import VendorManagement from '../pages/business/VendorManagement';
-import AccountsPayable from '../pages/finance/AccountsPayable';
-import AccountsReceivable from '../pages/finance/AccountsReceivable';
-import BankManagement from '../pages/finance/BankManagement';
-import BankReconciliation from '../pages/finance/BankReconciliation';
-import ChartOfAccounts from '../pages/finance/ChartOfAccounts';
-import GSTManagement from '../pages/finance/GSTManagement';
-import Invoicing from '../pages/finance/Invoicing';
-import InvoiceDetail from '../pages/finance/InvoiceDetail';
-import JobCosting from '../pages/finance/JobCosting';
-import TDSManagement from '../pages/finance/TDSManagement';
-import VoucherDetail from '../pages/finance/VoucherDetail';
-import Vouchers from '../pages/finance/Vouchers';
-import ApplyLeave from '../pages/hr/ApplyLeave';
-import Attendance from '../pages/hr/Attendance';
-import EmployeeDetails from '../pages/hr/EmployeeDetails';
-import EmployeeMaster from '../pages/hr/EmployeeMaster';
-import LeaveManagement from '../pages/hr/LeaveManagement';
-import Payroll from '../pages/hr/Payroll';
-import Reimbursements from '../pages/hr/Reimbursements';
-import StatutoryCompliance from '../pages/hr/StatutoryCompliance';
-import Dashboard from '../pages/Dashboard';
-import EquipmentAssets from '../pages/operations/EquipmentAssets';
-import InventoryStore from '../pages/operations/InventoryStore';
-import MaterialReconciliation from '../pages/operations/MaterialReconciliation';
-import Procurement from '../pages/operations/Procurement';
-import Subcontractors from '../pages/operations/Subcontractors';
-import PlaceholderPage from '../pages/PlaceholderPage';
-import BOQ from '../pages/projects/BOQ';
-import ProgressTracking from '../pages/projects/ProgressTracking';
-import ProjectMaster from '../pages/projects/ProjectMaster';
-import SiteManagement from '../pages/projects/SiteManagement';
-import WorkOrders from '../pages/projects/WorkOrders';
+import FinancialAnalytics from '../modules/analytics/pages/FinancialAnalytics';
+import CRM from '../modules/business/pages/CRM';
+import Contracts from '../modules/business/pages/Contracts';
+import Quotations from '../modules/business/pages/Quotations';
+import Tenders from '../modules/business/pages/Tenders';
+import VendorManagement from '../modules/business/pages/VendorManagement';
+import AccountsPayable from '../modules/finance/pages/AccountsPayable';
+import AccountsReceivable from '../modules/finance/pages/AccountsReceivable';
+import BankManagement from '../modules/finance/pages/BankManagement';
+import BankReconciliation from '../modules/finance/pages/BankReconciliation';
+import ChartOfAccounts from '../modules/finance/pages/ChartOfAccounts';
+import GSTManagement from '../modules/finance/pages/GSTManagement';
+import Invoicing from '../modules/finance/pages/Invoicing';
+import InvoiceDetail from '../modules/finance/pages/InvoiceDetail';
+import JobCosting from '../modules/finance/pages/JobCosting';
+import TDSManagement from '../modules/finance/pages/TDSManagement';
+import VoucherDetail from '../modules/finance/pages/VoucherDetail';
+import Vouchers from '../modules/finance/pages/Vouchers';
+import ApplyLeave from '../modules/hr/pages/ApplyLeave';
+import Attendance from '../modules/hr/pages/Attendance';
+import EmployeeDetails from '../modules/hr/pages/EmployeeDetails';
+import EmployeeMaster from '../modules/hr/pages/EmployeeMaster';
+import LeaveManagement from '../modules/hr/pages/LeaveManagement';
+import Payroll from '../modules/hr/pages/Payroll';
+import Reimbursements from '../modules/hr/pages/Reimbursements';
+import StatutoryCompliance from '../modules/hr/pages/StatutoryCompliance';
+import Dashboard from '../modules/dashboard/pages/Dashboard';
+import EquipmentAssets from '../modules/operations/pages/EquipmentAssets';
+import InventoryStore from '../modules/operations/pages/InventoryStore';
+import MaterialReconciliation from '../modules/operations/pages/MaterialReconciliation';
+import Procurement from '../modules/operations/pages/Procurement';
+import Subcontractors from '../modules/operations/pages/Subcontractors';
+import PlaceholderPage from '../modules/dashboard/pages/PlaceholderPage';
+import BOQ from '../modules/projects/pages/BOQ';
+import ProgressTracking from '../modules/projects/pages/ProgressTracking';
+import ProjectMaster from '../modules/projects/pages/ProjectMaster';
+import SiteManagement from '../modules/projects/pages/SiteManagement';
+import WorkOrders from '../modules/projects/pages/WorkOrders';
+import Roles from '../modules/authority/pages/Roles';
+import RolePermissions from '../modules/authority/pages/RolePermissions';
 
 export const MODULE_TITLES = {
     dashboard: 'Dashboard',
@@ -97,6 +100,8 @@ export const MODULE_TITLES = {
     'financial-analytics': 'Financial Analytics',
     'hr-analytics': 'HR Analytics',
     'custom-reports': 'Custom Reports',
+    roles: 'Role Management',
+    'role-permissions': 'Role Permissions',
 };
 
 export const NAV_ITEMS = [
@@ -187,6 +192,15 @@ export const NAV_ITEMS = [
             { id: 'custom-reports', label: 'Custom Reports' },
         ],
     },
+    {
+        id: 'authority',
+        label: 'Authority',
+        icon: Key,
+        children: [
+            { id: 'roles', label: 'Role Management' },
+            { id: 'role-permissions', label: 'Role Permissions' },
+        ],
+    },
 ];
 
 export const PAGE_COMPONENTS = {
@@ -227,6 +241,8 @@ export const PAGE_COMPONENTS = {
     contracts: Contracts,
     'vendor-management': VendorManagement,
     'financial-analytics': FinancialAnalytics,
+    roles: Roles,
+    'role-permissions': RolePermissions,
 };
 
 export const PLACEHOLDER_PAGES = {
@@ -267,14 +283,84 @@ export const PLACEHOLDER_PAGES = {
     },
 };
 
+const DB_CODE_TO_MODULE_MAP = {
+    // Authority
+    "role": "roles",
+    "roles": "roles",
+    "role_permission": "role-permissions",
+    "role-permissions": "role-permissions",
+    
+    // Project Management
+    "project-mst": "project-master",
+    "work-ord": "work-orders",
+    "site-mgt": "site-management",
+    "ra-bill": "progress-tracking",
+    "clt-inv": "invoicing",
+    "doc-cntl": "document-control",
+    "safety-qlt": "safety-quality",
+    "earned-v-mnt": "project-analytics",
+    
+    // Finance & Accounting
+    "vochr-enty": "vouchers",
+    "ledgerr-mnt": "chart-of-accounts",
+    "bnk": "bank-management",
+    "tds": "tds-management",
+    "inv": "invoicing",
+    "pl-bs": "financial-analytics",
+    "cc": "financial-analytics",
+    
+    // Operations
+    "procurment": "procurement",
+    "inventory": "inventory",
+    "mtl-recon": "material-reconciliation",
+    "eqpt": "equipment",
+    "subcontr": "subcontractors",
+    "qlt-inspt": "safety-quality",
+    
+    // Human Resources
+    "em": "employee-master",
+    "at": "attendance",
+    "pyroll": "payroll",
+    "sty": "statutory-compliance",
+    "lev": "leave-management",
+    "trn": "hr-analytics",
+    "recut": "hr-analytics",
+    "cl": "employee-master",
+    
+    // Business Development
+    "crm": "crm",
+    "qot": "quotations",
+    "tdr": "tenders",
+    "ctr": "contracts",
+    "pl": "executive-dashboard",
+    "vm": "vendor-management",
+    
+    // Compliance & Legal
+    "lt": "legal-compliance",
+    "mca-fil": "board-resolutions",
+    "sfty": "safety-quality",
+    "qty": "safety-quality",
+    "agt": "legal-compliance",
+    "cpt-cldr": "legal-compliance",
+    
+    // Analytics & Reports
+    "ext-db": "executive-dashboard",
+    "pjt-anyt": "project-analytics",
+    "finc-anyt": "financial-analytics",
+    "hr-anyt": "hr-analytics",
+    "crb": "custom-reports",
+    "audit-tril": "custom-reports"
+};
+
 export function getPageComponent(activeModule) {
-    const Page = PAGE_COMPONENTS[activeModule];
+    const normalizedModule = DB_CODE_TO_MODULE_MAP[activeModule?.toLowerCase()] || activeModule;
+    const Page = PAGE_COMPONENTS[normalizedModule];
 
     if (Page) {
         return <Page />;
     }
 
-    const placeholder = PLACEHOLDER_PAGES[activeModule];
+    const placeholder = PLACEHOLDER_PAGES[normalizedModule];
 
     if (placeholder) {
         return <PlaceholderPage {...placeholder} />;

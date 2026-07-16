@@ -1,10 +1,35 @@
+import React, { useEffect } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { getPageComponent } from '../constants/navigation';
-import { useApp } from '../hooks/useApp';
+import { useSelector, useDispatch } from 'react-redux';
+import { setPermissionsStart, setPermissionsSuccess, setPermissionsFailure } from '../store/slices/permissionSlice';
+import { authAPI } from '../modules/auth/services';
 
 export default function AppLayout() {
-    const { activeModule, sidebarOpen, userRole } = useApp();
+    const dispatch = useDispatch();
+    const { activeModule, sidebarOpen } = useSelector((state) => state.ui);
+    const { roleId: userRole, isLoggedIn } = useSelector((state) => state.auth);
+    const { modules } = useSelector((state) => state.permissions);
+
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            if (isLoggedIn && userRole && (!modules || modules.length === 0)) {
+                dispatch(setPermissionsStart());
+                try {
+                    const permResponse = await authAPI.getRolePermissions(userRole);
+                    // Handle array extraction gracefully in case the backend returns { data: [...] }
+                    const dataArray = Array.isArray(permResponse) ? permResponse : (permResponse.data || permResponse);
+                    dispatch(setPermissionsSuccess(Array.isArray(dataArray) ? dataArray : []));
+                } catch (error) {
+                    console.error("Failed to fetch permissions on reload", error);
+                    dispatch(setPermissionsFailure(error.message));
+                }
+            }
+        };
+
+        fetchPermissions();
+    }, [isLoggedIn, userRole, dispatch, modules?.length]);
 
     return (
         <div className="min-h-screen bg-[#eef2f0] text-slate-800 print:bg-white print:p-0">

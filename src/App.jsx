@@ -1,11 +1,11 @@
-import { AppProvider } from './context/AppContext';
-import { useApp } from './hooks/useApp';
+import { useSelector } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import AppLayout from './layouts/AppLayout';
-import Login from './pages/Login';
+import Login from './modules/auth/pages/Login';
+import { AppProvider } from './context/AppContext';
 
 function AppContent() {
-  const { isLoggedIn } = useApp();
+  const { isLoggedIn } = useSelector((state) => state.auth);
 
   if (!isLoggedIn) {
     return <Login />;
